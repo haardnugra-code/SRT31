@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Keasramaan Sekolah Rakyat",
+  "description": "Sistem Manajemen Kedisiplinan Asrama, Ceklist Harian, Pelanggaran, Konseling BK, Izin Pulang, Rapor Keasramaan & Rekapitulasi Multipage PDF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

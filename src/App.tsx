@@ -168,27 +168,52 @@ export default function App() {
 
   const handleDeleteStudent = useCallback(
     (id: string) => {
+      const targetStudent = students.find((s) => String(s.id).trim() === String(id).trim());
+      const targetName = targetStudent ? targetStudent.name : '';
+
       setStudents((prev) => {
-        const updated = prev.filter((s) => String(s.id) !== String(id));
+        const updated = prev.filter((s) => String(s.id).trim() !== String(id).trim());
         saveStudents(updated);
         return updated;
       });
 
       setViolations((prev) => {
-        const updated = prev.filter((v) => String(v.studentId) !== String(id));
+        const updated = prev.filter(
+          (v) =>
+            String(v.studentId).trim() !== String(id).trim() &&
+            (!targetName || v.studentName !== targetName)
+        );
         saveViolations(updated);
         return updated;
       });
 
       setCounseling((prev) => {
-        const updated = prev.filter((c) => String(c.studentId) !== String(id));
+        const updated = prev.filter(
+          (c) =>
+            String(c.studentId).trim() !== String(id).trim() &&
+            (!targetName || c.studentName !== targetName)
+        );
         saveCounseling(updated);
         return updated;
       });
 
       setLeaves((prev) => {
-        const updated = prev.filter((l) => String(l.studentId) !== String(id));
+        const updated = prev.filter(
+          (l) =>
+            String(l.studentId).trim() !== String(id).trim() &&
+            (!targetName || l.studentName !== targetName)
+        );
         saveLeaves(updated);
+        return updated;
+      });
+
+      setDailyJournals((prev) => {
+        const updated = prev.filter(
+          (j) =>
+            String(j.studentId).trim() !== String(id).trim() &&
+            (!targetName || j.studentName !== targetName)
+        );
+        saveDailyJournals(updated);
         return updated;
       });
 
@@ -209,7 +234,7 @@ export default function App() {
         }).catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [students, config.googleScriptUrl]
   );
 
   // 2. Violation CRUD
@@ -242,12 +267,22 @@ export default function App() {
   const handleDeleteViolation = useCallback(
     (id: string) => {
       setViolations((prev) => {
-        const updated = prev.filter((v) => v.id !== id);
+        const updated = prev.filter((v) => String(v.id).trim() !== String(id).trim());
         saveViolations(updated);
         return updated;
       });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteViolation',
+            data: { id }
+          })
+        }).catch((err) => console.error(err));
+      }
     },
-    []
+    [config.googleScriptUrl]
   );
 
   // 3. Counseling CRUD
@@ -277,13 +312,26 @@ export default function App() {
     [config.googleScriptUrl]
   );
 
-  const handleDeleteCounseling = useCallback((id: string) => {
-    setCounseling((prev) => {
-      const updated = prev.filter((c) => c.id !== id);
-      saveCounseling(updated);
-      return updated;
-    });
-  }, []);
+  const handleDeleteCounseling = useCallback(
+    (id: string) => {
+      setCounseling((prev) => {
+        const updated = prev.filter((c) => String(c.id).trim() !== String(id).trim());
+        saveCounseling(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteCounseling',
+            data: { id }
+          })
+        }).catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl]
+  );
 
   const handleUpdateCounselingStatus = useCallback(
     (id: string, status: 'Open' | 'In Progress' | 'Resolved') => {
@@ -334,13 +382,26 @@ export default function App() {
     [config.googleScriptUrl]
   );
 
-  const handleDeleteLeave = useCallback((id: string) => {
-    setLeaves((prev) => {
-      const updated = prev.filter((l) => l.id !== id);
-      saveLeaves(updated);
-      return updated;
-    });
-  }, []);
+  const handleDeleteLeave = useCallback(
+    (id: string) => {
+      setLeaves((prev) => {
+        const updated = prev.filter((l) => String(l.id).trim() !== String(id).trim());
+        saveLeaves(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteLeave',
+            data: { id }
+          })
+        }).catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl]
+  );
 
   const handleUpdateLeaveStatus = useCallback(
     (id: string, status: 'Active' | 'Returned') => {
@@ -386,13 +447,26 @@ export default function App() {
     [config.googleScriptUrl]
   );
 
-  const handleDeleteJournal = useCallback((id: string) => {
-    setDailyJournals((prev) => {
-      const updated = prev.filter((j) => j.id !== id);
-      saveDailyJournals(updated);
-      return updated;
-    });
-  }, []);
+  const handleDeleteJournal = useCallback(
+    (id: string) => {
+      setDailyJournals((prev) => {
+        const updated = prev.filter((j) => String(j.id).trim() !== String(id).trim());
+        saveDailyJournals(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteJournal',
+            data: { id }
+          })
+        }).catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl]
+  );
 
   // 6. Report Card CRUD
   const handleSaveReport = useCallback(
@@ -450,6 +524,8 @@ export default function App() {
             if (activeMsg) setAnnouncement(activeMsg);
           }
 
+          let activeStudentsList = students;
+
           if (resJson.students && resJson.students.length > 0) {
             const fetchedStudents: Student[] = resJson.students.map((s: any) => ({
               id: s['NISN/ID'] || s['id'] || s.id || '',
@@ -458,12 +534,16 @@ export default function App() {
               dorm: s['Asrama'] || s['Lokasi Asrama'] || s['Gedung Asrama'] || s['dorm'] || 'Asrama Terpadu',
               caretaker: s['Wali Asuh'] || s['caretaker'] || s.caretaker || ''
             }));
+            activeStudentsList = fetchedStudents;
             setStudents(fetchedStudents);
             saveStudents(fetchedStudents);
           }
 
+          const validStudentIds = new Set(activeStudentsList.map((s) => String(s.id).trim()));
+          const validStudentNames = new Set(activeStudentsList.map((s) => s.name.trim().toLowerCase()));
+
           if (resJson.violations) {
-            const fetchedViolations: Violation[] = resJson.violations.map((v: any) => ({
+            let fetchedViolations: Violation[] = resJson.violations.map((v: any) => ({
               id: v['ID Kasus'] || v['id'] || '',
               date: v['Tanggal'] || v['date'] || '',
               studentId: v['NISN/ID'] || v['studentId'] || '',
@@ -475,12 +555,22 @@ export default function App() {
               reporter: v['Pelapor'] || v['reporter'] || '',
               photo: v['URL Berkas Bukti'] || v['photo'] || ''
             }));
+
+            // Filter out orphaned violations for deleted students
+            if (validStudentIds.size > 0) {
+              fetchedViolations = fetchedViolations.filter((v) => {
+                const hasValidId = v.studentId && validStudentIds.has(String(v.studentId).trim());
+                const hasValidName = v.studentName && validStudentNames.has(v.studentName.trim().toLowerCase());
+                return hasValidId || hasValidName;
+              });
+            }
+
             setViolations(fetchedViolations);
             saveViolations(fetchedViolations);
           }
 
           if (resJson.counseling) {
-            const fetchedCounseling: Counseling[] = resJson.counseling.map((c: any) => ({
+            let fetchedCounseling: Counseling[] = resJson.counseling.map((c: any) => ({
               id: c['ID Sesi'] || c['id'] || '',
               date: c['Tanggal'] || c['date'] || '',
               studentId: c['NISN/ID'] || c['studentId'] || '',
@@ -491,12 +581,21 @@ export default function App() {
               counselor: c['Konselor/Wali'] || c['Konselor'] || c['counselor'] || '',
               status: c['Status'] || c['status'] || 'Open'
             }));
+
+            if (validStudentIds.size > 0) {
+              fetchedCounseling = fetchedCounseling.filter((c) => {
+                const hasValidId = c.studentId && validStudentIds.has(String(c.studentId).trim());
+                const hasValidName = c.studentName && validStudentNames.has(c.studentName.trim().toLowerCase());
+                return hasValidId || hasValidName;
+              });
+            }
+
             setCounseling(fetchedCounseling);
             saveCounseling(fetchedCounseling);
           }
 
           if (resJson.leaves) {
-            const fetchedLeaves: Leave[] = resJson.leaves.map((l: any) => ({
+            let fetchedLeaves: Leave[] = resJson.leaves.map((l: any) => ({
               id: l['ID Surat'] || l['id'] || '',
               studentId: l['NISN/ID'] || l['studentId'] || '',
               studentName: l['Nama Siswa'] || l['studentName'] || '',
@@ -507,12 +606,21 @@ export default function App() {
               caretaker: l['Wali Asuh Pendamping'] || l['Wali Asuh'] || l['caretaker'] || '',
               status: l['Status'] || l['status'] || 'Active'
             }));
+
+            if (validStudentIds.size > 0) {
+              fetchedLeaves = fetchedLeaves.filter((l) => {
+                const hasValidId = l.studentId && validStudentIds.has(String(l.studentId).trim());
+                const hasValidName = l.studentName && validStudentNames.has(l.studentName.trim().toLowerCase());
+                return hasValidId || hasValidName;
+              });
+            }
+
             setLeaves(fetchedLeaves);
             saveLeaves(fetchedLeaves);
           }
 
           if (resJson.dailyJournals) {
-            const fetchedJournals: DailyJournal[] = resJson.dailyJournals.map((j: any) => ({
+            let fetchedJournals: DailyJournal[] = resJson.dailyJournals.map((j: any) => ({
               id: j['ID Jurnal'] || j['id'] || '',
               date: j['Tanggal'] || j['date'] || '',
               studentId: j['NISN/ID'] || j['studentId'] || '',
@@ -523,6 +631,15 @@ export default function App() {
               notes: j['Catatan Wali'] || j['notes'] || '',
               tasksSnapshot: j['Detail Snapshot (JSON)'] ? JSON.parse(j['Detail Snapshot (JSON)']) : []
             }));
+
+            if (validStudentIds.size > 0) {
+              fetchedJournals = fetchedJournals.filter((j) => {
+                const hasValidId = j.studentId && validStudentIds.has(String(j.studentId).trim());
+                const hasValidName = j.studentName && validStudentNames.has(j.studentName.trim().toLowerCase());
+                return hasValidId || hasValidName;
+              });
+            }
+
             setDailyJournals(fetchedJournals);
             saveDailyJournals(fetchedJournals);
           }

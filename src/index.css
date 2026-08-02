@@ -44,6 +44,20 @@
     page-break-inside: avoid !important;
   }
 
+  /* CR80 Standard ID Card Exact Print Sizing (85.6mm x 53.98mm) */
+  .cr80-card-print {
+    width: 85.6mm !important;
+    height: 54mm !important;
+    max-width: 85.6mm !important;
+    max-height: 54mm !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   @page {
     size: A4 portrait;
     margin: 8mm;

@@ -15,7 +15,8 @@ import {
   HeartPulse,
   UserCheck,
   FileText,
-  ChevronRight
+  ChevronRight,
+  QrCode
 } from 'lucide-react';
 import { Student, Violation, Counseling, Leave, MedicalRecord } from '../types';
 import { formatDateIndonesian, parseLocalDate } from '../utils/dateFormatter';
@@ -341,6 +342,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          <button
+            onClick={() => onNavigateTab('prayer-attendance')}
+            className="flex-1 sm:flex-initial bg-slate-950 text-white font-bold text-xs px-4 py-3 rounded-lg hover:bg-slate-900 transition shadow active:scale-95 text-center flex items-center justify-center gap-1.5 border border-white/20"
+          >
+            <QrCode className="w-4 h-4 text-amber-300" /> Absensi Sholat (QR)
+          </button>
           <button
             onClick={onOpenViolationModal}
             className="flex-1 sm:flex-initial bg-white text-slate-900 font-bold text-xs px-4 py-3 rounded-lg hover:bg-slate-100 transition shadow active:scale-95 text-center flex items-center justify-center gap-1.5"

@@ -1,4 +1,4 @@
-import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem } from '../types';
+import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance } from '../types';
 
 export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJCN9pcsTSEq-tBeFqKY5cdTL-upT_PUPslMUYx1Qc21FHtOJgyVoNKlLbkbL7DWpe/exec";
 
@@ -424,6 +424,63 @@ export function loadMedicalRecords(): MedicalRecord[] {
 
 export function saveMedicalRecords(records: MedicalRecord[]): void {
   localStorage.setItem('sr_medical_records', JSON.stringify(records));
+}
+
+export const INITIAL_PRAYER_ATTENDANCE: PrayerAttendance[] = [
+  {
+    id: 'PA-001',
+    studentId: 'SR0001',
+    studentName: 'A Rakka Attala',
+    class: 'SD',
+    dorm: 'Asrama Terpadu',
+    prayerTime: 'Subuh',
+    date: new Date().toISOString().split('T')[0],
+    timestamp: '04:45:12',
+    status: 'Hadir',
+    scannedBy: 'M. ARDIAN NUGRAHA, S.H'
+  },
+  {
+    id: 'PA-002',
+    studentId: 'SR0002',
+    studentName: 'Abdul Wahid',
+    class: 'SD',
+    dorm: 'Asrama Terpadu',
+    prayerTime: 'Subuh',
+    date: new Date().toISOString().split('T')[0],
+    timestamp: '04:48:30',
+    status: 'Hadir',
+    scannedBy: 'M. ARDIAN NUGRAHA, S.H'
+  },
+  {
+    id: 'PA-003',
+    studentId: 'SR0022',
+    studentName: 'Adriansya Khoirul Khafi',
+    class: 'SMA',
+    dorm: 'Asrama Terpadu',
+    prayerTime: 'Subuh',
+    date: new Date().toISOString().split('T')[0],
+    timestamp: '04:52:00',
+    status: 'Terlambat',
+    note: 'Masuk shof rakaat kedua',
+    scannedBy: 'M. ARDIAN NUGRAHA, S.H'
+  }
+];
+
+export function loadPrayerAttendance(): PrayerAttendance[] {
+  const saved = localStorage.getItem('sr_prayer_attendance');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return INITIAL_PRAYER_ATTENDANCE;
+}
+
+export function savePrayerAttendance(records: PrayerAttendance[]): void {
+  localStorage.setItem('sr_prayer_attendance', JSON.stringify(records));
 }
 
 export function loadLastSyncTime(): string | null {

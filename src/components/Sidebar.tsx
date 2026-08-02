@@ -12,7 +12,8 @@ import {
   FileText,
   Sliders,
   BookOpen,
-  X
+  X,
+  QrCode
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -30,6 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
+    { id: 'prayer-attendance', label: 'Absensi Sholat (QR)', icon: QrCode },
     { id: 'checklist', label: 'Ceklist Harian', icon: CheckSquare },
     { id: 'students', label: 'Data Murid', icon: Users },
     { id: 'violations', label: 'Pelanggaran', icon: AlertTriangle },

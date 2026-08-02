@@ -7,7 +7,8 @@ import {
   DailyJournal,
   ReportCardData,
   AppConfig,
-  MedicalRecord
+  MedicalRecord,
+  PrayerAttendance
 } from './types';
 import {
   loadAppConfig,
@@ -26,6 +27,8 @@ import {
   saveReports,
   loadMedicalRecords,
   saveMedicalRecords,
+  loadPrayerAttendance,
+  savePrayerAttendance,
   loadLastSyncTime,
   saveLastSyncTime
 } from './services/storage';
@@ -37,6 +40,7 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { LoginModal } from './components/LoginModal';
 
 import { DashboardTab } from './components/DashboardTab';
+import { PrayerAttendanceTab } from './components/PrayerAttendanceTab';
 import { ChecklistTab } from './components/ChecklistTab';
 import { StudentsTab } from './components/StudentsTab';
 import { ViolationsTab } from './components/ViolationsTab';
@@ -64,6 +68,7 @@ export default function App() {
   const [leaves, setLeaves] = useState<Leave[]>(loadLeaves);
   const [dailyJournals, setDailyJournals] = useState<DailyJournal[]>(loadDailyJournals);
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>(loadMedicalRecords);
+  const [prayerAttendance, setPrayerAttendance] = useState<PrayerAttendance[]>(loadPrayerAttendance);
   const [reports, setReports] = useState<Record<string, ReportCardData>>(loadReports);
 
   const [announcement, setAnnouncement] = useState<string>(
@@ -147,6 +152,7 @@ export default function App() {
   // Tab Titles
   const tabTitles: Record<string, string> = {
     dashboard: 'Dashboard Ringkasan Asrama',
+    'prayer-attendance': 'Absensi Sholat & QR Code Generator Kartu Murid',
     checklist: 'Jurnal & Ceklist Anak Asuh',
     students: 'Data Induk Murid Sekolah Rakyat',
     violations: 'Laporan Pelanggaran Disiplin',
@@ -550,6 +556,16 @@ export default function App() {
     [config.googleScriptUrl]
   );
 
+  // 7. Prayer Attendance Handler
+  const handleSavePrayerAttendance = useCallback(
+    (records: PrayerAttendance[]) => {
+      setPrayerAttendance(records);
+      savePrayerAttendance(records);
+      showToast('Presensi Disimpan', 'Data presensi sholat & QR code berhasil diperbarui.', 'success');
+    },
+    [showToast]
+  );
+
   // 6. Report Card CRUD
   const handleSaveReport = useCallback(
     (studentId: string, data: ReportCardData) => {
@@ -860,6 +876,17 @@ export default function App() {
                   setIsLeaveModalOpenExternal(true);
                 }}
                 onNavigateTab={setActiveTab}
+              />
+            )}
+
+            {activeTab === 'prayer-attendance' && (
+              <PrayerAttendanceTab
+                students={studentsWithViolationCounts}
+                prayerAttendance={prayerAttendance}
+                onSavePrayerAttendance={handleSavePrayerAttendance}
+                leaves={leaves}
+                medicalRecords={medicalRecords}
+                config={config}
               />
             )}
 

@@ -106,6 +106,20 @@ export interface MedicalRecord {
   customWaliAsramaNip?: string;
 }
 
+export interface PrayerAttendance {
+  id: string;
+  studentId: string;
+  studentName: string;
+  class: ClassLevel;
+  dorm: string;
+  prayerTime: 'Subuh' | 'Dzuhur' | 'Ashar' | 'Maghrib' | 'Isya' | 'Kajian / Kegiatan';
+  date: string; // YYYY-MM-DD
+  timestamp: string; // HH:mm:ss
+  status: 'Hadir' | 'Izin Sakit' | 'Izin Pulang' | 'Terlambat' | 'Alpa / Tanpa Keterangan';
+  note?: string;
+  scannedBy?: string;
+}
+
 export interface ReportCategory {
   key: string;
   name: string;

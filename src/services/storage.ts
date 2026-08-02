@@ -1,6 +1,6 @@
-import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem } from '../types';
+import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord } from '../types';
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDHNJ7u3aARImefzTXq_0rLuJfT5okbnlGR5F0b7ChJLH6sAsi0B-1TMIlO3ifzEaS/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcXGzz_4gUFU5Ft7zB9bn7VgdpiZd2cLW7MF_f7O_okAA3zs4HqxYkJf3Y2YhPKlFI/exec";
 
 export const DEFAULT_CONFIG: AppConfig = {
   googleScriptUrl: DEFAULT_SCRIPT_URL,
@@ -135,7 +135,11 @@ export function loadAppConfig(): AppConfig {
   const saved = localStorage.getItem('sr_config');
   if (saved) {
     try {
-      return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+      const parsed = JSON.parse(saved);
+      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq_0rLuJfT5okbnlGR5F0b7ChJLH6sAsi0B-1TMIlO3ifzEaS')) {
+        parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
+      }
+      return { ...DEFAULT_CONFIG, ...parsed };
     } catch (e) {
       console.error(e);
     }
@@ -250,6 +254,80 @@ export function loadReports(): Record<string, ReportCardData> {
 
 export function saveReports(reports: Record<string, ReportCardData>): void {
   localStorage.setItem('sr_reports', JSON.stringify(reports));
+}
+
+export const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [
+  {
+    id: 'MED-2026-001',
+    studentId: 'SR0001',
+    studentName: 'A Rakka Attala',
+    date: '2026-08-01',
+    time: '08:30',
+    location: 'UKS Asrama',
+    symptoms: 'Demam tinggi 38.5°C, pusing, dan pusing lemas sejak semalam',
+    diagnosis: 'Febris (Demam) e.c. Infeksi Saluran Pernapasan Akut (ISPA)',
+    treatment: 'Paracetamol 500mg (3x1), Vitamin C, Kompres hangat, Istirahat total di UKS',
+    restDays: 2,
+    isSickLeave: true,
+    status: 'Dalam Perawatan',
+    officer: 'Tim Medis UKS / Pembina Asrama',
+    temperature: '38.5°C',
+    vitalSigns: '110/70 mmHg, Nadi 88x/m',
+    notes: 'Perlu diminum obat setelah makan. Evaluasi ulang suhu tubuh jam 16:00.'
+  },
+  {
+    id: 'MED-2026-002',
+    studentId: 'SR0005',
+    studentName: 'M Fahri',
+    date: '2026-07-28',
+    time: '14:15',
+    location: 'Klinik / RS Rujukan',
+    symptoms: 'Sakit perut melilit bagian ulu hati, mual, muntah 2 kali',
+    diagnosis: 'Gastritis Akut / Dispepsia',
+    treatment: 'Antasida Doen 3x1, Omeprazole 20mg 2x1, Ranitidin, Diet bubur halus',
+    restDays: 3,
+    isSickLeave: true,
+    status: 'Dirujuk ke RS/Klinik',
+    officer: 'dr. Hidayatullah (Klinik Swasta Kemitraan)',
+    temperature: '36.8°C',
+    vitalSigns: '120/80 mmHg',
+    notes: 'Dirujuk ke Klinik Kemitraan Palembang untuk infus cairan D5% dan observasi 1x24 jam.'
+  },
+  {
+    id: 'MED-2026-003',
+    studentId: 'SR0022',
+    studentName: 'Adriansya Khoirul Khafi',
+    date: '2026-07-25',
+    time: '10:00',
+    location: 'Istirahat di Kamar',
+    symptoms: 'Terpelintir pergelangan kaki kanan saat olahraga basket',
+    diagnosis: 'Sprain Ankle Dextra (Keseleo Pergelangan Kaki)',
+    treatment: 'Kompres es (RICE method), Perban elastis, Analgesik Mefenamat 500mg',
+    restDays: 1,
+    isSickLeave: true,
+    status: 'Sembuh / Kembali Sekolah',
+    officer: 'Tim Medis UKS',
+    temperature: '36.5°C',
+    vitalSigns: '115/75 mmHg',
+    notes: 'Sudah membaik dan disarankan tidak berolahraga berat selama 1 minggu.'
+  }
+];
+
+export function loadMedicalRecords(): MedicalRecord[] {
+  const saved = localStorage.getItem('sr_medical_records');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return INITIAL_MEDICAL_RECORDS;
+}
+
+export function saveMedicalRecords(records: MedicalRecord[]): void {
+  localStorage.setItem('sr_medical_records', JSON.stringify(records));
 }
 
 // --- Image Compression helper to prevent UI lag ---

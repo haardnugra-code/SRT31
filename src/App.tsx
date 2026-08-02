@@ -6,7 +6,8 @@ import {
   Leave,
   DailyJournal,
   ReportCardData,
-  AppConfig
+  AppConfig,
+  MedicalRecord
 } from './types';
 import {
   loadAppConfig,
@@ -22,7 +23,9 @@ import {
   loadDailyJournals,
   saveDailyJournals,
   loadReports,
-  saveReports
+  saveReports,
+  loadMedicalRecords,
+  saveMedicalRecords
 } from './services/storage';
 
 import { Header } from './components/Header';
@@ -37,6 +40,7 @@ import { StudentsTab } from './components/StudentsTab';
 import { ViolationsTab } from './components/ViolationsTab';
 import { CounselingTab } from './components/CounselingTab';
 import { LeavesTab } from './components/LeavesTab';
+import { MedicalTab } from './components/MedicalTab';
 import { ReportCardTab } from './components/ReportCardTab';
 import { RecapTab } from './components/RecapTab';
 import { SettingsTab } from './components/SettingsTab';
@@ -56,6 +60,7 @@ export default function App() {
   const [counseling, setCounseling] = useState<Counseling[]>(loadCounseling);
   const [leaves, setLeaves] = useState<Leave[]>(loadLeaves);
   const [dailyJournals, setDailyJournals] = useState<DailyJournal[]>(loadDailyJournals);
+  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>(loadMedicalRecords);
   const [reports, setReports] = useState<Record<string, ReportCardData>>(loadReports);
 
   const [announcement, setAnnouncement] = useState<string>(
@@ -131,6 +136,7 @@ export default function App() {
     violations: 'Laporan Pelanggaran Disiplin',
     counseling: 'Pendampingan BK & Konseling',
     leaves: 'Izin Kepulangan & Gerbang Keluar',
+    medical: 'Klinik UKS & Rekam Medis Keasramaan',
     'report-card': 'Rapor Keasramaan Evaluasi Perkembangan Anak',
     recap: 'Rekapitulasi Bulanan & Print PDF',
     settings: 'Pengaturan & Kustomisasi Sistem'
@@ -214,6 +220,16 @@ export default function App() {
             (!targetName || j.studentName !== targetName)
         );
         saveDailyJournals(updated);
+        return updated;
+      });
+
+      setMedicalRecords((prev) => {
+        const updated = prev.filter(
+          (m) =>
+            String(m.studentId).trim() !== String(id).trim() &&
+            (!targetName || m.studentName !== targetName)
+        );
+        saveMedicalRecords(updated);
         return updated;
       });
 
@@ -460,6 +476,55 @@ export default function App() {
           method: 'POST',
           body: JSON.stringify({
             action: 'deleteJournal',
+            data: { id }
+          })
+        }).catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl]
+  );
+
+  // 6. Medical Record CRUD
+  const handleSaveMedicalRecord = useCallback(
+    (record: MedicalRecord) => {
+      setMedicalRecords((prev) => {
+        const exists = prev.some((r) => r.id === record.id);
+        let updated: MedicalRecord[];
+        if (exists) {
+          updated = prev.map((r) => (r.id === record.id ? record : r));
+        } else {
+          updated = [record, ...prev];
+        }
+        saveMedicalRecords(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'addMedicalRecord',
+            data: record
+          })
+        }).catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl]
+  );
+
+  const handleDeleteMedicalRecord = useCallback(
+    (id: string) => {
+      setMedicalRecords((prev) => {
+        const updated = prev.filter((r) => String(r.id).trim() !== String(id).trim());
+        saveMedicalRecords(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteMedicalRecord',
             data: { id }
           })
         }).catch((err) => console.error(err));
@@ -805,6 +870,16 @@ export default function App() {
                 onAskConfirm={askConfirm}
                 isModalOpenExternal={isLeaveModalOpenExternal}
                 onCloseExternalModal={() => setIsLeaveModalOpenExternal(false)}
+              />
+            )}
+
+            {activeTab === 'medical' && (
+              <MedicalTab
+                students={studentsWithViolationCounts}
+                records={medicalRecords}
+                onSaveRecord={handleSaveMedicalRecord}
+                onDeleteRecord={handleDeleteMedicalRecord}
+                config={config}
               />
             )}
 

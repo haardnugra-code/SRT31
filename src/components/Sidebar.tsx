@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   MessageSquare,
   DoorOpen,
+  HeartPulse,
   FileSignature,
   FileText,
   Sliders,
@@ -33,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'violations', label: 'Pelanggaran', icon: AlertTriangle },
     { id: 'counseling', label: 'Konseling & BK', icon: MessageSquare },
     { id: 'leaves', label: 'Izin Pulang', icon: DoorOpen },
+    { id: 'medical', label: 'UKS & Rekam Medis', icon: HeartPulse },
     { id: 'report-card', label: 'Rapor Keasramaan', icon: FileSignature },
     { id: 'recap', label: 'Rekapitulasi', icon: FileText },
     { id: 'settings', label: 'Pengaturan Sistem', icon: Sliders }

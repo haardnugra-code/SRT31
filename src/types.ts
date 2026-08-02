@@ -74,6 +74,25 @@ export interface DailyJournal {
   tasksSnapshot: TaskSnapshot[];
 }
 
+export interface MedicalRecord {
+  id: string;
+  studentId: string;
+  studentName: string;
+  date: string; // YYYY-MM-DD
+  time?: string; // HH:mm
+  location: 'UKS Asrama' | 'Klinik / RS Rujukan' | 'Istirahat di Kamar' | 'Klinik Sekolah';
+  symptoms: string; // Gejala / Keluhan Utama
+  diagnosis: string; // Diagnosa / Hasil Pemeriksaan
+  treatment: string; // Tindakan & Obat
+  restDays: number; // Jumlah hari izin sakit UKS
+  isSickLeave: boolean; // Apakah ada surat izin sakit
+  status: 'Dalam Perawatan' | 'Istirahat di Kamar' | 'Dirujuk ke RS/Klinik' | 'Sembuh / Kembali Sekolah';
+  officer: string; // Petugas Medis / Pembina UKS
+  temperature?: string; // Suhu Tubuh (e.g. 38.2°C)
+  vitalSigns?: string; // Tensi / Nadi (e.g. 110/70 mmHg)
+  notes?: string;
+}
+
 export interface ReportCategory {
   key: string;
   name: string;

@@ -1,7 +1,7 @@
-import React from 'react';
-import { FileText, Info, HeartPulse, Stethoscope, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Info, HeartPulse, Stethoscope, AlertCircle, CheckCircle2, Signature, X, Printer, UserCheck } from 'lucide-react';
 import { Student, Violation, Counseling, Leave, AppConfig, MedicalRecord } from '../types';
-import { generateComprehensivePDF } from '../services/pdfGenerator';
+import { generateComprehensivePDF, ComprehensiveSignatory } from '../services/pdfGenerator';
 
 interface RecapTabProps {
   students: Student[];
@@ -24,10 +24,54 @@ export const RecapTab: React.FC<RecapTabProps> = ({
 }) => {
   const sortedStudents = [...students].sort((a, b) => (b.violationCount || 0) - (a.violationCount || 0));
 
+  // Modal State for Signatories
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [caretakerTitle, setCaretakerTitle] = useState<string>("Wali Asrama Mandiri / Wali Asuh");
+  const [caretakerName, setCaretakerName] = useState<string>(config.waliAsrama || "");
+  const [caretakerNip, setCaretakerNip] = useState<string>(config.waliAsramaNip || "");
+
+  const [headTitle, setHeadTitle] = useState<string>("Kepala Sekolah Rakyat");
+  const [headName, setHeadName] = useState<string>(config.kepalaSekolah || "");
+  const [headNip, setHeadNip] = useState<string>(config.kepalaSekolahNip || "");
+
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+
+  // Handle Wali Asuh preset select
+  const handleSelectWaliAsuh = (val: string) => {
+    if (!val) return;
+    if (val === '__DEFAULT_WALI_ASRAMA__') {
+      setCaretakerName(config.waliAsrama || "");
+      setCaretakerNip(config.waliAsramaNip || "");
+      return;
+    }
+    const parts = val.split('|');
+    const name = parts[0]?.trim() || '';
+    const nip = parts[1]?.trim() || '';
+    setCaretakerName(name);
+    setCaretakerNip(nip);
+  };
+
   const handlePrintComprehensive = async () => {
-    onShowToast('Mengekspor PDF...', 'Membentuk dokumen PDF multi-halaman resmi...', 'warning');
-    await generateComprehensivePDF(students, violations, counseling, leaves, config, medicalRecords);
-    onShowToast('PDF Berhasil Dicetak', 'Laporan multipage anti terpotong siap dibagikan.', 'success');
+    try {
+      setIsGenerating(true);
+      onShowToast('Mengekspor PDF...', 'Membentuk dokumen PDF multi-halaman resmi...', 'warning');
+      const signatoryData: ComprehensiveSignatory = {
+        caretakerTitle: caretakerTitle.trim() || "Wali Asrama Mandiri / Wali Asuh,",
+        caretakerName: caretakerName.trim() || config.waliAsrama,
+        caretakerNip: caretakerNip.trim(),
+        headTitle: headTitle.trim() || "Kepala Sekolah Rakyat,",
+        headName: headName.trim() || config.kepalaSekolah,
+        headNip: headNip.trim()
+      };
+      await generateComprehensivePDF(students, violations, counseling, leaves, config, medicalRecords, signatoryData);
+      onShowToast('PDF Berhasil Dicetak', 'Laporan multipage anti terpotong siap dibagikan.', 'success');
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      onShowToast('Gagal Cetak PDF', 'Terjadi kesalahan saat memproses laporan komprehensif.', 'error');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const sickLeaveCount = medicalRecords.filter(m => m.isSickLeave || m.status?.includes('Istirahat')).length;
@@ -45,8 +89,8 @@ export const RecapTab: React.FC<RecapTabProps> = ({
           </p>
         </div>
         <button
-          onClick={handlePrintComprehensive}
-          className="w-full md:w-auto justify-center bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-5 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-red-900/15 transition-all active:scale-95"
+          onClick={() => setIsModalOpen(true)}
+          className="w-full md:w-auto justify-center bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-5 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-red-900/15 transition-all active:scale-95 shrink-0"
         >
           <FileText className="w-4 h-4" /> Cetak Laporan PDF Resmi (Multipage)
         </button>
@@ -237,6 +281,174 @@ export const RecapTab: React.FC<RecapTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Signatory Customization Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden space-y-0 my-8">
+            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <Signature className="w-5 h-5 text-red-400" />
+                <div>
+                  <h3 className="font-bold text-sm">Otorisasi Penandatangan Laporan</h3>
+                  <p className="text-[10px] text-slate-300">
+                    Kustomisasi nama Wali Asrama / Wali Asuh / Kepsek & NIP untuk lembar pengesahan.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 text-xs text-slate-700 max-h-[80vh] overflow-y-auto">
+              {/* Preset Selector */}
+              {config.waliAsuhList && config.waliAsuhList.length > 0 && (
+                <div className="bg-blue-50/70 p-3.5 rounded-xl border border-blue-100 space-y-1.5">
+                  <label className="block font-bold text-blue-900 flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-blue-600" /> Pilih dari Daftar Wali Asuh Terdaftar
+                  </label>
+                  <select
+                    onChange={(e) => handleSelectWaliAsuh(e.target.value)}
+                    className="w-full bg-white border border-blue-200 rounded-lg p-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">-- Pilih Wali Asuh / Wali Asrama --</option>
+                    <option value="__DEFAULT_WALI_ASRAMA__">
+                      ★ Wali Asrama Utama ({config.waliAsrama} - {config.waliAsramaNip || 'Tanpa NIP'})
+                    </option>
+                    {config.waliAsuhList.map((w, idx) => {
+                      const name = w.split('|')[0]?.trim();
+                      const nip = w.split('|')[1]?.trim();
+                      return (
+                        <option key={idx} value={w}>
+                          {name} {nip ? `(${nip})` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <p className="text-[10px] text-blue-600">
+                    Memilih dari daftar akan otomatis mengisi Nama & NIP Wali Asuh di bawah ini.
+                  </p>
+                </div>
+              )}
+
+              {/* Left Signatory: Wali Asrama Mandiri / Wali Asuh */}
+              <div className="space-y-3 p-4 bg-slate-50/80 rounded-xl border border-slate-200">
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5 text-red-700">
+                  <Signature className="w-3.5 h-3.5" /> Penandatangan 1 (Wali Asrama Mandiri / Wali Asuh)
+                </h4>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Jabatan / Gelar Pengesah
+                  </label>
+                  <input
+                    type="text"
+                    value={caretakerTitle}
+                    onChange={(e) => setCaretakerTitle(e.target.value)}
+                    placeholder="e.g. Wali Asrama Mandiri / Wali Asuh"
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Nama Lengkap Wali
+                    </label>
+                    <input
+                      type="text"
+                      value={caretakerName}
+                      onChange={(e) => setCaretakerName(e.target.value)}
+                      placeholder="Nama Wali Asrama / Wali Asuh"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      NIP / NIK (Opsional)
+                    </label>
+                    <input
+                      type="text"
+                      value={caretakerNip}
+                      onChange={(e) => setCaretakerNip(e.target.value)}
+                      placeholder="e.g. 198501..."
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Signatory: Kepala Sekolah / Penanggung Jawab */}
+              <div className="space-y-3 p-4 bg-slate-50/80 rounded-xl border border-slate-200">
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5 text-blue-700">
+                  <Signature className="w-3.5 h-3.5" /> Penandatangan 2 (Kepala Sekolah / Penanggung Jawab)
+                </h4>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Jabatan / Gelar Pengesah
+                  </label>
+                  <input
+                    type="text"
+                    value={headTitle}
+                    onChange={(e) => setHeadTitle(e.target.value)}
+                    placeholder="e.g. Kepala Sekolah Rakyat"
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Nama Kepala Sekolah
+                    </label>
+                    <input
+                      type="text"
+                      value={headName}
+                      onChange={(e) => setHeadName(e.target.value)}
+                      placeholder="Nama Kepala Sekolah"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      NIP Kepala Sekolah
+                    </label>
+                    <input
+                      type="text"
+                      value={headNip}
+                      onChange={(e) => setHeadNip(e.target.value)}
+                      placeholder="e.g. 197802..."
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handlePrintComprehensive}
+                disabled={isGenerating}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/20 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <Printer className="w-4 h-4" />
+                {isGenerating ? 'Mencetak PDF...' : 'Proses & Cetak PDF Multipage'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -600,6 +600,15 @@ export async function printReportCardPDF(
   doc.save(`Rapor_Keasramaan_${student.name.replace(/\s+/g, '_')}.pdf`);
 }
 
+export interface ComprehensiveSignatory {
+  caretakerTitle?: string;
+  caretakerName?: string;
+  caretakerNip?: string;
+  headTitle?: string;
+  headName?: string;
+  headNip?: string;
+}
+
 // --- 4. REKAPITULASI COMPREHENSIVE MULTIPAGE PDF ---
 export async function generateComprehensivePDF(
   students: Student[],
@@ -607,7 +616,8 @@ export async function generateComprehensivePDF(
   counseling: Counseling[],
   leaves: Leave[],
   config: AppConfig,
-  medicalRecords: MedicalRecord[] = []
+  medicalRecords: MedicalRecord[] = [],
+  signatory?: ComprehensiveSignatory
 ) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const periodText = `TAHUN AJARAN 2025/2026 - PERIODE REKAPITULASI: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
@@ -781,23 +791,31 @@ export async function generateComprehensivePDF(
     finalY = 30;
   }
 
+  const cTitle = signatory?.caretakerTitle || "Wali Asrama Mandiri / Wali Asuh,";
+  const cName = signatory?.caretakerName || config.waliAsrama || "Wali Asrama";
+  const cNip = signatory?.caretakerNip !== undefined ? signatory.caretakerNip : config.waliAsramaNip;
+
+  const hTitle = signatory?.headTitle || "Kepala Sekolah Rakyat,";
+  const hName = signatory?.headName || config.kepalaSekolah || "Kepala Sekolah";
+  const hNip = signatory?.headNip !== undefined ? signatory.headNip : config.kepalaSekolahNip;
+
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(30, 41, 59);
   doc.text(`Palembang, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 140, finalY);
   doc.text("Mengetahui,", 35, finalY + 8);
-  doc.text("Wali Asrama Mandiri,", 35, finalY + 14);
-  doc.text("Kepala Sekolah Rakyat,", 140, finalY + 14);
+  doc.text(cTitle, 35, finalY + 14);
+  doc.text(hTitle, 140, finalY + 14);
 
   doc.setFont("Helvetica", "bold");
-  doc.text(config.waliAsrama, 35, finalY + 38);
-  doc.text(config.kepalaSekolah, 140, finalY + 38);
+  doc.text(cName, 35, finalY + 38);
+  doc.text(hName, 140, finalY + 38);
 
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
-  if (config.waliAsramaNip) doc.text(config.waliAsramaNip, 35, finalY + 43);
-  if (config.kepalaSekolahNip) doc.text(`NIP. ${config.kepalaSekolahNip}`, 140, finalY + 43);
+  if (cNip) doc.text(cNip.startsWith('NIP') ? cNip : `NIP. ${cNip}`, 35, finalY + 43);
+  if (hNip) doc.text(hNip.startsWith('NIP') ? hNip : `NIP. ${hNip}`, 140, finalY + 43);
 
   doc.save("LAPORAN_KOMPREHENSIF_SEKOLAH_RAKYAT.pdf");
 }

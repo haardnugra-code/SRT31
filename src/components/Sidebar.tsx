@@ -11,6 +11,7 @@ import {
   FileSignature,
   FileText,
   Sliders,
+  BookOpen,
   X
 } from 'lucide-react';
 
@@ -37,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'medical', label: 'UKS & Rekam Medis', icon: HeartPulse },
     { id: 'report-card', label: 'Rapor Keasramaan', icon: FileSignature },
     { id: 'recap', label: 'Rekapitulasi', icon: FileText },
+    { id: 'guide', label: 'Panduan Aplikasi', icon: BookOpen },
     { id: 'settings', label: 'Pengaturan Sistem', icon: Sliders }
   ];
 

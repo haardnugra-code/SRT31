@@ -45,6 +45,7 @@ import { LeavesTab } from './components/LeavesTab';
 import { MedicalTab } from './components/MedicalTab';
 import { ReportCardTab } from './components/ReportCardTab';
 import { RecapTab } from './components/RecapTab';
+import { GuideTab } from './components/GuideTab';
 import { SettingsTab } from './components/SettingsTab';
 
 export default function App() {
@@ -154,6 +155,7 @@ export default function App() {
     medical: 'Klinik UKS & Rekam Medis Keasramaan',
     'report-card': 'Rapor Keasramaan Evaluasi Perkembangan Anak',
     recap: 'Rekapitulasi Bulanan & Print PDF',
+    guide: 'Panduan Lengkap Penggunaan Aplikasi',
     settings: 'Pengaturan & Kustomisasi Sistem'
   };
 
@@ -971,6 +973,8 @@ export default function App() {
                 onShowToast={showToast}
               />
             )}
+
+            {activeTab === 'guide' && <GuideTab />}
 
             {activeTab === 'settings' && (
               <SettingsTab

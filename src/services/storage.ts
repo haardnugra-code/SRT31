@@ -14,7 +14,9 @@ export const DEFAULT_CONFIG: AppConfig = {
   dormList: ["Asrama Terpadu", "Asrama Putra A", "Asrama Putra B", "Asrama Putri C"],
   logoKiriUrl: "https://lh3.googleusercontent.com/d/1m4voglUO4iLNJ1Pz-ygtKbYstpCwOhOJ",
   logoKananUrl: "https://lh3.googleusercontent.com/d/1rNFA7Zb_jx0c8yAX0gisbzH-EjdoNGtg",
-  watermarkOpacity: 0.04
+  watermarkOpacity: 0.04,
+  semester: 'Genap',
+  academicYear: '2025/2026'
 };
 
 export const INITIAL_STUDENTS: Student[] = [

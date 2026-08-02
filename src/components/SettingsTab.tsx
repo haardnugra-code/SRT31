@@ -45,6 +45,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [googleScriptUrl, setGoogleScriptUrl] = useState<string>(config.googleScriptUrl);
   const [waliAsuhText, setWaliAsuhText] = useState<string>(config.waliAsuhList.join('\n'));
   const [dormText, setDormText] = useState<string>(config.dormList.join('\n'));
+  const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(config.semester || 'Genap');
+  const [academicYear, setAcademicYear] = useState<string>(config.academicYear || '2025/2026');
 
   const handleUnlockSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,7 +100,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       dormList: dormLines,
       logoKiriUrl: logoKiriUrl.trim(),
       logoKananUrl: logoKananUrl.trim(),
-      watermarkOpacity: watermarkOpacity || 0.04
+      watermarkOpacity: watermarkOpacity || 0.04,
+      semester,
+      academicYear: academicYear.trim()
     };
 
     onSaveConfig(updatedConfig);
@@ -218,6 +222,36 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 rows={3}
                 className={inputClass(isLocked)}
               />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Default Semester Rapor
+                </label>
+                <select
+                  disabled={isLocked}
+                  value={semester}
+                  onChange={(e) => setSemester(e.target.value as 'Ganjil' | 'Genap')}
+                  className={inputClass(isLocked)}
+                >
+                  <option value="Ganjil">Semester Ganjil</option>
+                  <option value="Genap">Semester Genap</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Default Tahun Ajaran
+                </label>
+                <input
+                  type="text"
+                  disabled={isLocked}
+                  value={academicYear}
+                  onChange={(e) => setAcademicYear(e.target.value)}
+                  className={inputClass(isLocked)}
+                  placeholder="e.g. 2025/2026"
+                />
+              </div>
             </div>
 
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b pb-1 border-slate-200 mt-6 flex items-center gap-1.5">

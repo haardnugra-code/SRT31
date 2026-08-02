@@ -901,6 +901,7 @@ export default function App() {
                 violations={violations}
                 counseling={counseling}
                 leaves={leaves}
+                medicalRecords={medicalRecords}
                 config={config}
                 onShowToast={showToast}
               />

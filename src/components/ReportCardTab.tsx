@@ -26,6 +26,8 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
   const [customCaretaker, setCustomCaretaker] = useState<string>('');
   const [customCaretakerNip, setCustomCaretakerNip] = useState<string>('');
   const [specialNote, setSpecialNote] = useState<string>('');
+  const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(config.semester || 'Genap');
+  const [academicYear, setAcademicYear] = useState<string>(config.academicYear || '2025/2026');
   const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({});
 
   const [grades, setGrades] = useState<Record<string, string>>({});
@@ -55,10 +57,16 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       setSpecialNote(rep.specialNote || '');
       if (rep.customCaretaker) setCustomCaretaker(rep.customCaretaker);
       if (rep.customCaretakerNip) setCustomCaretakerNip(rep.customCaretakerNip);
+      if (rep.semester) setSemester(rep.semester);
+      else setSemester(config.semester || 'Genap');
+      if (rep.academicYear) setAcademicYear(rep.academicYear);
+      else setAcademicYear(config.academicYear || '2025/2026');
     } else {
       setGrades({});
       setDescriptions({});
       setSpecialNote('');
+      setSemester(config.semester || 'Genap');
+      setAcademicYear(config.academicYear || '2025/2026');
     }
   }, [selectedStudentId, reports, student, config]);
 
@@ -139,7 +147,9 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       descriptions,
       specialNote,
       customCaretaker,
-      customCaretakerNip
+      customCaretakerNip,
+      semester,
+      academicYear
     };
 
     onSaveReport(selectedStudentId, reportData);
@@ -161,7 +171,9 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       descriptions,
       specialNote,
       customCaretaker,
-      customCaretakerNip
+      customCaretakerNip,
+      semester,
+      academicYear
     };
 
     if (Object.keys(grades).length === 0) {
@@ -203,15 +215,15 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
 
       {/* Selection & Caretaker Input */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+          <div className="md:col-span-1">
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
               Pilih Peserta Didik
             </label>
             <select
               value={selectedStudentId}
               onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
+              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20"
             >
               {students.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -220,41 +232,70 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
               ))}
             </select>
           </div>
-          <div>
+
+          <div className="md:col-span-1">
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
-              Nama Wali Asuh Penandatangan
+              Semester
+            </label>
+            <select
+              value={semester}
+              onChange={(e) => setSemester(e.target.value as 'Ganjil' | 'Genap')}
+              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20 font-semibold text-slate-800"
+            >
+              <option value="Ganjil">Semester Ganjil</option>
+              <option value="Genap">Semester Genap</option>
+            </select>
+          </div>
+
+          <div className="md:col-span-1">
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+              Tahun Ajaran
+            </label>
+            <input
+              type="text"
+              value={academicYear}
+              onChange={(e) => setAcademicYear(e.target.value)}
+              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20 font-semibold text-slate-800"
+              placeholder="e.g. 2025/2026"
+            />
+          </div>
+
+          <div className="md:col-span-1">
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+              Nama Wali Asuh
             </label>
             <input
               type="text"
               value={customCaretaker}
               onChange={(e) => setCustomCaretaker(e.target.value)}
-              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
-              placeholder="Ketik atau pilih nama Wali Asuh..."
+              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20"
+              placeholder="Nama Wali Asuh..."
             />
           </div>
-          <div>
+
+          <div className="md:col-span-1">
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
-              NIP Wali Asuh Penandatangan
+              NIP Wali Asuh
             </label>
             <input
               type="text"
               value={customCaretakerNip}
               onChange={(e) => setCustomCaretakerNip(e.target.value)}
-              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
-              placeholder="Ketik NIP Wali Asuh..."
+              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20"
+              placeholder="NIP Wali Asuh..."
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
           <div>
-            Nama Sekolah: <strong class="text-slate-700">SRT 31 Palembang</strong>
+            Nama Sekolah: <strong className="text-slate-700">SRT 31 Palembang</strong>
           </div>
           <div>
-            Alamat: <strong class="text-slate-700">Jl. Komp Sosial Km 5</strong>
+            Alamat: <strong className="text-slate-700">Jl. Komp Sosial Km 5</strong>
           </div>
           <div>
-            Tahun Ajaran: <strong class="text-slate-700">Genap 2025/2026</strong>
+            Tahun Ajaran: <strong className="text-slate-700">Semester {semester} ({academicYear})</strong>
           </div>
           <div>
             Status Pengisian:{' '}

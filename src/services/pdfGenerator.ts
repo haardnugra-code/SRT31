@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling } from '../types';
+import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord } from '../types';
 
 // Helper to generate canvas base64 logo if URL fails or is empty
 function generateProgrammaticLogo(type: 'left' | 'right'): string {
@@ -352,6 +352,8 @@ export async function printReportCardPDF(
 
   const customCaretakerName = repData.customCaretaker || student.caretaker || "";
   const customCaretakerNip = repData.customCaretakerNip || "";
+  const displaySemester = repData.semester || config.semester || "Genap";
+  const displayAcademicYear = repData.academicYear || config.academicYear || "2025/2026";
 
   let currentPage = 1;
 
@@ -410,8 +412,8 @@ export async function printReportCardPDF(
     doc.setFont("Helvetica", "normal"); doc.text(`: Sekolah Rakyat Terintegrasi 31 Palembang`, 42, metaY);
     doc.setFont("Helvetica", "bold"); doc.text("Alamat", 15, metaY + 5);
     doc.setFont("Helvetica", "normal"); doc.text(`: Jl. Komp Sosial Km 5 Sukabangun`, 42, metaY + 5);
-    doc.setFont("Helvetica", "bold"); doc.text("Tahun Ajaran", 15, metaY + 10);
-    doc.setFont("Helvetica", "normal"); doc.text(`: Genap 2025/2026`, 42, metaY + 10);
+    doc.setFont("Helvetica", "bold"); doc.text("Tahun Ajaran / Sem.", 15, metaY + 10);
+    doc.setFont("Helvetica", "normal"); doc.text(`: Semester ${displaySemester} (${displayAcademicYear})`, 48, metaY + 10);
 
     doc.setFont("Helvetica", "bold"); doc.text("Nama Peserta Didik", 115, metaY);
     doc.setFont("Helvetica", "normal"); doc.text(`: ${student.name}`, 148, metaY);
@@ -465,7 +467,7 @@ export async function printReportCardPDF(
       doc.setFontSize(8);
       doc.setFont("Helvetica", "normal");
       doc.setTextColor(148, 163, 184);
-      doc.text("Rapor Keasramaan SRT31 Palembang - TA 2025/2026", 15, 287);
+      doc.text(`Rapor Keasramaan SRT31 Palembang - Semester ${displaySemester} TA ${displayAcademicYear}`, 15, 287);
       doc.text(`Halaman ${currentPage}`, 195, 287, { align: "right" });
       currentPage++;
       if (data.pageNumber > 1) {
@@ -604,7 +606,8 @@ export async function generateComprehensivePDF(
   violations: Violation[],
   counseling: Counseling[],
   leaves: Leave[],
-  config: AppConfig
+  config: AppConfig,
+  medicalRecords: MedicalRecord[] = []
 ) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const periodText = `TAHUN AJARAN 2025/2026 - PERIODE REKAPITULASI: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
@@ -625,15 +628,15 @@ export async function generateComprehensivePDF(
 
   doc.setFont("Helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("BUKU PINTAR DISIPLIN SISWA", 105, 140, { align: "center" });
-  doc.setFontSize(13);
-  doc.text("REKAPITULASI PELANGGARAN, KONSELING & SURAT JALAN", 105, 148, { align: "center" });
+  doc.text("BUKU PINTAR DISIPLIN & KESEHATAN SISWA", 105, 140, { align: "center" });
+  doc.setFontSize(12);
+  doc.text("REKAPITULASI PELANGGARAN, KONSELING, IZIN & REKAM MEDIS UKS", 105, 148, { align: "center" });
 
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(203, 213, 225);
   doc.text(periodText, 105, 210, { align: "center" });
-  doc.text("Komite Tata Tertib & Bimbingan Konseling Sekolah Rakyat", 105, 216, { align: "center" });
+  doc.text("Komite Tata Tertib, BK & Tim Kesehatan UKS Sekolah Rakyat", 105, 216, { align: "center" });
   doc.setFontSize(9);
   doc.text("Cerdas Bersama, Tumbuh Setara", 105, 270, { align: "center" });
 
@@ -661,7 +664,7 @@ export async function generateComprehensivePDF(
     doc.setFont("Helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(148, 163, 184);
-    doc.text("Laporan Resmi Komite Disiplin Sekolah Rakyat", 15, 285);
+    doc.text("Laporan Resmi Komite Disiplin & Kesehatan Sekolah Rakyat", 15, 285);
     doc.text(`Halaman ${pageNum}`, 195, 285, { align: "right" });
   }
 
@@ -742,6 +745,35 @@ export async function generateComprehensivePDF(
     }
   });
 
+  // Section 4: Rekam Medis / Kesehatan UKS
+  if (medicalRecords && medicalRecords.length > 0) {
+    doc.addPage();
+    if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
+    drawSectionHeader("BAGIAN IV: REKAPITULASI REKAM MEDIS & KESEHATAN (UKS)");
+    const medicalRows = medicalRecords.map((m) => [
+      `${m.date || ''} ${m.time || ''}`.trim(),
+      m.studentName || '',
+      m.location || 'Klinik UKS',
+      `${m.symptoms || '-'}\nDiagnosa: ${m.diagnosis || '-'}`,
+      m.treatment || '-',
+      m.officer || '-',
+      m.status || '-'
+    ]);
+
+    autoTable(doc, {
+      head: [["Tgl & Jam", "Nama Siswa", "Lokasi", "Gejala & Diagnosa", "Tindakan / Obat", "Petugas", "Status"]],
+      body: medicalRows,
+      startY: 32,
+      theme: 'striped',
+      headStyles: { fillColor: [190, 18, 60] },
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      didDrawPage: function (data) {
+        if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
+        drawFooter(data.pageNumber);
+      }
+    });
+  }
+
   let finalY = (doc as any).lastAutoTable.finalY + 20;
   if (finalY > 210) {
     doc.addPage();
@@ -769,3 +801,188 @@ export async function generateComprehensivePDF(
 
   doc.save("LAPORAN_KOMPREHENSIF_SEKOLAH_RAKYAT.pdf");
 }
+
+// --- 6. SURAT PEMBERITAHUAN PELANGGARAN KEPADA ORANG TUA ---
+export async function generateViolationNoticePDF(
+  violation: Violation,
+  student: Student | undefined,
+  config: AppConfig
+) {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const leftLogoBase64 = await loadLogoImage(config.logoKiriUrl, 'left');
+  const rightLogoBase64 = await loadLogoImage(config.logoKananUrl, 'right');
+  const watermarkBase64 = await loadWatermarkImage(config.logoKiriUrl);
+
+  if (watermarkBase64) {
+    doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
+  }
+
+  // Header Kop
+  doc.setTextColor(30, 41, 59);
+  let startY = 15;
+  const kopKiriLines = config.kopKiri.split('\n');
+  const kopKananLines = config.kopKanan.split('\n');
+
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(11);
+  if (kopKiriLines.length > 0) {
+    doc.text(kopKiriLines[0] || "SEKOLAH RAKYAT TERPADU 31 PALEMBANG", 105, startY, { align: "center" });
+    startY += 4.5;
+  }
+
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(9);
+  for (let i = 1; i < kopKiriLines.length; i++) {
+    doc.text(kopKiriLines[i] || "", 105, startY, { align: "center" });
+    startY += 4;
+  }
+
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(9.5);
+  if (kopKananLines.length > 0) {
+    doc.text(kopKananLines[0] || "", 105, startY, { align: "center" });
+    startY += 4;
+  }
+
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(8);
+  for (let i = 1; i < kopKananLines.length; i++) {
+    doc.text(kopKananLines[i] || "", 105, startY, { align: "center" });
+    startY += 3.5;
+  }
+
+  doc.addImage(leftLogoBase64, 'PNG', 15, 12, 18, 18);
+  doc.addImage(rightLogoBase64, 'PNG', 177, 12, 18, 18);
+
+  const lineY = startY + 2;
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.6);
+  doc.line(15, lineY, 195, lineY);
+  doc.setLineWidth(0.15);
+  doc.line(15, lineY + 1, 195, lineY + 1);
+
+  // Document Title
+  const titleY = lineY + 9;
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(185, 28, 28);
+  doc.text("SURAT PEMBERITAHUAN PELANGGARAN KEPADA ORANG TUA / WALI", 105, titleY, { align: "center" });
+
+  doc.setFontSize(9);
+  doc.setFont("Helvetica", "normal");
+  doc.setTextColor(71, 85, 105);
+  const docNum = `Nomor: ${violation.id.toUpperCase()}/SRT31/DISIPLIN/${new Date().getFullYear()}`;
+  doc.text(docNum, 105, titleY + 5, { align: "center" });
+
+  let contentY = titleY + 14;
+  doc.setFontSize(9.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text("Kepada Yth.", 15, contentY);
+  doc.setFont("Helvetica", "bold");
+  doc.text("Bapak / Ibu Orang Tua / Wali Siswa", 15, contentY + 5);
+  doc.setFont("Helvetica", "normal");
+  doc.text("di Tempat", 15, contentY + 10);
+
+  contentY += 18;
+  doc.text("Dengan hormat,", 15, contentY);
+  contentY += 5;
+
+  const introText = "Melalui surat ini, kami memberitahukan bahwa berdasarkan catatan ketertiban dan disiplin Keasramaan Sekolah Rakyat Terpadu 31 Palembang, peserta didik di bawah ini:";
+  const wrappedIntro = doc.splitTextToSize(introText, 180);
+  doc.text(wrappedIntro, 15, contentY);
+  contentY += wrappedIntro.length * 4.5 + 3;
+
+  // Student Info Box
+  autoTable(doc, {
+    body: [
+      ["Nama Peserta Didik", `: ${violation.studentName}`],
+      ["NISN / ID Siswa", `: ${violation.studentId}`],
+      ["Kelas & Asrama", `: ${student ? `${student.class} - ${student.dorm}` : '-'}`],
+      ["Wali Asuh Pendamping", `: ${student?.caretaker || violation.reporter}`]
+    ],
+    startY: contentY,
+    theme: 'plain',
+    styles: { fontSize: 9.5, cellPadding: 1.5, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { cellWidth: 48, fontStyle: 'bold' },
+      1: { cellWidth: 'auto', fontStyle: 'bold' }
+    },
+    margin: { left: 20, right: 15 }
+  });
+
+  contentY = (doc as any).lastAutoTable.finalY + 6;
+
+  doc.setFont("Helvetica", "normal");
+  const statementText = "Telah melakukan tindakan pelanggaran terhadap Peraturan & Tata Tertib Keasramaan dengan rincian data laporan sebagai berikut:";
+  const wrappedStatement = doc.splitTextToSize(statementText, 180);
+  doc.text(wrappedStatement, 15, contentY);
+  contentY += wrappedStatement.length * 4.5 + 4;
+
+  // Violation Details Table
+  let formattedDate = violation.date;
+  try {
+    formattedDate = new Date(violation.date).toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch (e) {}
+
+  autoTable(doc, {
+    head: [["RINCIAN LAPORAN PELANGGARAN", "KETERANGAN HASIL PENCATATAN"]],
+    body: [
+      ["Hari & Tanggal Pelanggaran", formattedDate],
+      ["Kategori / Tingkat Pelanggaran", `Tingkat ${violation.level}`],
+      ["Bentuk / Jenis Pelanggaran", violation.violation],
+      ["Sanksi / Tindakan Disiplin", violation.sanction],
+      ["Catatan Tambahan Asrama", violation.note || "Tidak ada catatan khusus."],
+      ["Pelapor / Wali Asrama", violation.reporter]
+    ],
+    startY: contentY,
+    theme: 'grid',
+    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 9.5, halign: 'left' },
+    styles: { fontSize: 9, cellPadding: 3, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { cellWidth: 60, fontStyle: 'bold', fillColor: [248, 250, 252] },
+      1: { cellWidth: 'auto' }
+    },
+    margin: { left: 15, right: 15 }
+  });
+
+  contentY = (doc as any).lastAutoTable.finalY + 8;
+
+  const closingText = "Demikian surat pemberitahuan ini kami sampaikan. Besar harapan kami agar Bapak/Ibu Orang Tua/Wali dapat turut serta memberikan perhatian, bimbingan, serta kerja sama yang baik demi pembentukan karakter dan kebaikan peserta didik di masa mendatang. Atas perhatian dan kerja samanya, kami ucapkan terima kasih.";
+  const wrappedClosing = doc.splitTextToSize(closingText, 180);
+  doc.text(wrappedClosing, 15, contentY);
+  contentY += wrappedClosing.length * 4.5 + 12;
+
+  if (contentY > 230) {
+    doc.addPage();
+    if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
+    contentY = 30;
+  }
+
+  // Signatures
+  const dateStr = new Date(violation.date || new Date()).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(`Palembang, ${dateStr}`, 135, contentY);
+
+  doc.text("Mengetahui / Memahami,", 20, contentY + 6);
+  doc.text("Orang Tua / Wali Siswa,", 20, contentY + 11);
+
+  doc.text("Tim Disiplin / Wali Asuh,", 135, contentY + 11);
+
+  doc.setFont("Helvetica", "bold");
+  doc.text("( .................................................... )", 20, contentY + 36);
+  doc.text(`( ${student?.caretaker || violation.reporter} )`, 135, contentY + 36);
+
+  doc.save(`Surat_Pemberitahuan_Pelanggaran_${violation.studentName.replace(/\s+/g, '_')}_${violation.date}.pdf`);
+}
+

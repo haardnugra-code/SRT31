@@ -105,6 +105,8 @@ export interface ReportCardData {
   specialNote: string;
   customCaretaker: string;
   customCaretakerNip: string;
+  semester?: 'Ganjil' | 'Genap';
+  academicYear?: string;
 }
 
 export interface AppConfig {
@@ -120,4 +122,6 @@ export interface AppConfig {
   logoKiriUrl: string;
   logoKananUrl: string;
   watermarkOpacity: number;
+  semester?: 'Ganjil' | 'Genap';
+  academicYear?: string;
 }

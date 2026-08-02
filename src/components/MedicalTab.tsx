@@ -26,7 +26,8 @@ import {
   ShieldAlert,
   ClipboardList,
   Sparkles,
-  Download
+  Download,
+  UserCheck
 } from 'lucide-react';
 import { Student, MedicalRecord, AppConfig } from '../types';
 
@@ -68,6 +69,8 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null);
   const [printRecord, setPrintRecord] = useState<MedicalRecord | null>(null);
+  const [printWaliAsrama, setPrintWaliAsrama] = useState<string>('');
+  const [printWaliAsramaNip, setPrintWaliAsramaNip] = useState<string>('');
 
   // Form State
   const [formData, setFormData] = useState<Partial<MedicalRecord>>({
@@ -85,7 +88,9 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
     officer: 'Tim Medis UKS',
     temperature: '37.0°C',
     vitalSigns: '120/80 mmHg',
-    notes: ''
+    notes: '',
+    customWaliAsrama: '',
+    customWaliAsramaNip: ''
   });
 
   // KPI Calculations
@@ -147,15 +152,27 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
       officer: 'Tim Medis UKS / Petugas Kesehatan',
       temperature: '37.0°C',
       vitalSigns: '120/80 mmHg',
-      notes: ''
+      notes: '',
+      customWaliAsrama: config.waliAsrama || '',
+      customWaliAsramaNip: config.waliAsramaNip || ''
     });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (rec: MedicalRecord) => {
     setEditingRecord(rec);
-    setFormData({ ...rec });
+    setFormData({
+      ...rec,
+      customWaliAsrama: rec.customWaliAsrama || config.waliAsrama || '',
+      customWaliAsramaNip: rec.customWaliAsramaNip !== undefined ? rec.customWaliAsramaNip : (config.waliAsramaNip || '')
+    });
     setIsModalOpen(true);
+  };
+
+  const handleOpenPrintModal = (rec: MedicalRecord) => {
+    setPrintRecord(rec);
+    setPrintWaliAsrama(rec.customWaliAsrama || config.waliAsrama || '');
+    setPrintWaliAsramaNip(rec.customWaliAsramaNip !== undefined ? rec.customWaliAsramaNip : (config.waliAsramaNip || ''));
   };
 
   const handleStudentSelectInForm = (studentId: string) => {
@@ -201,7 +218,9 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
       officer: formData.officer || 'Petugas UKS',
       temperature: formData.temperature || '',
       vitalSigns: formData.vitalSigns || '',
-      notes: formData.notes || ''
+      notes: formData.notes || '',
+      customWaliAsrama: formData.customWaliAsrama || '',
+      customWaliAsramaNip: formData.customWaliAsramaNip || ''
     };
 
     onSaveRecord(newRecord);
@@ -212,11 +231,13 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
     window.print();
   };
 
-  const handleExportPDF = (record: MedicalRecord) => {
+  const handleExportPDF = (record: MedicalRecord, overrideWali?: string, overrideNip?: string) => {
     const student = students.find(
       (s) => String(s.id) === String(record.studentId) || s.name.toLowerCase() === record.studentName.toLowerCase()
     );
-    printSickLeavePDF(record, student, config);
+    const finalWali = overrideWali !== undefined ? overrideWali : printWaliAsrama;
+    const finalNip = overrideNip !== undefined ? overrideNip : printWaliAsramaNip;
+    printSickLeavePDF(record, student, config, finalWali, finalNip);
   };
 
   return (
@@ -492,7 +513,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                                 <span className="hidden sm:inline">PDF</span>
                               </button>
                               <button
-                                onClick={() => setPrintRecord(rec)}
+                                onClick={() => handleOpenPrintModal(rec)}
                                 title="Pratinjau & Cetak Surat Izin"
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               >
@@ -921,6 +942,39 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                 </div>
               </div>
 
+              {/* Custom Wali Asrama & NIP (Blok Tanda Tangan) */}
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2">
+                <p className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-blue-600" /> Penandatangan Wali Asrama (Dapat Disesuaikan)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Nama Wali Asrama
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={config.waliAsrama || 'Nama Wali Asrama'}
+                      value={formData.customWaliAsrama || ''}
+                      onChange={(e) => setFormData({ ...formData, customWaliAsrama: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      NIP Wali Asrama
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={config.waliAsramaNip || 'NIP Wali Asrama'}
+                      value={formData.customWaliAsramaNip || ''}
+                      onChange={(e) => setFormData({ ...formData, customWaliAsramaNip: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Catatan Tambahan */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -960,14 +1014,14 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
       {printRecord && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl my-8 relative">
-            <div className="no-print flex items-center justify-between border-b border-slate-200 pb-4 mb-6">
+            <div className="no-print flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
               <span className="text-xs font-bold text-slate-500 uppercase">
                 Pratinjau Surat Izin Sakit & Rekam Medis
               </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => handleExportPDF(printRecord)}
+                  onClick={() => handleExportPDF(printRecord, printWaliAsrama, printWaliAsramaNip)}
                   className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all active:scale-95"
                 >
                   <FileText className="w-4 h-4" /> Unduh PDF
@@ -986,6 +1040,38 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                 >
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+            </div>
+
+            {/* CONTROL BAR FOR CUSTOM WALI ASRAMA SIGNATURE */}
+            <div className="no-print mb-5 p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-blue-600" /> Pengaturan Penandatangan Wali Asrama
+                </span>
+                <span className="text-[10px] text-blue-700 font-medium">Dapat diubah langsung untuk dokumen cetak/PDF</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Nama Wali Asrama</label>
+                  <input
+                    type="text"
+                    value={printWaliAsrama}
+                    onChange={(e) => setPrintWaliAsrama(e.target.value)}
+                    placeholder={config.waliAsrama || 'Nama Wali Asrama'}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">NIP Wali Asrama</label>
+                  <input
+                    type="text"
+                    value={printWaliAsramaNip}
+                    onChange={(e) => setPrintWaliAsramaNip(e.target.value)}
+                    placeholder={config.waliAsramaNip || 'NIP Wali Asrama'}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1104,8 +1190,10 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                   <p className="text-slate-600">Mengetahui,</p>
                   <p className="font-bold text-slate-800">Wali Asrama / Wali Asuh</p>
                   <div className="h-16"></div>
-                  <p className="font-bold underline text-slate-900">{config.waliAsrama}</p>
-                  <p className="text-[10px] text-slate-500">{config.waliAsramaNip}</p>
+                  <p className="font-bold underline text-slate-900">{printWaliAsrama || config.waliAsrama || 'Wali Asrama'}</p>
+                  <p className="text-[10px] text-slate-500">
+                    {printWaliAsramaNip ? (printWaliAsramaNip.startsWith('NIP') ? printWaliAsramaNip : `NIP. ${printWaliAsramaNip}`) : config.waliAsramaNip ? (config.waliAsramaNip.startsWith('NIP') ? config.waliAsramaNip : `NIP. ${config.waliAsramaNip}`) : ''}
+                  </p>
                 </div>
 
                 <div>

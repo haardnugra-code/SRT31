@@ -102,6 +102,8 @@ export interface MedicalRecord {
   temperature?: string; // Suhu Tubuh (e.g. 38.2°C)
   vitalSigns?: string; // Tensi / Nadi (e.g. 110/70 mmHg)
   notes?: string;
+  customWaliAsrama?: string;
+  customWaliAsramaNip?: string;
 }
 
 export interface ReportCategory {

@@ -588,7 +588,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Nama Wali Asrama Utama
+                  Nama Wali Asrama
                 </label>
                 <input
                   type="text"

@@ -864,8 +864,8 @@ export async function printReportCardPDF(
   doc.setTextColor(30, 41, 59);
   doc.text(`Palembang, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 140, sigY);
   doc.text("Mengetahui / Menyetujui:", 15, sigY + 5);
-  doc.text("Wali Asuh Mandiri,", 15, sigY + 11);
-  doc.text("Wali Asrama Utama,", 140, sigY + 11);
+  doc.text("Wali Asuh,", 15, sigY + 11);
+  doc.text("Wali Asrama,", 140, sigY + 11);
 
   doc.setFont("Helvetica", "bold");
   doc.text(`( ${customCaretakerName} )`, 15, sigY + 24);
@@ -1323,7 +1323,9 @@ export async function generateViolationNoticePDF(
 export async function printSickLeavePDF(
   record: MedicalRecord,
   student?: Student,
-  config?: AppConfig
+  config?: AppConfig,
+  overrideWaliAsrama?: string,
+  overrideWaliAsramaNip?: string
 ) {
   const doc = new jsPDF('p', 'mm', 'a4');
 
@@ -1478,8 +1480,9 @@ export async function printSickLeavePDF(
   doc.text("Petugas Medis / Pembina UKS,", 135, row1Y + 4.5);
 
   // TTD Space (24mm)
-  const waliName = config?.waliAsrama || 'Wali Asrama';
-  const waliNip = config?.waliAsramaNip ? `NIP. ${config.waliAsramaNip}` : '';
+  const waliName = overrideWaliAsrama || record.customWaliAsrama || config?.waliAsrama || 'Wali Asrama';
+  const rawWaliNip = overrideWaliAsramaNip !== undefined ? overrideWaliAsramaNip : (record.customWaliAsramaNip !== undefined ? record.customWaliAsramaNip : (config?.waliAsramaNip || ''));
+  const waliNip = rawWaliNip ? `NIP. ${rawWaliNip}` : '';
   const officerName = record.officer || 'Petugas UKS';
 
   doc.setFont("Helvetica", "bold");

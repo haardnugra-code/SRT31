@@ -334,7 +334,7 @@ export const RecapTab: React.FC<RecapTabProps> = ({
                   >
                     <option value="">-- Pilih Wali Asuh / Wali Asrama --</option>
                     <option value="__DEFAULT_WALI_ASRAMA__">
-                      ★ Wali Asrama Utama ({config.waliAsrama} - {config.waliAsramaNip || 'Tanpa NIP'})
+                      ★ Wali Asrama ({config.waliAsrama} - {config.waliAsramaNip || 'Tanpa NIP'})
                     </option>
                     {config.waliAsuhList.map((w, idx) => {
                       const name = w.split('|')[0]?.trim();

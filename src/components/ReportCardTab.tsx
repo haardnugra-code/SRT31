@@ -427,7 +427,7 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
 
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
-              Nama Wali Asuh Mandiri
+              Nama Wali Asuh
             </label>
             <input
               type="text"
@@ -440,7 +440,7 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
 
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
-              NIP Wali Asuh Mandiri
+              NIP Wali Asuh
             </label>
             <input
               type="text"
@@ -453,7 +453,7 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
 
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5 flex items-center justify-between">
-              <span>Nama Wali Asrama Utama</span>
+              <span>Nama Wali Asrama</span>
               <span className="text-[10px] text-purple-600 font-bold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">Custom</span>
             </label>
             <input
@@ -467,7 +467,7 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
 
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
-              NIP Wali Asrama Utama
+              NIP Wali Asrama
             </label>
             <input
               type="text"

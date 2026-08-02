@@ -974,7 +974,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'guide' && <GuideTab />}
+            {activeTab === 'guide' && <GuideTab onSelectTab={setActiveTab} />}
 
             {activeTab === 'settings' && (
               <SettingsTab

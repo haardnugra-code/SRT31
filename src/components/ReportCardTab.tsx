@@ -672,7 +672,7 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
             {studentMedical.length === 0 ? (
               <div className="p-3 bg-slate-50 rounded-lg text-emerald-700 text-[11px] font-medium flex items-center gap-1.5 border border-slate-100">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                <span>Kondisi kesehatan fisik santri/anak asuh prima & sehat.</span>
+                <span>Kondisi kesehatan fisik murid/anak asuh prima & sehat.</span>
               </div>
             ) : (
               <div className="space-y-2 max-h-40 overflow-y-auto pr-1">

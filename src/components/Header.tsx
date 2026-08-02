@@ -1,5 +1,5 @@
 import React from 'react';
-import { GraduationCap, RefreshCw, Menu } from 'lucide-react';
+import { RefreshCw, Menu, User, LogOut } from 'lucide-react';
 import { AppConfig } from '../types';
 
 interface HeaderProps {
@@ -8,6 +8,7 @@ interface HeaderProps {
   isSyncing: boolean;
   onSync: () => void;
   onToggleMobileSidebar: () => void;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,15 +16,9 @@ export const Header: React.FC<HeaderProps> = ({
   config,
   isSyncing,
   onSync,
-  onToggleMobileSidebar
+  onToggleMobileSidebar,
+  onLogout
 }) => {
-  const initials = (config.waliAsrama || "W A")
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
   return (
     <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-8 flex-shrink-0 sticky top-0 z-20">
       <div className="flex items-center gap-3 min-w-0">
@@ -43,9 +38,9 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <div
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-semibold ${
+          className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-semibold ${
             config.googleScriptUrl
               ? 'bg-emerald-100 text-emerald-800'
               : 'bg-amber-100 text-amber-800'
@@ -74,23 +69,23 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={onSync}
           disabled={isSyncing}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 shadow-sm transition-all active:scale-95 disabled:opacity-60"
+          title="Sinkronisasi Data Cloud"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-red-600' : ''}`} />
           <span className="hidden sm:inline">Sinkronisasi</span>
         </button>
 
-        <div className="hidden sm:flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-slate-300 text-xs">
-            {initials}
-          </div>
-          <div className="text-left">
-            <p className="text-xs font-semibold text-slate-700 leading-none">
-              {config.waliAsrama || 'Wali Asrama'}
-            </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Admin Utama</p>
-          </div>
-        </div>
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-red-50 hover:text-red-700 hover:border-red-200 border border-slate-200 text-slate-700 shadow-sm transition-all active:scale-95 group"
+          title="Klik untuk Sign Out / Keluar"
+        >
+          <User className="w-3.5 h-3.5 text-slate-500 group-hover:hidden" />
+          <LogOut className="w-3.5 h-3.5 text-red-600 hidden group-hover:inline-block" />
+          <span>Admin</span>
+        </button>
       </div>
     </header>
   );
 };
+

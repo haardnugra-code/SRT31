@@ -84,6 +84,12 @@ export default function App() {
     []
   );
 
+  const handleLogout = useCallback(() => {
+    sessionStorage.removeItem('sr_auth_status');
+    setIsLoggedIn(false);
+    showToast('Sign Out Berhasil', 'Anda telah keluar dari sistem.', 'success');
+  }, [showToast]);
+
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -818,6 +824,7 @@ export default function App() {
             isSyncing={isSyncing}
             onSync={() => syncCloudData(true)}
             onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            onLogout={handleLogout}
           />
 
           <div className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8 overflow-y-auto">

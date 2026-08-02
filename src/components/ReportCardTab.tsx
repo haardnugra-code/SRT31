@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Wand2, Printer, ShieldAlert, Save, ChevronDown, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Wand2, Printer, ShieldAlert, Save, ChevronDown, CheckCircle2, Award, AlertTriangle } from 'lucide-react';
 import { Student, Violation, ReportCardData, AppConfig } from '../types';
 import { RAPOR_STRUCTURE, printReportCardPDF } from '../services/pdfGenerator';
+import { calculateStudentDisciplineScore } from '../services/storage';
 
 interface ReportCardTabProps {
   students: Student[];
@@ -25,6 +26,8 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
   const [customCaretaker, setCustomCaretaker] = useState<string>('');
   const [customCaretakerNip, setCustomCaretakerNip] = useState<string>('');
+  const [customWaliAsrama, setCustomWaliAsrama] = useState<string>('');
+  const [customWaliAsramaNip, setCustomWaliAsramaNip] = useState<string>('');
   const [specialNote, setSpecialNote] = useState<string>('');
   const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(config.semester || 'Genap');
   const [academicYear, setAcademicYear] = useState<string>(config.academicYear || '2025/2026');
@@ -34,7 +37,21 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
 
   const student = students.find((s) => String(s.id) === String(selectedStudentId));
-  const studentViolations = violations.filter((v) => String(v.studentId) === String(selectedStudentId));
+
+  // Active Rapor Structure (Custom from Config or Default)
+  const activeRaporStructure = useMemo(() => {
+    return config.raporStructureCustom && config.raporStructureCustom.length > 0
+      ? config.raporStructureCustom
+      : RAPOR_STRUCTURE;
+  }, [config]);
+
+  // Discipline & Violations Evaluation for selected student & semester
+  const disciplineInfo = useMemo(() => {
+    if (!selectedStudentId) return null;
+    return calculateStudentDisciplineScore(selectedStudentId, violations, config, semester, academicYear);
+  }, [selectedStudentId, violations, config, semester, academicYear]);
+
+  const studentViolations = disciplineInfo?.filteredViolations || [];
 
   // Load existing report data for selected student
   useEffect(() => {
@@ -57,6 +74,8 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       setSpecialNote(rep.specialNote || '');
       if (rep.customCaretaker) setCustomCaretaker(rep.customCaretaker);
       if (rep.customCaretakerNip) setCustomCaretakerNip(rep.customCaretakerNip);
+      setCustomWaliAsrama(rep.customWaliAsrama !== undefined ? rep.customWaliAsrama : (config.waliAsrama || ''));
+      setCustomWaliAsramaNip(rep.customWaliAsramaNip !== undefined ? rep.customWaliAsramaNip : (config.waliAsramaNip || ''));
       if (rep.semester) setSemester(rep.semester);
       else setSemester(config.semester || 'Genap');
       if (rep.academicYear) setAcademicYear(rep.academicYear);
@@ -65,6 +84,8 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       setGrades({});
       setDescriptions({});
       setSpecialNote('');
+      setCustomWaliAsrama(config.waliAsrama || '');
+      setCustomWaliAsramaNip(config.waliAsramaNip || '');
       setSemester(config.semester || 'Genap');
       setAcademicYear(config.academicYear || '2025/2026');
     }
@@ -108,7 +129,7 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
     const newGrades: Record<string, string> = {};
     const newDescs: Record<string, string> = {};
 
-    RAPOR_STRUCTURE.forEach((cat) => {
+    activeRaporStructure.forEach((cat) => {
       cat.indicators.forEach((ind, idx) => {
         const key = `${cat.key}_${idx}`;
         const rand = Math.random();
@@ -148,6 +169,8 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       specialNote,
       customCaretaker,
       customCaretakerNip,
+      customWaliAsrama,
+      customWaliAsramaNip,
       semester,
       academicYear
     };
@@ -172,6 +195,8 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       specialNote,
       customCaretaker,
       customCaretakerNip,
+      customWaliAsrama,
+      customWaliAsramaNip,
       semester,
       academicYear
     };
@@ -213,17 +238,17 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
         </div>
       </div>
 
-      {/* Selection & Caretaker Input */}
+      {/* Selection & Signatory Parameter Inputs */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-          <div className="md:col-span-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 items-end">
+          <div className="sm:col-span-2 md:col-span-1">
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
               Pilih Peserta Didik
             </label>
             <select
               value={selectedStudentId}
               onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20"
+              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20 font-semibold"
             >
               {students.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -233,7 +258,7 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
             </select>
           </div>
 
-          <div className="md:col-span-1">
+          <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
               Semester
             </label>
@@ -247,7 +272,7 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
             </select>
           </div>
 
-          <div className="md:col-span-1">
+          <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
               Tahun Ajaran
             </label>
@@ -260,9 +285,9 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
             />
           </div>
 
-          <div className="md:col-span-1">
+          <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
-              Nama Wali Asuh
+              Nama Wali Asuh Mandiri
             </label>
             <input
               type="text"
@@ -273,9 +298,9 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
             />
           </div>
 
-          <div className="md:col-span-1">
+          <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5">
-              NIP Wali Asuh
+              NIP Wali Asuh Mandiri
             </label>
             <input
               type="text"
@@ -283,6 +308,33 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
               onChange={(e) => setCustomCaretakerNip(e.target.value)}
               className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20"
               placeholder="NIP Wali Asuh..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5 flex items-center justify-between">
+              <span>Nama Wali Asrama Utama</span>
+              <span className="text-[10px] text-purple-600 font-bold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">Custom</span>
+            </label>
+            <input
+              type="text"
+              value={customWaliAsrama}
+              onChange={(e) => setCustomWaliAsrama(e.target.value)}
+              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20 font-semibold text-slate-800"
+              placeholder="Nama Wali Asrama Rapor..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+              NIP Wali Asrama Utama
+            </label>
+            <input
+              type="text"
+              value={customWaliAsramaNip}
+              onChange={(e) => setCustomWaliAsramaNip(e.target.value)}
+              className="w-full border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20 font-semibold text-slate-800"
+              placeholder="NIP Wali Asrama Rapor..."
             />
           </div>
         </div>
@@ -310,37 +362,57 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
         </div>
       </div>
 
-      {/* Violation History Widget */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-        <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-red-600" /> Evaluasi Riwayat Kedisiplinan & Pelanggaran
-        </h3>
+      {/* Violation History & Discipline Score Widget */}
+      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-red-600" /> Evaluasi Riwayat Kedisiplinan & Pelanggaran Rapor (Sem. {semester} {academicYear})
+          </h3>
+          {disciplineInfo && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-500">Poin Semester:</span>
+              <span className="text-sm font-extrabold text-slate-900 font-mono bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                {disciplineInfo.score} / 100 Poin
+              </span>
+              <span className={`text-xs font-extrabold px-2.5 py-1 rounded-lg border text-white ${
+                disciplineInfo.status.badgeColor === 'emerald' ? 'bg-emerald-600 border-emerald-700' :
+                disciplineInfo.status.badgeColor === 'blue' ? 'bg-blue-600 border-blue-700' :
+                disciplineInfo.status.badgeColor === 'amber' ? 'bg-amber-600 border-amber-700' :
+                'bg-red-600 border-red-700'
+              }`}>
+                {disciplineInfo.status.label}
+              </span>
+            </div>
+          )}
+        </div>
+
         <div className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-lg border border-slate-100">
           {studentViolations.length === 0 ? (
             <div>
               <span className="text-emerald-600 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-4 h-4" /> Catatan Bersih
+                <CheckCircle2 className="w-4 h-4" /> Catatan Bersih (100 Poin Utuh)
               </span>
               <p className="mt-1 text-[11px] text-slate-500">
-                Anak asuh terpuji, tidak memiliki riwayat pelanggaran tata tertib asrama pada semester ini.
+                Anak asuh terpuji, tidak memiliki riwayat pelanggaran tata tertib asrama pada Semester {semester} ({academicYear}).
               </p>
             </div>
           ) : (
             <div>
-              <div className="mb-2 font-bold text-red-700 flex items-center gap-1">
-                <ShieldAlert className="w-4 h-4" /> Terdeteksi {studentViolations.length} Kasus Pelanggaran:
+              <div className="mb-2 font-bold text-red-700 flex items-center justify-between">
+                <span className="flex items-center gap-1"><ShieldAlert className="w-4 h-4" /> Terdeteksi {studentViolations.length} Kasus Pelanggaran (Total Pengurangan: -{disciplineInfo?.totalDeducted} Poin):</span>
+                <span className="text-[10px] text-slate-400 font-medium">Reset Poin per Semester: Otomatis</span>
               </div>
-              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {studentViolations.map((v) => (
-                  <div key={v.id} className="border-b border-slate-200/60 pb-2 mb-2 last:border-none last:pb-0 last:mb-0">
-                    <div className="flex items-center justify-between font-bold text-slate-700">
+                  <div key={v.id} className="bg-white p-2.5 rounded-lg border border-slate-200 text-xs space-y-1">
+                    <div className="flex items-center justify-between font-bold text-slate-800">
                       <span>
                         Tingkat {v.level} • {v.violation}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-medium">{v.date}</span>
+                      <span className="text-[10px] text-slate-400 font-medium">{v.date} ({v.semester || semester} {v.academicYear || academicYear})</span>
                     </div>
-                    {v.note && <p className="text-[10px] text-slate-500 italic mt-0.5">Keterangan: "{v.note}"</p>}
-                    <p className="text-[10px] text-red-600 font-semibold mt-0.5">Sanksi: {v.sanction}</p>
+                    {v.note && <p className="text-[11px] text-slate-600 italic">Keterangan: "{v.note}"</p>}
+                    <p className="text-[10px] text-red-600 font-semibold">Sanksi: {v.sanction}</p>
                   </div>
                 ))}
               </div>
@@ -353,11 +425,11 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
         <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
           <h3 className="font-bold text-slate-800 text-sm">Lembar Penilaian Nilai Keasramaan</h3>
-          <span className="text-xs text-slate-400">Total 15 Kategori Nilai</span>
+          <span className="text-xs text-slate-400">Total {activeRaporStructure.length} Kategori Nilai</span>
         </div>
 
         <div className="space-y-4">
-          {RAPOR_STRUCTURE.map((category) => {
+          {activeRaporStructure.map((category) => {
             const isAccordionOpen = !!openAccordions[category.key];
             return (
               <div

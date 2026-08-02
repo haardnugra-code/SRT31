@@ -26,6 +26,8 @@ export interface Violation {
   note: string;
   reporter: string;
   photo?: string; // compressed base64 or URL
+  semester?: 'Ganjil' | 'Genap';
+  academicYear?: string;
 }
 
 export interface Counseling {
@@ -114,8 +116,31 @@ export interface ReportCardData {
   specialNote: string;
   customCaretaker: string;
   customCaretakerNip: string;
+  customWaliAsrama?: string;
+  customWaliAsramaNip?: string;
   semester?: 'Ganjil' | 'Genap';
   academicYear?: string;
+}
+
+export interface DisciplineLevelConfig {
+  level: number;
+  name: string;
+  pointsDeduction: number;
+  defaultSanction: string;
+}
+
+export interface DisciplineStatusThreshold {
+  minScore: number;
+  label: string;
+  badgeColor: string; // 'emerald' | 'blue' | 'amber' | 'rose' | 'red'
+  description: string;
+}
+
+export interface ViolationTemplateItem {
+  id?: string;
+  text: string;
+  explanation: string;
+  sanction: string;
 }
 
 export interface AppConfig {
@@ -133,4 +158,9 @@ export interface AppConfig {
   watermarkOpacity: number;
   semester?: 'Ganjil' | 'Genap';
   academicYear?: string;
+  disciplineLevels?: DisciplineLevelConfig[];
+  violationTemplatesCustom?: Record<number, ViolationTemplateItem[]>;
+  disciplineThresholds?: DisciplineStatusThreshold[];
+  raporStructureCustom?: ReportCategory[];
+  autoResetPointsPerSemester?: boolean;
 }

@@ -862,9 +862,18 @@ export default function App() {
             {activeTab === 'students' && (
               <StudentsTab
                 students={studentsWithViolationCounts}
+                violations={violations}
+                counseling={counseling}
                 config={config}
                 onSaveStudent={handleSaveStudent}
                 onDeleteStudent={handleDeleteStudent}
+                onOpenViolationForStudent={(sid) => {
+                  setActiveTab('violations');
+                  setIsViolationModalOpenExternal(true);
+                }}
+                onOpenCounselingForStudent={(sid) => {
+                  setActiveTab('counseling');
+                }}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
               />

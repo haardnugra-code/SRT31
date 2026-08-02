@@ -1,6 +1,22 @@
-import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord } from '../types';
+import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem } from '../types';
 
 export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJCN9pcsTSEq-tBeFqKY5cdTL-upT_PUPslMUYx1Qc21FHtOJgyVoNKlLbkbL7DWpe/exec";
+
+export const DEFAULT_DISCIPLINE_LEVELS: DisciplineLevelConfig[] = [
+  { level: 1, name: 'Tingkat 1 (Pelanggaran Ringan)', pointsDeduction: 5, defaultSanction: 'Teguran lisan & Piket asrama' },
+  { level: 2, name: 'Tingkat 2 (Pelanggaran Sedang)', pointsDeduction: 10, defaultSanction: 'Surat Peringatan 1 (SP1)' },
+  { level: 3, name: 'Tingkat 3 (Pelanggaran Berat)', pointsDeduction: 25, defaultSanction: 'SP2, Pemanggilan Ortu, & Skorsing 3 Hari' },
+  { level: 4, name: 'Tingkat 4 (Pelanggaran Sangat Berat)', pointsDeduction: 50, defaultSanction: 'SP3 (Peringatan Akhir) & Skorsing 2 Minggu' },
+  { level: 5, name: 'Tingkat 5 (Pelanggaran Luar Biasa)', pointsDeduction: 100, defaultSanction: 'Dikeluarkan dengan Tidak Hormat (Drop Out)' }
+];
+
+export const DEFAULT_DISCIPLINE_THRESHOLDS: DisciplineStatusThreshold[] = [
+  { minScore: 90, label: 'Sangat Baik', badgeColor: 'emerald', description: 'Siswa taat aturan & tidak ada pelanggaran berarti.' },
+  { minScore: 75, label: 'Baik / Normal', badgeColor: 'blue', description: 'Kedisiplinan tergolong baik dengan catatan ringan.' },
+  { minScore: 50, label: 'Perlu Pembinaan BK', badgeColor: 'amber', description: 'Memerlukan pembinaan & konseling khusus BK.' },
+  { minScore: 25, label: 'Peringatan Keras (SP2)', badgeColor: 'rose', description: 'Siswa dalam kondisi Peringatan Keras SP2.' },
+  { minScore: 0, label: 'Status Kritis (SP3 / DO)', badgeColor: 'red', description: 'Siswa dalam ambang batas skorsing berat / DO.' }
+];
 
 export const DEFAULT_CONFIG: AppConfig = {
   googleScriptUrl: DEFAULT_SCRIPT_URL,
@@ -16,7 +32,10 @@ export const DEFAULT_CONFIG: AppConfig = {
   logoKananUrl: "https://lh3.googleusercontent.com/d/1rNFA7Zb_jx0c8yAX0gisbzH-EjdoNGtg",
   watermarkOpacity: 0.04,
   semester: 'Genap',
-  academicYear: '2025/2026'
+  academicYear: '2025/2026',
+  disciplineLevels: DEFAULT_DISCIPLINE_LEVELS,
+  disciplineThresholds: DEFAULT_DISCIPLINE_THRESHOLDS,
+  autoResetPointsPerSemester: true
 };
 
 export const INITIAL_STUDENTS: Student[] = [
@@ -131,6 +150,67 @@ export const VIOLATION_TEMPLATES: Record<number, { text: string; explanation: st
     { text: "Tindak kriminalitas / Pidana", explanation: "Terlibat pencurian besar, perampokan, atau tawuran massal berdarah.", sanction: "Dikeluarkan dengan Tidak Hormat (Drop Out) & Lapor Polisi" }
   ]
 };
+
+// Helper to retrieve active violation templates (custom or default)
+export function getViolationTemplates(config?: AppConfig): Record<number, { text: string; explanation: string; sanction: string }[]> {
+  if (config?.violationTemplatesCustom) {
+    return {
+      1: config.violationTemplatesCustom[1] || VIOLATION_TEMPLATES[1],
+      2: config.violationTemplatesCustom[2] || VIOLATION_TEMPLATES[2],
+      3: config.violationTemplatesCustom[3] || VIOLATION_TEMPLATES[3],
+      4: config.violationTemplatesCustom[4] || VIOLATION_TEMPLATES[4],
+      5: config.violationTemplatesCustom[5] || VIOLATION_TEMPLATES[5],
+    };
+  }
+  return VIOLATION_TEMPLATES;
+}
+
+// Calculate student discipline score (0-100) and status based on recorded violations.
+// Resets to 100 points every semester if autoResetPointsPerSemester is true.
+export function calculateStudentDisciplineScore(
+  studentId: string,
+  violations: Violation[],
+  config?: AppConfig,
+  targetSemester?: 'Ganjil' | 'Genap',
+  targetAcademicYear?: string
+): { score: number; status: DisciplineStatusThreshold; totalDeducted: number; violationCount: number; filteredViolations: Violation[] } {
+  let studentViolations = violations.filter((v) => String(v.studentId).trim() === String(studentId).trim());
+
+  const activeSemester = targetSemester || config?.semester || 'Genap';
+  const activeYear = targetAcademicYear || config?.academicYear || '2025/2026';
+  const shouldResetPerSemester = config?.autoResetPointsPerSemester !== false;
+
+  if (shouldResetPerSemester) {
+    studentViolations = studentViolations.filter((v) => {
+      // If violation has semester/academicYear tagged, match strictly; if untagged, consider it active
+      const semMatch = !v.semester || v.semester === activeSemester;
+      const yearMatch = !v.academicYear || v.academicYear === activeYear;
+      return semMatch && yearMatch;
+    });
+  }
+
+  const levels = config?.disciplineLevels || DEFAULT_DISCIPLINE_LEVELS;
+
+  let totalDeducted = 0;
+  studentViolations.forEach((v) => {
+    const lvlConfig = levels.find((l) => Number(l.level) === Number(v.level));
+    const deduction = lvlConfig ? Number(lvlConfig.pointsDeduction) : Number(v.level) * 10;
+    totalDeducted += deduction;
+  });
+
+  const score = Math.max(0, 100 - totalDeducted);
+  const thresholds = config?.disciplineThresholds || DEFAULT_DISCIPLINE_THRESHOLDS;
+  const sortedThresholds = [...thresholds].sort((a, b) => b.minScore - a.minScore);
+  const status = sortedThresholds.find((t) => score >= t.minScore) || sortedThresholds[sortedThresholds.length - 1];
+
+  return {
+    score,
+    status,
+    totalDeducted,
+    violationCount: studentViolations.length,
+    filteredViolations: studentViolations
+  };
+}
 
 // --- Storage Helper Functions ---
 export function loadAppConfig(): AppConfig {

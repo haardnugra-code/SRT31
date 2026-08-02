@@ -18,10 +18,17 @@ import {
   Check,
   Database,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Award,
+  AlertTriangle,
+  Plus,
+  Trash2,
+  Edit2
 } from 'lucide-react';
-import { AppConfig } from '../types';
+import { AppConfig, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, ReportCategory } from '../types';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/googleAppsScriptCode';
+import { DEFAULT_DISCIPLINE_LEVELS, DEFAULT_DISCIPLINE_THRESHOLDS, VIOLATION_TEMPLATES } from '../services/storage';
+import { RAPOR_STRUCTURE } from '../services/pdfGenerator';
 
 interface SettingsTabProps {
   config: AppConfig;
@@ -54,6 +61,35 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [dormText, setDormText] = useState<string>(config.dormList.join('\n'));
   const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(config.semester || 'Genap');
   const [academicYear, setAcademicYear] = useState<string>(config.academicYear || '2025/2026');
+
+  // Discipline & Violation Custom Config State
+  const [autoResetPoints, setAutoResetPoints] = useState<boolean>(
+    config.autoResetPointsPerSemester !== false
+  );
+  const [disciplineLevels, setDisciplineLevels] = useState<DisciplineLevelConfig[]>(
+    config.disciplineLevels || DEFAULT_DISCIPLINE_LEVELS
+  );
+  const [disciplineThresholds, setDisciplineThresholds] = useState<DisciplineStatusThreshold[]>(
+    config.disciplineThresholds || DEFAULT_DISCIPLINE_THRESHOLDS
+  );
+  const [customTemplates, setCustomTemplates] = useState<Record<number, ViolationTemplateItem[]>>(
+    config.violationTemplatesCustom || VIOLATION_TEMPLATES
+  );
+
+  // Custom Report Structure State
+  const [customRaporStructure, setCustomRaporStructure] = useState<ReportCategory[]>(
+    config.raporStructureCustom && config.raporStructureCustom.length > 0
+      ? config.raporStructureCustom
+      : RAPOR_STRUCTURE
+  );
+  const [selectedRaporCatIndex, setSelectedRaporCatIndex] = useState<number>(0);
+  const [newRaporIndicatorText, setNewRaporIndicatorText] = useState<string>('');
+
+  // Selected level for violation template editing tab
+  const [selectedTemplateLevel, setSelectedTemplateLevel] = useState<number>(1);
+  const [newTemplateText, setNewTemplateText] = useState('');
+  const [newTemplateExplanation, setNewTemplateExplanation] = useState('');
+  const [newTemplateSanction, setNewTemplateSanction] = useState('');
 
   // Script Modal State
   const [isScriptModalOpen, setIsScriptModalOpen] = useState<boolean>(false);
@@ -137,12 +173,94 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       logoKananUrl: logoKananUrl.trim(),
       watermarkOpacity: watermarkOpacity || 0.04,
       semester,
-      academicYear: academicYear.trim()
+      academicYear: academicYear.trim(),
+      disciplineLevels,
+      disciplineThresholds,
+      violationTemplatesCustom: customTemplates,
+      raporStructureCustom: customRaporStructure,
+      autoResetPointsPerSemester: autoResetPoints
     };
 
     onSaveConfig(updatedConfig);
     setIsLocked(true);
     onShowToast('Pengaturan Disimpan', 'Seluruh parameter baru berhasil disimpan dan sistem otomatis dikunci.', 'success');
+  };
+
+  // Helpers for managing Custom Rapor Structure & Indicators
+  const handleAddRaporIndicator = () => {
+    if (!newRaporIndicatorText.trim()) {
+      onShowToast('Gagal Menambah', 'Teks indikator tidak boleh kosong.', 'warning');
+      return;
+    }
+    const updated = JSON.parse(JSON.stringify(customRaporStructure));
+    const cat = updated[selectedRaporCatIndex];
+    if (cat) {
+      cat.indicators.push(newRaporIndicatorText.trim());
+      setCustomRaporStructure(updated);
+      setNewRaporIndicatorText('');
+      onShowToast('Indikator Ditambahkan', `Indikator baru ditambahkan ke kategori ${cat.name}.`, 'success');
+    }
+  };
+
+  const handleDeleteRaporIndicator = (catIdx: number, indIdx: number) => {
+    const updated = JSON.parse(JSON.stringify(customRaporStructure));
+    const cat = updated[catIdx];
+    if (cat) {
+      cat.indicators.splice(indIdx, 1);
+      setCustomRaporStructure(updated);
+      onShowToast('Indikator Dihapus', 'Indikator berhasil dihapus dari kategori rapor.', 'success');
+    }
+  };
+
+  const handleResetRaporStructure = () => {
+    setCustomRaporStructure(RAPOR_STRUCTURE);
+    onShowToast('Direset Ke Default', 'Indikator Rapor Keasramaan dikembalikan ke struktur standar.', 'info');
+  };
+
+  // Helpers for managing Discipline Levels
+  const handleLevelChange = (index: number, field: keyof DisciplineLevelConfig, value: any) => {
+    const updated = [...disciplineLevels];
+    updated[index] = { ...updated[index], [field]: value };
+    setDisciplineLevels(updated);
+  };
+
+  // Helpers for managing Discipline Thresholds
+  const handleThresholdChange = (index: number, field: keyof DisciplineStatusThreshold, value: any) => {
+    const updated = [...disciplineThresholds];
+    updated[index] = { ...updated[index], [field]: value };
+    setDisciplineThresholds(updated);
+  };
+
+  // Helpers for Violation Templates Custom Items
+  const handleAddCustomTemplate = () => {
+    if (!newTemplateText.trim()) {
+      onShowToast('Gagal Menambah', 'Nama jenis pelanggaran wajib diisi.', 'warning');
+      return;
+    }
+    const currentList = customTemplates[selectedTemplateLevel] || [];
+    const newItem: ViolationTemplateItem = {
+      text: newTemplateText.trim(),
+      explanation: newTemplateExplanation.trim(),
+      sanction: newTemplateSanction.trim()
+    };
+    setCustomTemplates({
+      ...customTemplates,
+      [selectedTemplateLevel]: [...currentList, newItem]
+    });
+    setNewTemplateText('');
+    setNewTemplateExplanation('');
+    setNewTemplateSanction('');
+    onShowToast('Indikator Ditambahkan', `Jenis pelanggaran baru ditambahkan ke Tingkat ${selectedTemplateLevel}.`, 'success');
+  };
+
+  const handleDeleteCustomTemplate = (lvl: number, idx: number) => {
+    const currentList = [...(customTemplates[lvl] || [])];
+    currentList.splice(idx, 1);
+    setCustomTemplates({
+      ...customTemplates,
+      [lvl]: currentList
+    });
+    onShowToast('Indikator Dihapus', 'Item jenis pelanggaran berhasil dihapus.', 'success');
   };
 
   const handleTestConnection = async () => {
@@ -462,6 +580,310 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 className={`${inputClass(isLocked)} font-mono`}
                 placeholder="Asrama Terpadu"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* --- CUSTOMIZABLE DISCIPLINE & VIOLATION INDICATORS SECTION --- */}
+        <div className="pt-6 border-t border-slate-200/80 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 text-red-700 flex items-center justify-center font-bold">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900">
+                Pengaturan Indikator Kedisiplinan & Pelanggaran
+              </h3>
+              <p className="text-xs text-slate-500">
+                Kustomisasi bobot poin, ambang batas status siswa, dan template jenis pelanggaran sesuai aturan kedisiplinan asrama Anda.
+              </p>
+            </div>
+          </div>
+
+          {/* 1. Points Deduction per Level */}
+          <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-3">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600" /> Bobot Pengurangan Poin per Tingkat Pelanggaran
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {disciplineLevels.map((lvl, idx) => (
+                <div key={lvl.level} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2 text-xs">
+                  <div className="flex items-center justify-between font-bold text-slate-800">
+                    <span>{lvl.name}</span>
+                    <span className="text-red-600 font-mono">-{lvl.pointsDeduction} Poin</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Potong Poin:</label>
+                      <input
+                        type="number"
+                        disabled={isLocked}
+                        value={lvl.pointsDeduction}
+                        onChange={(e) => handleLevelChange(idx, 'pointsDeduction', Number(e.target.value) || 0)}
+                        className={inputClass(isLocked)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Sanksi Default:</label>
+                      <input
+                        type="text"
+                        disabled={isLocked}
+                        value={lvl.defaultSanction}
+                        onChange={(e) => handleLevelChange(idx, 'defaultSanction', e.target.value)}
+                        className={inputClass(isLocked)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. Status Thresholds */}
+          <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-3">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Award className="w-4 h-4 text-emerald-600" /> Kategori Ambang Batas Poin Kedisiplinan
+            </h4>
+            <div className="space-y-2">
+              {disciplineThresholds.map((t, idx) => (
+                <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-2 items-center text-xs">
+                  <div>
+                    <label className="block text-[10px] text-slate-500 font-semibold">Min Poin:</label>
+                    <input
+                      type="number"
+                      disabled={isLocked}
+                      value={t.minScore}
+                      onChange={(e) => handleThresholdChange(idx, 'minScore', Number(e.target.value) || 0)}
+                      className={inputClass(isLocked)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 font-semibold">Label Status:</label>
+                    <input
+                      type="text"
+                      disabled={isLocked}
+                      value={t.label}
+                      onChange={(e) => handleThresholdChange(idx, 'label', e.target.value)}
+                      className={inputClass(isLocked)}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] text-slate-500 font-semibold">Deskripsi / Penjelasan Status:</label>
+                    <input
+                      type="text"
+                      disabled={isLocked}
+                      value={t.description}
+                      onChange={(e) => handleThresholdChange(idx, 'description', e.target.value)}
+                      className={inputClass(isLocked)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 3. Violation Indicator Items Manager */}
+          <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Sliders className="w-4 h-4 text-purple-600" /> Custom Indikator Jenis Pelanggaran
+              </h4>
+              <div className="flex items-center gap-1 bg-slate-200 p-1 rounded-lg">
+                {[1, 2, 3, 4, 5].map((lvlNum) => (
+                  <button
+                    key={lvlNum}
+                    type="button"
+                    onClick={() => setSelectedTemplateLevel(lvlNum)}
+                    className={`text-[11px] font-extrabold px-2.5 py-1 rounded-md transition ${
+                      selectedTemplateLevel === lvlNum
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Tingkat {lvlNum}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Form to Add New Violation Item for Selected Level */}
+            {!isLocked && (
+              <div className="bg-white p-3.5 rounded-xl border border-purple-200/80 space-y-3">
+                <span className="text-xs font-bold text-purple-900 block">
+                  + Tambah Jenis Pelanggaran Baru (Tingkat {selectedTemplateLevel})
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Nama Pelanggaran (e.g. Terlambat Sholat)"
+                    value={newTemplateText}
+                    onChange={(e) => setNewTemplateText(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Penjelasan Rinci Kasus"
+                    value={newTemplateExplanation}
+                    onChange={(e) => setNewTemplateExplanation(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Sanksi Default"
+                    value={newTemplateSanction}
+                    onChange={(e) => setNewTemplateSanction(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleAddCustomTemplate}
+                    className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Tambah Ke List Tingkat {selectedTemplateLevel}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* List of Custom Violation Template Items for Selected Level */}
+            <div className="space-y-2">
+              {(customTemplates[selectedTemplateLevel] || []).map((item, idx) => (
+                <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                  <div className="space-y-0.5 min-w-0">
+                    <span className="font-bold text-slate-800 block truncate">{item.text}</span>
+                    <p className="text-[11px] text-slate-500 truncate">{item.explanation}</p>
+                    <p className="text-[10px] text-purple-700 font-semibold italic">Sanksi: {item.sanction}</p>
+                  </div>
+                  {!isLocked && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCustomTemplate(selectedTemplateLevel, idx)}
+                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
+                      title="Hapus Indikator Ini"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 4. Semester Point Reset Setting */}
+          <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sliders className="w-4 h-4 text-emerald-600" /> Reset Poin Kedisiplinan Otomatis Setiap Semester
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Jika aktif, poin kedisiplinan setiap siswa dihitung bersih 100 poin di setiap pergantian semester baru ({semester} {academicYear}). Laporan pelanggaran semester sebelumnya tetap tersimpan rapi sebagai arsip historis.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input
+                  type="checkbox"
+                  disabled={isLocked}
+                  checked={autoResetPoints}
+                  onChange={(e) => setAutoResetPoints(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+          </div>
+
+          {/* 5. Custom Report Card Indicators Manager */}
+          <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-blue-600" /> Kustomisasi Indikator Rapor Evaluasi Keasramaan
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Atur atau ubah daftar kategori & indikator perkembangan karakter anak asuh yang tampil pada lembar Rapor Keasramaan dan cetakan PDF.
+                </p>
+              </div>
+              {!isLocked && (
+                <button
+                  type="button"
+                  onClick={handleResetRaporStructure}
+                  className="text-xs text-slate-600 hover:text-slate-900 bg-white border border-slate-200 font-semibold px-3 py-1.5 rounded-lg transition shadow-sm self-start"
+                >
+                  Reset Ke Default Standard
+                </button>
+              )}
+            </div>
+
+            {/* Category Selector */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-slate-700">
+                Pilih Kategori Nilai Keasramaan ({customRaporStructure.length} Kategori):
+              </label>
+              <select
+                value={selectedRaporCatIndex}
+                onChange={(e) => setSelectedRaporCatIndex(Number(e.target.value))}
+                className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                {customRaporStructure.map((cat, idx) => (
+                  <option key={cat.key || idx} value={idx}>
+                    {idx + 1}. {cat.name} ({cat.indicators.length} Indikator)
+                  </option>
+                ))}
+              </select>
+
+              {/* Add New Indicator Form for Selected Category */}
+              {!isLocked && (
+                <div className="bg-white p-3 rounded-xl border border-blue-200/80 space-y-2">
+                  <span className="text-xs font-bold text-blue-900 block">
+                    + Tambah Indikator Baru untuk Kategori: "{customRaporStructure[selectedRaporCatIndex]?.name}"
+                  </span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Contoh: Kemampuan beradaptasi dengan lingkungan baru..."
+                      value={newRaporIndicatorText}
+                      onChange={(e) => setNewRaporIndicatorText(e.target.value)}
+                      className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddRaporIndicator}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-1 shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Tambah Indikator
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* List of Indicators for Selected Category */}
+              <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
+                <span className="text-xs font-bold text-slate-700 block border-b border-slate-100 pb-1.5">
+                  Daftar Indikator "{customRaporStructure[selectedRaporCatIndex]?.name}":
+                </span>
+                <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                  {(customRaporStructure[selectedRaporCatIndex]?.indicators || []).map((ind, iIdx) => (
+                    <div key={iIdx} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-700">
+                      <span className="font-medium text-[11px] leading-snug">
+                        <strong className="text-slate-400 font-mono mr-1.5">{iIdx + 1}.</strong> {ind}
+                      </span>
+                      {!isLocked && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRaporIndicator(selectedRaporCatIndex, iIdx)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded transition shrink-0"
+                          title="Hapus Indikator Ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

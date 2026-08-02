@@ -1,21 +1,47 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Edit2, Trash2, X, UserPlus } from 'lucide-react';
-import { Student, ClassLevel, AppConfig } from '../types';
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  X,
+  UserPlus,
+  ShieldCheck,
+  AlertTriangle,
+  FileText,
+  Printer,
+  HeartHandshake,
+  CheckCircle2,
+  Award,
+  ExternalLink
+} from 'lucide-react';
+import { Student, ClassLevel, AppConfig, Violation, Counseling } from '../types';
+import { calculateStudentDisciplineScore } from '../services/storage';
+import { formatDateIndonesian } from '../utils/dateFormatter';
+import { generateViolationNoticePDF } from '../services/pdfGenerator';
 
 interface StudentsTabProps {
   students: Student[];
+  violations: Violation[];
+  counseling: Counseling[];
   config: AppConfig;
   onSaveStudent: (student: Student, isEdit: boolean) => void;
   onDeleteStudent: (id: string) => void;
+  onOpenViolationForStudent?: (studentId: string) => void;
+  onOpenCounselingForStudent?: (studentId: string) => void;
   onShowToast: (title: string, message: string, type?: 'success' | 'warning' | 'error') => void;
   onAskConfirm: (title: string, message: string) => Promise<boolean>;
 }
 
 export const StudentsTab: React.FC<StudentsTabProps> = ({
   students,
+  violations,
+  counseling,
   config,
   onSaveStudent,
   onDeleteStudent,
+  onOpenViolationForStudent,
+  onOpenCounselingForStudent,
   onShowToast,
   onAskConfirm
 }) => {
@@ -23,7 +49,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const [classFilter, setClassFilter] = useState('');
   const [dormFilter, setDormFilter] = useState('');
 
-  // Modal State
+  // Selected student for discipline history modal
+  const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
+  const [historyTab, setHistoryTab] = useState<'violations' | 'counseling'>('violations');
+
+  // Modal State for Add/Edit Student
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
@@ -78,7 +108,6 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     }
 
     if (editingStudentId) {
-      // Editing
       const updatedStudent: Student = {
         id: editingStudentId,
         name,
@@ -89,7 +118,6 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       onSaveStudent(updatedStudent, true);
       onShowToast('Berhasil', `Data ${name} berhasil diperbarui.`, 'success');
     } else {
-      // New Student
       if (students.some((s) => String(s.id) === String(nisn))) {
         onShowToast('Siswa Gagal Terdaftar', 'NISN / ID Registrasi sudah digunakan.', 'error');
         return;
@@ -119,6 +147,40 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       onShowToast('Dihapus', `Data murid ${name} telah dihapus.`, 'success');
     }
   };
+
+  // Helper badge for discipline status
+  const getStatusBadgeClass = (badgeColor: string) => {
+    switch (badgeColor) {
+      case 'emerald':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'blue':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'amber':
+        return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'rose':
+        return 'bg-rose-100 text-rose-800 border-rose-200';
+      case 'red':
+        return 'bg-red-200 text-red-900 border-red-300 animate-pulse';
+      default:
+        return 'bg-slate-100 text-slate-800 border-slate-200';
+    }
+  };
+
+  // Selected student's computed violations & counselings
+  const studentViolations = useMemo(() => {
+    if (!selectedStudentForHistory) return [];
+    return violations.filter((v) => String(v.studentId).trim() === String(selectedStudentForHistory.id).trim());
+  }, [selectedStudentForHistory, violations]);
+
+  const studentCounselings = useMemo(() => {
+    if (!selectedStudentForHistory) return [];
+    return counseling.filter((c) => String(c.studentId).trim() === String(selectedStudentForHistory.id).trim());
+  }, [selectedStudentForHistory, counseling]);
+
+  const studentDisciplineInfo = useMemo(() => {
+    if (!selectedStudentForHistory) return null;
+    return calculateStudentDisciplineScore(selectedStudentForHistory.id, violations, config);
+  }, [selectedStudentForHistory, violations, config]);
 
   return (
     <div className="space-y-6">
@@ -184,74 +246,355 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             Tidak ada data siswa yang cocok dengan kriteria pencarian.
           </div>
         ) : (
-          filteredStudents.map((s) => (
-            <div
-              key={s.id}
-              className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-4 relative overflow-hidden flex flex-col justify-between hover:border-slate-300 transition"
-            >
-              <div className="absolute right-2 top-2 flex gap-1 z-20">
-                <button
-                  onClick={() => handleOpenEditModal(s)}
-                  className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition"
-                  title="Edit Data"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(s.id, s.name)}
-                  className="w-7 h-7 flex items-center justify-center rounded-md bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 transition"
-                  title="Hapus Data"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-slate-100 to-transparent -z-0 rounded-bl-full pointer-events-none" />
-
-              <div className="flex items-start gap-3.5 relative z-10 min-w-0 pt-2">
-                <div className="w-12 h-12 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold text-base border border-red-100 flex-shrink-0">
-                  {s.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 space-y-0.5 pr-10">
-                  <h3 className="font-bold text-slate-800 text-sm leading-snug truncate">
-                    {s.name}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium">NISN: {s.id}</p>
-                  <span className="inline-block text-[10px] font-bold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full mt-1.5">
-                    {s.class} • {s.dorm}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 text-center border-t border-b border-slate-100 py-3 gap-2">
-                <div className="min-w-0">
-                  <span className="block text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                    Total Kasus
-                  </span>
-                  <span
-                    className={`text-xs sm:text-sm font-extrabold mt-0.5 block truncate ${
-                      (s.violationCount || 0) > 3
-                        ? 'text-red-600'
-                        : (s.violationCount || 0) > 0
-                        ? 'text-amber-500'
-                        : 'text-emerald-500'
-                    }`}
+          filteredStudents.map((s) => {
+            const disc = calculateStudentDisciplineScore(s.id, violations, config);
+            return (
+              <div
+                key={s.id}
+                className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-4 relative overflow-hidden flex flex-col justify-between hover:border-slate-300 transition"
+              >
+                <div className="absolute right-2 top-2 flex gap-1 z-20">
+                  <button
+                    onClick={() => handleOpenEditModal(s)}
+                    className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition"
+                    title="Edit Data"
                   >
-                    {s.violationCount || 0} Kasus
-                  </span>
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(s.id, s.name)}
+                    className="w-7 h-7 flex items-center justify-center rounded-md bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 transition"
+                    title="Hapus Data"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <div className="min-w-0 border-l border-slate-100">
-                  <span className="block text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                    Wali Asuh
-                  </span>
-                  <span className="text-xs font-bold text-slate-700 mt-0.5 block truncate" title={s.caretaker}>
-                    {s.caretaker}
-                  </span>
+                <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-slate-100 to-transparent -z-0 rounded-bl-full pointer-events-none" />
+
+                <div className="flex items-start gap-3.5 relative z-10 min-w-0 pt-2">
+                  <div className="w-12 h-12 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold text-base border border-red-100 flex-shrink-0">
+                    {s.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 space-y-0.5 pr-10">
+                    <h3 className="font-bold text-slate-800 text-sm leading-snug truncate">
+                      {s.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">NISN: {s.id}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                      <span className="inline-block text-[10px] font-bold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full">
+                        {s.class} • {s.dorm}
+                      </span>
+                      <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${getStatusBadgeClass(disc.status.badgeColor)}`}>
+                        {disc.score} Poin • {disc.status.label}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-2 text-center border-t border-b border-slate-100 py-2.5 gap-2">
+                  <div className="min-w-0">
+                    <span className="block text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                      Pelanggaran
+                    </span>
+                    <span
+                      className={`text-xs sm:text-sm font-extrabold mt-0.5 block truncate ${
+                        disc.violationCount > 3
+                          ? 'text-red-600'
+                          : disc.violationCount > 0
+                          ? 'text-amber-500'
+                          : 'text-emerald-500'
+                      }`}
+                    >
+                      {disc.violationCount} Kasus (-{disc.totalDeducted}p)
+                    </span>
+                  </div>
+                  <div className="min-w-0 border-l border-slate-100">
+                    <span className="block text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                      Wali Asuh
+                    </span>
+                    <span className="text-xs font-bold text-slate-700 mt-0.5 block truncate" title={s.caretaker}>
+                      {s.caretaker}
+                    </span>
+                  </div>
+                </div>
+
+                {/* History Button */}
+                <button
+                  onClick={() => {
+                    setSelectedStudentForHistory(s);
+                    setHistoryTab('violations');
+                  }}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Riwayat Kedisiplinan & Pelanggaran
+                </button>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
+
+      {/* Student Discipline & Violation History Modal */}
+      {selectedStudentForHistory && studentDisciplineInfo && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-5">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white p-5 flex items-start justify-between border-b border-slate-800">
+              <div className="flex items-start gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-emerald-400 flex items-center justify-center font-black text-lg flex-shrink-0 shadow-inner">
+                  {selectedStudentForHistory.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-extrabold text-base md:text-lg text-white">
+                      {selectedStudentForHistory.name}
+                    </h3>
+                    <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-full border ${getStatusBadgeClass(studentDisciplineInfo.status.badgeColor)}`}>
+                      {studentDisciplineInfo.score} Poin • {studentDisciplineInfo.status.label}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    NISN: <span className="font-mono text-slate-300">{selectedStudentForHistory.id}</span> • Kelas {selectedStudentForHistory.class} • Gedung {selectedStudentForHistory.dorm} • Wali Asuh: {selectedStudentForHistory.caretaker}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedStudentForHistory(null)}
+                className="text-slate-400 hover:text-white transition p-1 bg-slate-800 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="overflow-y-auto flex-1 p-5 space-y-5">
+              {/* Discipline Points Gauge / Progress Bar */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span className="flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-emerald-600" /> Indikator Kedisiplinan Siswa
+                  </span>
+                  <span className="font-mono">{studentDisciplineInfo.score} / 100 Poin</span>
+                </div>
+                <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden flex">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      studentDisciplineInfo.score >= 90
+                        ? 'bg-emerald-500'
+                        : studentDisciplineInfo.score >= 75
+                        ? 'bg-blue-500'
+                        : studentDisciplineInfo.score >= 50
+                        ? 'bg-amber-500'
+                        : studentDisciplineInfo.score >= 25
+                        ? 'bg-rose-500'
+                        : 'bg-red-600'
+                    }`}
+                    style={{ width: `${studentDisciplineInfo.score}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 italic">
+                  {studentDisciplineInfo.status.description} (Total Poin Terpotong: -{studentDisciplineInfo.totalDeducted} Poin dari {studentDisciplineInfo.violationCount} laporan pelanggaran).
+                </p>
+              </div>
+
+              {/* Action Buttons & Tabs Header */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+                  <button
+                    onClick={() => setHistoryTab('violations')}
+                    className={`flex-1 sm:flex-none text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                      historyTab === 'violations'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> Catatan Pelanggaran ({studentViolations.length})
+                  </button>
+                  <button
+                    onClick={() => setHistoryTab('counseling')}
+                    className={`flex-1 sm:flex-none text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                      historyTab === 'counseling'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <HeartHandshake className="w-3.5 h-3.5 text-purple-600" /> Bimbingan BK ({studentCounselings.length})
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  {onOpenViolationForStudent && (
+                    <button
+                      onClick={() => {
+                        const sid = selectedStudentForHistory.id;
+                        setSelectedStudentForHistory(null);
+                        onOpenViolationForStudent(sid);
+                      }}
+                      className="bg-red-600 text-white hover:bg-red-700 text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Catat Pelanggaran
+                    </button>
+                  )}
+                  {onOpenCounselingForStudent && (
+                    <button
+                      onClick={() => {
+                        const sid = selectedStudentForHistory.id;
+                        setSelectedStudentForHistory(null);
+                        onOpenCounselingForStudent(sid);
+                      }}
+                      className="bg-purple-600 text-white hover:bg-purple-700 text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Bimbingan BK
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tab 1: Violations History */}
+              {historyTab === 'violations' && (
+                <div className="space-y-3">
+                  {studentViolations.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                      <h4 className="text-sm font-bold text-slate-800">Siswa Bebas Pelanggaran</h4>
+                      <p className="text-xs text-slate-500">
+                        Tidak ditemukan riwayat atau catatan pelanggaran kedisiplinan yang tercatat untuk {selectedStudentForHistory.name}.
+                      </p>
+                    </div>
+                  ) : (
+                    studentViolations.map((v) => (
+                      <div
+                        key={v.id}
+                        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2.5 hover:border-slate-300 transition"
+                      >
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                              v.level === 1
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                : v.level === 2
+                                ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                : v.level === 3
+                                ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                : v.level === 4
+                                ? 'bg-rose-100 text-rose-800 border-rose-200'
+                                : 'bg-red-200 text-red-900 border-red-300'
+                            }`}>
+                              Tingkat {v.level}
+                            </span>
+                            <span className="text-xs font-bold text-slate-800">
+                              {v.violation}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-500 font-medium">
+                              {formatDateIndonesian(v.date)}
+                            </span>
+                            <button
+                              onClick={() => {
+                                generateViolationNoticePDF(v, selectedStudentForHistory, config);
+                                onShowToast('Mencetak Surat', 'Surat pemberitahuan dibuat...', 'success');
+                              }}
+                              className="text-[10px] font-bold text-white bg-slate-900 hover:bg-slate-800 px-2.5 py-1 rounded-md transition flex items-center gap-1"
+                              title="Cetak Surat Pemberitahuan Pelanggaran"
+                            >
+                              <Printer className="w-3 h-3" /> Surat
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="text-xs space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                          <p className="text-slate-700">
+                            <strong className="text-slate-900">Sanksi:</strong>{' '}
+                            <span className="italic text-slate-800">{v.sanction}</span>
+                          </p>
+                          {v.note && (
+                            <p className="text-slate-600">
+                              <strong className="text-slate-800">Catatan Tambahan:</strong> {v.note}
+                            </p>
+                          )}
+                          <p className="text-[11px] text-slate-400">
+                            Dilaporkan oleh: {v.reporter || 'Wali Asrama'}
+                          </p>
+                        </div>
+
+                        {v.photo && (
+                          <div className="pt-1">
+                            <span className="text-[10px] font-semibold text-slate-500 block mb-1">
+                              Bukti Foto:
+                            </span>
+                            <img
+                              src={v.photo}
+                              alt="Bukti Pelanggaran"
+                              className="h-20 w-auto object-cover rounded-lg border border-slate-200 shadow-sm"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Tab 2: Counseling History */}
+              {historyTab === 'counseling' && (
+                <div className="space-y-3">
+                  {studentCounselings.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                      <HeartHandshake className="w-10 h-10 text-purple-400 mx-auto" />
+                      <h4 className="text-sm font-bold text-slate-800">Belum Ada Sesi Bimbingan BK</h4>
+                      <p className="text-xs text-slate-500">
+                        Tidak ada catatan konseling atau bimbingan khusus BK untuk siswa ini.
+                      </p>
+                    </div>
+                  ) : (
+                    studentCounselings.map((c) => (
+                      <div
+                        key={c.id}
+                        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2 hover:border-slate-300 transition"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-purple-900 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-200">
+                            {c.caseDescription || 'Pendampingan Rutin'}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            {formatDateIndonesian(c.date)} • Konselor: {c.counselor}
+                          </span>
+                        </div>
+                        <div className="text-xs space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                          {c.notes && (
+                            <p className="text-slate-700">
+                              <strong>Hasil Diskusi:</strong> {c.notes}
+                            </p>
+                          )}
+                          {c.followUp && (
+                            <p className="text-slate-700">
+                              <strong>Rencana Tindak Lanjut:</strong> {c.followUp}
+                            </p>
+                          )}
+                          <p className="text-[10px] font-bold text-slate-500 mt-1">
+                            Status: <span className="text-purple-700">{c.status}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={() => setSelectedStudentForHistory(null)}
+                className="bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs px-5 py-2.5 rounded-xl shadow transition"
+              >
+                Tutup Riwayat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Student Add/Edit Modal */}
       {isModalOpen && (

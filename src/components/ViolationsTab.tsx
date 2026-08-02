@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Search, Edit2, Trash2, X, AlertTriangle, Image as ImageIcon, ImageOff, Printer, FileText } from 'lucide-react';
 import { Student, Violation, AppConfig } from '../types';
 import { formatDateIndonesian } from '../utils/dateFormatter';
-import { VIOLATION_TEMPLATES, compressImageFile } from '../services/storage';
+import { getViolationTemplates, compressImageFile } from '../services/storage';
 import { generateViolationNoticePDF } from '../services/pdfGenerator';
 
 interface ViolationsTabProps {
@@ -50,11 +50,14 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
   // Evidence Photo Preview Modal
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
+  // Active templates (custom configured or defaults)
+  const activeViolationTemplates = useMemo(() => getViolationTemplates(config), [config]);
+
   // Template options for selected level
-  const templates = VIOLATION_TEMPLATES[level] || [];
+  const templates = activeViolationTemplates[level] || [];
 
   const updateTypeDetails = (selectedType: string, currentLevel: number) => {
-    const list = VIOLATION_TEMPLATES[currentLevel] || [];
+    const list = activeViolationTemplates[currentLevel] || [];
     const match = list.find((t) => t.text === selectedType);
     if (match) {
       setExplanation(match.explanation);
@@ -67,7 +70,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
 
   const handleLevelChange = (newLevel: number) => {
     setLevel(newLevel);
-    const newTemplates = VIOLATION_TEMPLATES[newLevel] || [];
+    const newTemplates = activeViolationTemplates[newLevel] || [];
     const firstType = newTemplates[0]?.text || '';
     setViolationType(firstType);
     updateTypeDetails(firstType, newLevel);
@@ -78,7 +81,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
     setStudentId(students[0]?.id || '');
     setLevel(1);
     setDate(new Date().toISOString().split('T')[0]);
-    const firstType = VIOLATION_TEMPLATES[1][0]?.text || '';
+    const firstType = activeViolationTemplates[1]?.[0]?.text || '';
     setViolationType(firstType);
     updateTypeDetails(firstType, 1);
     setNote('');
@@ -94,7 +97,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
     setDate(v.date);
     setViolationType(v.violation);
     setSanction(v.sanction);
-    const templatesList = VIOLATION_TEMPLATES[v.level] || [];
+    const templatesList = activeViolationTemplates[v.level] || [];
     const match = templatesList.find((t) => t.text === v.violation);
     setExplanation(match?.explanation || '');
     setNote(v.note || '');
@@ -133,6 +136,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
     }
 
     if (editingViolationId) {
+      const existing = violations.find((v) => v.id === editingViolationId);
       const updatedViolation: Violation = {
         id: editingViolationId,
         studentId,
@@ -143,7 +147,9 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
         sanction,
         note,
         reporter,
-        photo
+        photo,
+        semester: existing?.semester || config.semester || 'Genap',
+        academicYear: existing?.academicYear || config.academicYear || '2025/2026'
       };
       onSaveViolation(updatedViolation, true);
       onShowToast('Diperbarui', 'Data pelanggaran berhasil diubah.', 'success');
@@ -158,7 +164,9 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
         sanction,
         note,
         reporter,
-        photo
+        photo,
+        semester: config.semester || 'Genap',
+        academicYear: config.academicYear || '2025/2026'
       };
       onSaveViolation(newViolation, false);
       onShowToast('Kasus Tersimpan', 'Pencatatan pelanggaran berhasil ditambahkan.', 'success');
@@ -215,11 +223,16 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-lg md:text-xl font-bold text-slate-900">
-            Pusat Laporan Pelanggaran
-          </h2>
-          <p className="text-xs text-slate-500">
-            Pencatatan pelanggaran siswa sesuai Bab Tata Tertib Buku Pintar.
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg md:text-xl font-bold text-slate-900">
+              Pusat Laporan Pelanggaran
+            </h2>
+            <span className="text-[10px] font-extrabold bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full border border-red-200">
+              Reset Poin per Semester: Aktif
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Pencatatan pelanggaran siswa sesuai Bab Tata Tertib Buku Pintar (Semester Aktif: {config.semester || 'Genap'} {config.academicYear || '2025/2026'}).
           </p>
         </div>
         <button

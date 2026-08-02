@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord } from '../types';
 import { formatDateIndonesian, formatDateShort } from '../utils/dateFormatter';
+import { calculateStudentDisciplineScore } from './storage';
 
 // Helper to generate canvas base64 logo if URL fails or is empty
 function generateProgrammaticLogo(type: 'left' | 'right'): string {
@@ -516,6 +517,8 @@ export async function printReportCardPDF(
 
   const customCaretakerName = repData.customCaretaker || student.caretaker || "";
   const customCaretakerNip = repData.customCaretakerNip || "";
+  const customWaliAsramaName = repData.customWaliAsrama || config.waliAsrama || "";
+  const customWaliAsramaNip = repData.customWaliAsramaNip || config.waliAsramaNip || "";
   const displaySemester = repData.semester || config.semester || "Genap";
   const displayAcademicYear = repData.academicYear || config.academicYear || "2025/2026";
 
@@ -593,8 +596,12 @@ export async function printReportCardPDF(
 
   const startTableY = drawReportHeaderPage1();
 
+  const activeRaporStructure = config.raporStructureCustom && config.raporStructureCustom.length > 0
+    ? config.raporStructureCustom
+    : RAPOR_STRUCTURE;
+
   const tableRows: any[] = [];
-  RAPOR_STRUCTURE.forEach((cat) => {
+  activeRaporStructure.forEach((cat) => {
     tableRows.push([
       {
         content: cat.name,
@@ -657,13 +664,33 @@ export async function printReportCardPDF(
   doc.setLineWidth(0.2);
   doc.line(15, finalY + 2, 195, finalY + 2);
 
-  const studentViolations = violations.filter((v) => String(v.studentId) === String(student.id));
+  // Calculate Discipline Score & Filtered Violations for current semester
+  const discInfo = calculateStudentDisciplineScore(student.id, violations, config, displaySemester as any, displayAcademicYear);
+  const studentViolations = discInfo.filteredViolations;
+
+  // Render Discipline Score Summary Box
+  doc.setFillColor(248, 250, 252);
+  doc.rect(15, finalY + 5, 180, 12, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(15, finalY + 5, 180, 12, 'S');
+
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`SKOR POIN KEDISIPLINAN (SEM. ${displaySemester.toUpperCase()} ${displayAcademicYear}): ${discInfo.score} / 100 POIN`, 18, finalY + 12);
+
+  doc.setFont("Helvetica", "bold");
+  doc.setTextColor(185, 28, 28);
+  doc.text(`STATUS: ${discInfo.status.label.toUpperCase()} (PENGURANGAN: -${discInfo.totalDeducted} POIN)`, 192, finalY + 12, { align: 'right' });
+
+  finalY += 20;
+
   if (studentViolations.length === 0) {
     doc.setFont("Helvetica", "italic");
     doc.setFontSize(8.5);
     doc.setTextColor(16, 185, 129);
-    doc.text("Catatan Bersih: Anak asuh terpuji dan patuh pada seluruh aturan serta tata tertib lingkungan asrama.", 15, finalY + 8);
-    finalY += 15;
+    doc.text("Catatan Bersih: Anak asuh terpuji, mempertahankan 100 Poin utuh tanpa pelanggaran pada semester ini.", 15, finalY);
+    finalY += 12;
   } else {
     const violationBody = studentViolations.map((v, i) => [
       (i + 1).toString(),
@@ -676,13 +703,13 @@ export async function printReportCardPDF(
     autoTable(doc, {
       head: [["No", "Tanggal", "Tingkat", "Bentuk Pelanggaran", "Keterangan Kronologi", "Rekomendasi Sanksi"]],
       body: violationBody,
-      startY: finalY + 5,
+      startY: finalY,
       theme: 'striped',
       headStyles: { fillColor: [185, 28, 28], fontSize: 8 },
       styles: { fontSize: 7.5, cellPadding: 2 },
       margin: { left: 15, right: 15 }
     });
-    finalY = (doc as any).lastAutoTable.finalY + 12;
+    finalY = (doc as any).lastAutoTable.finalY + 10;
   }
 
   doc.setFont("Helvetica", "bold");
@@ -735,12 +762,15 @@ export async function printReportCardPDF(
 
   doc.setFont("Helvetica", "bold");
   doc.text(`( ${customCaretakerName} )`, 15, sigY + 24);
-  doc.text(`( ${config.waliAsrama} )`, 140, sigY + 24);
+  doc.text(`( ${customWaliAsramaName} )`, 140, sigY + 24);
 
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(7.5);
   if (customCaretakerNip) doc.text(`NIP. ${customCaretakerNip}`, 15, sigY + 28);
-  if (config.waliAsramaNip) doc.text(`${config.waliAsramaNip}`, 140, sigY + 28);
+  if (customWaliAsramaNip) {
+    const nipFormatted = customWaliAsramaNip.startsWith('NIP') ? customWaliAsramaNip : `NIP. ${customWaliAsramaNip}`;
+    doc.text(nipFormatted, 140, sigY + 28);
+  }
 
   const sigY2 = sigY + 45;
   doc.setFont("Helvetica", "normal");

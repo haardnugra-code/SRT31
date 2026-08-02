@@ -30,6 +30,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
+  const [studentFilter, setStudentFilter] = useState('');
 
   // Modal State
   const [isModalOpenInternal, setIsModalOpenInternal] = useState(false);
@@ -196,11 +197,19 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
   const filteredViolations = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return violations.filter((v) => {
-      const matchName = v.studentName.toLowerCase().includes(q) || v.violation.toLowerCase().includes(q);
+      const matchName =
+        v.studentName.toLowerCase().includes(q) ||
+        v.violation.toLowerCase().includes(q) ||
+        (v.sanction && v.sanction.toLowerCase().includes(q)) ||
+        (v.note && v.note.toLowerCase().includes(q));
       const matchLevel = levelFilter === '' || String(v.level) === levelFilter;
-      return matchName && matchLevel;
+      const matchStudent =
+        studentFilter === '' ||
+        String(v.studentId).trim().toLowerCase() === studentFilter.trim().toLowerCase() ||
+        String(v.studentName).trim().toLowerCase() === studentFilter.trim().toLowerCase();
+      return matchName && matchLevel && matchStudent;
     });
-  }, [violations, searchQuery, levelFilter]);
+  }, [violations, searchQuery, levelFilter, studentFilter]);
 
   const getBadgeClass = (l: number) => {
     switch (l) {
@@ -255,6 +264,18 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
           />
         </div>
+        <select
+          value={studentFilter}
+          onChange={(e) => setStudentFilter(e.target.value)}
+          className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 max-w-[200px]"
+        >
+          <option value="">Semua Siswa</option>
+          {students.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name} ({s.class})
+            </option>
+          ))}
+        </select>
         <select
           value={levelFilter}
           onChange={(e) => setLevelFilter(e.target.value)}

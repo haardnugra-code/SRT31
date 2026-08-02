@@ -169,12 +169,24 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   // Selected student's computed violations & counselings
   const studentViolations = useMemo(() => {
     if (!selectedStudentForHistory) return [];
-    return violations.filter((v) => String(v.studentId).trim() === String(selectedStudentForHistory.id).trim());
+    const sId = String(selectedStudentForHistory.id).trim().toLowerCase();
+    const sName = selectedStudentForHistory.name ? String(selectedStudentForHistory.name).trim().toLowerCase() : '';
+    return violations.filter((v) => {
+      const vId = v.studentId ? String(v.studentId).trim().toLowerCase() : '';
+      const vName = v.studentName ? String(v.studentName).trim().toLowerCase() : '';
+      return (vId && vId === sId) || (sName && vName && vName === sName);
+    });
   }, [selectedStudentForHistory, violations]);
 
   const studentCounselings = useMemo(() => {
     if (!selectedStudentForHistory) return [];
-    return counseling.filter((c) => String(c.studentId).trim() === String(selectedStudentForHistory.id).trim());
+    const sId = String(selectedStudentForHistory.id).trim().toLowerCase();
+    const sName = selectedStudentForHistory.name ? String(selectedStudentForHistory.name).trim().toLowerCase() : '';
+    return counseling.filter((c) => {
+      const cId = c.studentId ? String(c.studentId).trim().toLowerCase() : '';
+      const cName = c.studentName ? String(c.studentName).trim().toLowerCase() : '';
+      return (cId && cId === sId) || (sName && cName && cName === sName);
+    });
   }, [selectedStudentForHistory, counseling]);
 
   const studentDisciplineInfo = useMemo(() => {

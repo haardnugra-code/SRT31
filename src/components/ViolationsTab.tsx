@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Search, Edit2, Trash2, X, AlertTriangle, Image as ImageIcon, ImageOff, Printer, FileText } from 'lucide-react';
 import { Student, Violation, AppConfig } from '../types';
+import { formatDateIndonesian } from '../utils/dateFormatter';
 import { VIOLATION_TEMPLATES, compressImageFile } from '../services/storage';
 import { generateViolationNoticePDF } from '../services/pdfGenerator';
 
@@ -281,7 +282,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
                       {v.studentName}
                     </h3>
                     <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
-                      • Laporan: {v.date}
+                      • Laporan: {formatDateIndonesian(v.date)}
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 font-semibold flex items-start gap-1">

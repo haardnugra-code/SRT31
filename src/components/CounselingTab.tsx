@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Search, Edit2, Trash2, X, MessageSquare, Compass } from 'lucide-react';
 import { Student, Counseling, AppConfig } from '../types';
+import { formatDateIndonesian } from '../utils/dateFormatter';
 
 interface CounselingTabProps {
   students: Student[];
@@ -188,7 +189,7 @@ export const CounselingTab: React.FC<CounselingTabProps> = ({
                       {c.studentName}
                     </h3>
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      Sesi: {c.date} • Oleh: {c.counselor}
+                      Sesi: {formatDateIndonesian(c.date)} • Oleh: {c.counselor}
                     </p>
                   </div>
                   <div className="absolute right-0 top-0 flex gap-1">

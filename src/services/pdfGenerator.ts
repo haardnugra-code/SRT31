@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord } from '../types';
+import { formatDateIndonesian, formatDateShort } from '../utils/dateFormatter';
 
 // Helper to generate canvas base64 logo if URL fails or is empty
 function generateProgrammaticLogo(type: 'left' | 'right'): string {
@@ -268,11 +269,7 @@ export async function printJournalPDF(journal: DailyJournal, student: Student | 
   doc.setFontSize(8.5);
   doc.setFont("Helvetica", "normal");
   doc.text(
-    `Palembang, ${new Date(journal.date || new Date()).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    })}`,
+    `Palembang, ${formatDateIndonesian(journal.date || new Date())}`,
     140,
     actualSigY
   );
@@ -285,57 +282,224 @@ export async function printJournalPDF(journal: DailyJournal, student: Student | 
   doc.save(`Jurnal_Ceklist_${student ? student.name.replace(/\s+/g, '_') : 'Siswa'}_${journal.date}.pdf`);
 }
 
-// --- 2. TIKET IZIN PULANG PDF ---
-export function printLeavePassPDF(leave: Leave, student: Student | undefined) {
-  const doc = new jsPDF('l', 'mm', [160, 100]);
+// --- 2. SURAT IZIN KEPULANGAN SISWA ASRAMA PDF ---
+export async function printLeavePassPDF(
+  leave: Leave,
+  student: Student | undefined,
+  config?: AppConfig
+) {
+  const doc = new jsPDF('p', 'mm', 'a4');
 
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 0, 160, 20, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("Helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("TIKET IZIN KELUAR ASRAMA - SEKOLAH RAKYAT", 80, 13, { align: "center" });
+  const kopKiriText =
+    config?.kopKiri ||
+    "PEMERINTAH PROVINSI SUMATERA SELATAN\nDINAS PENDIDIKAN\nSEKOLAH RAKYAT TERPADU 31 PALEMBANG";
+  const kopKananText =
+    config?.kopKanan ||
+    "Jalan Seniman Amri Yahya, Jakabaring, Palembang\nTelepon: (0711) 510000 | Email: asrama@sekolahrakyat.sch.id\nLAMAN: www.sekolahrakyat.sch.id";
+
+  const leftLogoBase64 = await loadLogoImage(config?.logoKiriUrl, 'left');
+  const rightLogoBase64 = await loadLogoImage(config?.logoKananUrl, 'right');
+  const watermarkBase64 = await generateWatermarkBase64(
+    leftLogoBase64,
+    config?.watermarkOpacity || 0.08
+  );
+
+  // Background Watermark
+  if (watermarkBase64) {
+    doc.addImage(watermarkBase64, 'PNG', 30, 70, 150, 150);
+  }
+
+  // Draw Kop Surat
+  doc.addImage(leftLogoBase64, 'PNG', 12, 10, 22, 22);
+  doc.addImage(rightLogoBase64, 'PNG', 176, 10, 22, 22);
 
   doc.setTextColor(30, 41, 59);
-  doc.setFontSize(9);
-
-  doc.setFont("Helvetica", "bold"); doc.text("ID Tiket", 10, 30);
-  doc.setFont("Helvetica", "normal"); doc.text(`: ${leave.id.toUpperCase()}`, 40, 30);
-  doc.setFont("Helvetica", "bold"); doc.text("Nama Siswa", 10, 37);
-  doc.setFont("Helvetica", "normal"); doc.text(`: ${leave.studentName}`, 40, 37);
-  doc.setFont("Helvetica", "bold"); doc.text("NISN", 10, 44);
-  doc.setFont("Helvetica", "normal"); doc.text(`: ${leave.studentId}`, 40, 44);
-  doc.setFont("Helvetica", "bold"); doc.text("Kelas/Asrama", 10, 51);
-  doc.setFont("Helvetica", "normal"); doc.text(`: ${student ? `${student.class} - ${student.dorm}` : ""}`, 40, 51);
-  doc.setFont("Helvetica", "bold"); doc.text("Kategori Izin", 10, 58);
-  doc.setFont("Helvetica", "normal"); doc.text(`: ${leave.type} (${leave.reason})`, 40, 58);
-  doc.setFont("Helvetica", "bold"); doc.text("Tgl Pergi", 10, 65);
-  doc.setFont("Helvetica", "normal"); doc.text(`: ${leave.leaveDate}`, 40, 65);
-  doc.setFont("Helvetica", "bold"); doc.text("Tgl Kembali", 10, 72);
-  doc.setFont("Helvetica", "normal"); doc.text(`: ${leave.returnDate}`, 40, 72);
-  doc.setFont("Helvetica", "bold"); doc.text("Wali Asuh", 10, 79);
-  doc.setFont("Helvetica", "normal"); doc.text(`: ${leave.caretaker}`, 40, 79);
-
-  doc.setLineWidth(0.5);
-  doc.setDrawColor(150, 150, 150);
-  doc.setLineDashPattern([2, 2], 0);
-  doc.line(115, 25, 115, 90);
-
   doc.setFont("Helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("VALIDASI KELUAR", 137, 35, { align: "center" });
-  doc.setLineDashPattern([], 0);
-  doc.setDrawColor(30, 41, 59);
-  doc.rect(122, 40, 30, 30);
+  doc.setFontSize(10);
+  const leftLines = kopKiriText.split('\n');
+  let yKop = 13;
+  leftLines.forEach((line) => {
+    doc.text(line, 105, yKop, { align: 'center' });
+    yKop += 4.5;
+  });
+
   doc.setFont("Helvetica", "normal");
-  doc.setTextColor(200, 200, 200);
-  doc.text("CAP ASRAMA", 137, 56, { align: "center" });
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  const rightLines = kopKananText.split('\n');
+  rightLines.forEach((line) => {
+    doc.text(line, 105, yKop, { align: 'center' });
+    yKop += 3.8;
+  });
 
+  // Double Divider Lines
+  const lineY = Math.max(yKop + 2, 35);
+  doc.setLineWidth(0.8);
+  doc.setDrawColor(30, 41, 59);
+  doc.line(12, lineY, 198, lineY);
+
+  doc.setLineWidth(0.2);
+  doc.setDrawColor(100, 116, 139);
+  doc.line(12, lineY + 1.2, 198, lineY + 1.2);
+
+  // Document Title & Letter Number
+  const titleY = lineY + 9;
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(15, 23, 42);
+  doc.text("SURAT IZIN KEPULANGAN SISWA ASRAMA", 105, titleY, { align: "center" });
+
+  doc.setFontSize(9);
+  doc.setFont("Helvetica", "normal");
+  doc.setTextColor(51, 65, 85);
+  const letterNo =
+    leave.letterNumber ||
+    `0${leave.id.slice(-3)}/SR-ASRAMA/IZIN/${new Date().getFullYear()}`;
+  doc.text(`Nomor: ${letterNo}`, 105, titleY + 5.5, { align: "center" });
+
+  // Opening Paragraph
+  let contentY = titleY + 14;
+  doc.setFontSize(9.5);
+  doc.setTextColor(30, 41, 59);
+
+  const introText =
+    "Yang bertanda tangan di bawah ini, Pengelola Keasramaan Sekolah Rakyat, menerangkan dan memberikan izin kepulangan / keluar dari lingkungan asrama kepada peserta didik berikut:";
+  const wrappedIntro = doc.splitTextToSize(introText, 182);
+  doc.text(wrappedIntro, 14, contentY);
+  contentY += wrappedIntro.length * 4.5 + 4;
+
+  // Student & Leave Detail Table
+  const leaveTimeStr = leave.leaveTime ? ` (Pukul ${leave.leaveTime} WIB)` : '';
+  const returnTimeStr = leave.returnTime ? ` (Pukul ${leave.returnTime} WIB)` : '';
+
+  autoTable(doc, {
+    body: [
+      ["1. Nama Peserta Didik", `: ${leave.studentName}`],
+      ["2. NISN / ID Siswa", `: ${leave.studentId}`],
+      ["3. Kelas & Asrama", `: ${student ? `Kelas ${student.class} - Asrama ${student.dorm}` : 'Siswa Terdaftar'}`],
+      ["4. Wali Asuh Pendamping", `: ${leave.caretaker}`],
+      ["5. Kategori Perizinan", `: ${leave.type}`],
+      ["6. Keperluan / Alasan", `: ${leave.reason}`],
+      ["7. Alamat Tujuan Pulang", `: ${leave.destinationAddress || 'Alamat Domisili Orang Tua / Wali'}`],
+      ["8. No. Kontak HP Ortu/Wali", `: ${leave.parentContact || 'Terdaftar di File Induk Siswa'}`],
+      ["9. Penjemput / Pengawal", `: ${leave.pickupPerson || 'Orang Tua / Wali Siswa'}`],
+      ["10. Waktu Keberangkatan", `: ${formatDateIndonesian(leave.leaveDate, true)}${leaveTimeStr}`],
+      ["11. Target Waktu Kembali", `: ${formatDateIndonesian(leave.returnDate, true)}${returnTimeStr}`]
+    ],
+    startY: contentY,
+    theme: 'plain',
+    styles: { fontSize: 8.8, cellPadding: 1.8, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { cellWidth: 52, fontStyle: 'bold' },
+      1: { cellWidth: 'auto', fontStyle: 'normal' }
+    },
+    margin: { left: 16, right: 14 },
+    pageBreak: 'avoid'
+  });
+
+  contentY = (doc as any).lastAutoTable.finalY + 6;
+
+  // Box / Rules Section
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text("KETENTUAN DAN KEWAJIBAN SISWA SELAMA MASA PERIZINAN:", 14, contentY);
+  contentY += 4.5;
+
+  const rules = [
+    "1. Peserta didik wajib menjaga akhlak, norma, dan nama baik Sekolah Rakyat serta Asrama selama berada di luar lingkungan sekolah.",
+    "2. Peserta didik wajib kembali ke asrama tepat waktu sesuai dengan target tanggal dan jam kembali yang telah ditetapkan di atas.",
+    "3. Apabila terjadi keterlambatan karena kondisi darurat atau sakit, Orang Tua / Wali WAJIB melaporkan ke Wali Asuh / Wali Asrama sebelum masa izin berakhir.",
+    "4. Setibanya kembali di asrama, peserta didik wajib segera melapor ke Piket Pengasuh Asrama untuk verifikasi kedatangan dan penyerahan Surat Izin ini."
+  ];
+
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+
+  rules.forEach((rule) => {
+    const wrappedRule = doc.splitTextToSize(rule, 180);
+    doc.text(wrappedRule, 14, contentY);
+    contentY += wrappedRule.length * 3.8 + 1;
+  });
+
+  contentY += 5;
+
+  // Closing sentence
+  const closingText =
+    "Demikian Surat Izin Kepulangan ini diterbitkan secara resmi untuk dipergunakan sebagaimana mestinya dengan penuh rasa tanggung jawab.";
+  const wrappedClosing = doc.splitTextToSize(closingText, 182);
+  doc.text(wrappedClosing, 14, contentY);
+  contentY += wrappedClosing.length * 4 + 8;
+
+  // Ensure contentY leaves enough space for signature block
+  if (contentY > 225) {
+    contentY = 225;
+  }
+
+  const sigY = contentY;
+
+  // Left Signature: Wali Asuh
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(30, 41, 59);
+  doc.text("Menyetujui,", 25, sigY);
+  doc.setFont("Helvetica", "bold");
+  doc.text("Wali Asuh Pendamping,", 25, sigY + 4.5);
+
+  const leftNameY = sigY + 28;
+  doc.text(`( ${leave.caretaker} )`, 25, leftNameY);
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(
+    `NIP/NIK. ${leave.caretakerNip || '.........................'}`,
+    25,
+    leftNameY + 4
+  );
+
+  // Right Signature: Wali Asrama Mandiri
+  const dateStr = formatDateIndonesian(leave.leaveDate || new Date());
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`Palembang, ${dateStr}`, 135, sigY);
+  doc.text("Mengetahui & Mengesahkan,", 135, sigY + 4.5);
+  doc.setFont("Helvetica", "bold");
+  doc.text("Wali Asrama Mandiri,", 135, sigY + 9);
+
+  const rightNameY = sigY + 28;
+  const dormMasterName =
+    leave.dormMaster || config?.waliAsrama || 'Wali Asrama Mandiri';
+  const dormMasterNip =
+    leave.dormMasterNip || config?.waliAsramaNip || '.........................';
+
+  doc.text(`( ${dormMasterName} )`, 135, rightNameY);
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`NIP. ${dormMasterNip}`, 135, rightNameY + 4);
+
+  // Stamp Box
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.rect(88, sigY + 8, 28, 22);
   doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
-  doc.text(`Dicetak otomatis oleh Sistem Asrama SR - ${new Date().toLocaleString('id-ID')}`, 80, 96, { align: "center" });
+  doc.setTextColor(148, 163, 184);
+  doc.text("CAP STAMPEL", 102, sigY + 17, { align: "center" });
+  doc.text("KEASRAMAAN", 102, sigY + 21, { align: "center" });
 
-  doc.save(`Tiket_Izin_${leave.studentName.replace(/\s+/g, '_')}.pdf`);
+  // Footer Note
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    `Dokumen resmi ini diterbitkan secara elektronik oleh Sistem Informasi Keasramaan Sekolah Rakyat - ${new Date().toLocaleString('id-ID')}`,
+    105,
+    285,
+    { align: "center" }
+  );
+
+  doc.save(`Surat_Izin_Pulang_${leave.studentName.replace(/\s+/g, '_')}.pdf`);
 }
 
 // --- 3. RAPOR KEASRAMAAN PDF ---
@@ -503,7 +667,7 @@ export async function printReportCardPDF(
   } else {
     const violationBody = studentViolations.map((v, i) => [
       (i + 1).toString(),
-      v.date || "",
+      formatDateIndonesian(v.date),
       `Tingkat ${v.level}`,
       v.violation,
       v.note || '-',
@@ -941,15 +1105,7 @@ export async function generateViolationNoticePDF(
   contentY += wrappedStatement.length * 4.5 + 3;
 
   // Violation Details Table
-  let formattedDate = violation.date;
-  try {
-    formattedDate = new Date(violation.date).toLocaleDateString('id-ID', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  } catch (e) {}
+  const formattedDate = formatDateIndonesian(violation.date, true);
 
   autoTable(doc, {
     head: [["RINCIAN LAPORAN PELANGGARAN", "KETERANGAN HASIL PENCATATAN"]],

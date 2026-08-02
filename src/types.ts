@@ -47,9 +47,18 @@ export interface Leave {
   type: 'Reguler' | 'Khusus' | 'Darurat';
   reason: string;
   leaveDate: string;
+  leaveTime?: string;
   returnDate: string;
+  returnTime?: string;
+  destinationAddress?: string;
+  parentContact?: string;
+  pickupPerson?: string;
   caretaker: string;
+  caretakerNip?: string;
+  dormMaster?: string;
+  dormMasterNip?: string;
   status: 'Active' | 'Returned';
+  letterNumber?: string;
 }
 
 export interface TaskItem {

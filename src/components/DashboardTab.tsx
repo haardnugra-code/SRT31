@@ -13,6 +13,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { Student, Violation, Counseling, Leave } from '../types';
+import { formatDateIndonesian, parseLocalDate } from '../utils/dateFormatter';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -70,8 +71,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const returnD = new Date(returnDateStr);
-    if (isNaN(returnD.getTime())) return { status: 'safe', label: 'Normal', diffDays: 99 };
+    const returnD = parseLocalDate(returnDateStr);
+    if (!returnD) return { status: 'safe', label: 'Normal', diffDays: 99 };
     returnD.setHours(0, 0, 0, 0);
 
     const diffTime = returnD.getTime() - today.getTime();
@@ -488,7 +489,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
                     <div className="space-y-0.5">
                       <p className="text-slate-500">
-                        Jadwal Kembali: <span className="font-bold text-slate-800">{l.returnDate}</span>
+                        Jadwal Kembali: <span className="font-bold text-slate-800">{formatDateIndonesian(l.returnDate)}</span>
                       </p>
                       <p className="text-slate-400 text-[9px]">
                         Wali Asuh: {l.caretaker}
@@ -539,7 +540,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         Catatan: {v.note}
                       </p>
                     )}
-                    <p className="text-[9px] text-slate-400">Kasus dilaporkan pada {v.date}</p>
+                    <p className="text-[9px] text-slate-400">Kasus dilaporkan pada {formatDateIndonesian(v.date)}</p>
                   </div>
                 </div>
               ))
@@ -571,7 +572,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       Izin {l.type} - {l.reason}
                     </p>
                     <p className="text-[9px] text-slate-400">
-                      Target asrama: <span className="font-bold text-slate-600">{l.returnDate}</span>
+                      Target asrama: <span className="font-bold text-slate-600">{formatDateIndonesian(l.returnDate)}</span>
                     </p>
                   </div>
                   <span className="text-[9px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-200 flex-shrink-0 self-center">

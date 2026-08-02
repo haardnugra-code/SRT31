@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatDateIndonesian } from '../utils/dateFormatter';
 import {
   HeartPulse,
   Plus,
@@ -400,7 +401,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                           <td className="py-3 px-4 font-medium whitespace-nowrap">
                             <div className="flex items-center gap-1.5 text-slate-900 font-bold">
                               <Calendar className="w-3.5 h-3.5 text-rose-500" />
-                              {rec.date}
+                              {formatDateIndonesian(rec.date)}
                             </div>
                             <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                               <Clock className="w-3 h-3" />
@@ -1012,7 +1013,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                 <div className="grid grid-cols-3">
                   <span className="font-semibold text-slate-600">Tanggal Periksa:</span>
                   <span className="col-span-2 text-slate-800">
-                    {printRecord.date} ({printRecord.time || '08:00'} WIB)
+                    {formatDateIndonesian(printRecord.date, true)} ({printRecord.time || '08:00'} WIB)
                   </span>
                 </div>
                 <div className="grid grid-cols-3">

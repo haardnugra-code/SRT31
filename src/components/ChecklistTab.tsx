@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Save, FileText, Trash2 } from 'lucide-react';
 import { Student, DailyJournal, AppConfig } from '../types';
+import { formatDateIndonesian } from '../utils/dateFormatter';
 import { ROUTINE_TASKS } from '../services/storage';
 import { printJournalPDF } from '../services/pdfGenerator';
 
@@ -203,7 +204,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({
                 <div key={j.id} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
                   <div className="flex justify-between items-start border-b border-slate-200/50 pb-2">
                     <div>
-                      <span className="text-xs font-bold text-slate-800 block">{j.date}</span>
+                      <span className="text-xs font-bold text-slate-800 block">{formatDateIndonesian(j.date)}</span>
                       <span className="text-[10px] font-medium text-slate-500">Pukul {j.timeRange}</span>
                     </div>
                     <div

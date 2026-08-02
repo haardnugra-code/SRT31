@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Lock,
   Unlock,
@@ -23,7 +23,10 @@ import {
   AlertTriangle,
   Plus,
   Trash2,
-  Edit2
+  Edit2,
+  RefreshCw,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { AppConfig, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, ReportCategory } from '../types';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/googleAppsScriptCode';
@@ -34,12 +37,18 @@ interface SettingsTabProps {
   config: AppConfig;
   onSaveConfig: (config: AppConfig) => void;
   onShowToast: (title: string, message: string, type?: 'success' | 'warning' | 'error') => void;
+  lastSyncTime?: string | null;
+  onSync?: () => void;
+  isSyncing?: boolean;
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
   config,
   onSaveConfig,
-  onShowToast
+  onShowToast,
+  lastSyncTime,
+  onSync,
+  isSyncing = false
 }) => {
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState<boolean>(false);
@@ -84,6 +93,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   );
   const [selectedRaporCatIndex, setSelectedRaporCatIndex] = useState<number>(0);
   const [newRaporIndicatorText, setNewRaporIndicatorText] = useState<string>('');
+  const [editingRaporIndicatorIdx, setEditingRaporIndicatorIdx] = useState<number | null>(null);
+  const [editingRaporIndicatorText, setEditingRaporIndicatorText] = useState<string>('');
+  const [newCatName, setNewCatName] = useState<string>('');
+  const [isAddingNewCat, setIsAddingNewCat] = useState<boolean>(false);
 
   // Selected level for violation template editing tab
   const [selectedTemplateLevel, setSelectedTemplateLevel] = useState<number>(1);
@@ -94,6 +107,35 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   // Script Modal State
   const [isScriptModalOpen, setIsScriptModalOpen] = useState<boolean>(false);
   const [isCopied, setIsCopied] = useState<boolean>(false);
+
+  // 7-Day Cloud Sync Status & Reminder Calculation
+  const daysSinceSync = useMemo(() => {
+    if (!lastSyncTime) return null;
+    const lastDate = new Date(lastSyncTime).getTime();
+    if (isNaN(lastDate)) return null;
+    const diff = Date.now() - lastDate;
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  }, [lastSyncTime]);
+
+  const isSyncOverdue = daysSinceSync === null || daysSinceSync >= 7;
+
+  const formattedLastSync = useMemo(() => {
+    if (!lastSyncTime) return 'Belum pernah dilakukan';
+    try {
+      const d = new Date(lastSyncTime);
+      return (
+        d.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) + ' WIB'
+      );
+    } catch (e) {
+      return 'Belum pernah dilakukan';
+    }
+  }, [lastSyncTime]);
 
   const handleCopyScriptCode = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
@@ -202,18 +244,63 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   };
 
+  const handleSaveInlineIndicator = (catIdx: number, indIdx: number) => {
+    if (!editingRaporIndicatorText.trim()) {
+      onShowToast('Peringatan', 'Teks indikator tidak boleh kosong.', 'warning');
+      return;
+    }
+    const updated = JSON.parse(JSON.stringify(customRaporStructure));
+    if (updated[catIdx] && updated[catIdx].indicators[indIdx] !== undefined) {
+      updated[catIdx].indicators[indIdx] = editingRaporIndicatorText.trim();
+      setCustomRaporStructure(updated);
+      setEditingRaporIndicatorIdx(null);
+      setEditingRaporIndicatorText('');
+      onShowToast('Diperbarui', 'Indikator berhasil diubah.', 'success');
+    }
+  };
+
   const handleDeleteRaporIndicator = (catIdx: number, indIdx: number) => {
     const updated = JSON.parse(JSON.stringify(customRaporStructure));
     const cat = updated[catIdx];
     if (cat) {
       cat.indicators.splice(indIdx, 1);
       setCustomRaporStructure(updated);
+      if (editingRaporIndicatorIdx === indIdx) {
+        setEditingRaporIndicatorIdx(null);
+      }
       onShowToast('Indikator Dihapus', 'Indikator berhasil dihapus dari kategori rapor.', 'success');
     }
   };
 
+  const handleAddCategory = () => {
+    if (!newCatName.trim()) {
+      onShowToast('Gagal', 'Nama kategori tidak boleh kosong.', 'warning');
+      return;
+    }
+    const key = `custom_cat_${Date.now()}`;
+    const updated = [...customRaporStructure, { key, name: newCatName.trim(), indicators: [] }];
+    setCustomRaporStructure(updated);
+    setSelectedRaporCatIndex(updated.length - 1);
+    setNewCatName('');
+    setIsAddingNewCat(false);
+    onShowToast('Kategori Ditambahkan', `Kategori "${newCatName}" berhasil dibuat.`, 'success');
+  };
+
+  const handleDeleteCategory = (catIdx: number) => {
+    if (customRaporStructure.length <= 1) {
+      onShowToast('Tidak Bisa Dihapus', 'Minimal harus ada 1 Kategori Rapor Keasramaan.', 'warning');
+      return;
+    }
+    const catName = customRaporStructure[catIdx]?.name;
+    const updated = customRaporStructure.filter((_, idx) => idx !== catIdx);
+    setCustomRaporStructure(updated);
+    setSelectedRaporCatIndex(0);
+    onShowToast('Kategori Dihapus', `Kategori "${catName}" telah dihapus.`, 'info');
+  };
+
   const handleResetRaporStructure = () => {
     setCustomRaporStructure(RAPOR_STRUCTURE);
+    setSelectedRaporCatIndex(0);
     onShowToast('Direset Ke Default', 'Indikator Rapor Keasramaan dikembalikan ke struktur standar.', 'info');
   };
 
@@ -330,6 +417,67 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <span>{isLocked ? 'Buka Kunci' : 'Kunci Kembali'}</span>
           </button>
         </div>
+
+        {/* Cloud Sync 7-Day Reminder Banner */}
+        {isSyncOverdue ? (
+          <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-amber-500/10 border-2 border-amber-400/80 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-md backdrop-blur-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-start gap-3.5 relative z-10">
+              <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-md shrink-0 animate-pulse">
+                <AlertTriangle className="w-5 h-5 md:w-6 md:h-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">
+                    Pengingat Sinkronisasi Data Cloud
+                  </h4>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 uppercase tracking-wider">
+                    {daysSinceSync === null ? 'Belum Pernah Sync' : `${daysSinceSync} Hari Lalu`}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                  Sistem mendeteksi bahwa Anda <strong className="text-rose-700 font-bold">belum melakukan sinkronisasi data ke cloud dalam 7 hari terakhir</strong> (Sinkronisasi terakhir: <span className="font-bold text-slate-900">{formattedLastSync}</span>). Disarankan untuk segera melakukan sinkronisasi agar seluruh data asrama tersimpan aman di cloud.
+                </p>
+              </div>
+            </div>
+            {onSync && (
+              <button
+                type="button"
+                onClick={onSync}
+                disabled={isSyncing}
+                className="w-full md:w-auto font-extrabold text-xs px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-700 hover:to-rose-700 text-white flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-95 shrink-0 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Data Sekarang'}</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="bg-emerald-50/90 border border-emerald-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 text-xs">Sinkronisasi Cloud Terkini</h4>
+                <p className="text-[11px] text-slate-600 mt-0.5">
+                  Terakhir disinkronkan: <strong className="text-emerald-800">{formattedLastSync}</strong> ({daysSinceSync === 0 ? 'Hari ini' : `${daysSinceSync} hari yang lalu`}).
+                </p>
+              </div>
+            </div>
+            {onSync && (
+              <button
+                type="button"
+                onClick={onSync}
+                disabled={isSyncing}
+                className="font-bold text-xs px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center gap-1.5 shadow-sm transition active:scale-95 shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>Sync Ulang</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Section Header */}
         <div className="flex items-center gap-4 border-b border-slate-200/50 pb-5">
@@ -536,6 +684,17 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
               {/* Apps Script Helpers */}
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                {onSync && (
+                  <button
+                    type="button"
+                    onClick={onSync}
+                    disabled={isSyncing}
+                    className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 border border-blue-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50 shadow-sm"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setIsScriptModalOpen(true)}
@@ -817,14 +976,71 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               )}
             </div>
 
-            {/* Category Selector */}
+            {/* Category Selector & Actions */}
             <div className="space-y-3">
-              <label className="block text-xs font-bold text-slate-700">
-                Pilih Kategori Nilai Keasramaan ({customRaporStructure.length} Kategori):
-              </label>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="block text-xs font-bold text-slate-700">
+                  Pilih Kategori Nilai Keasramaan ({customRaporStructure.length} Kategori):
+                </label>
+                {!isLocked && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingNewCat(!isAddingNewCat)}
+                      className="text-xs text-blue-700 hover:text-blue-900 bg-blue-50 border border-blue-200 font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> + Kategori Baru
+                    </button>
+                    {customRaporStructure.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(selectedRaporCatIndex)}
+                        className="text-xs text-red-600 hover:text-red-800 bg-red-50 border border-red-200 font-semibold px-2.5 py-1 rounded-lg transition flex items-center gap-1"
+                        title="Hapus Kategori Ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Hapus Kategori
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Form Add New Category */}
+              {isAddingNewCat && !isLocked && (
+                <div className="bg-blue-50/70 p-3 rounded-xl border border-blue-200 space-y-2">
+                  <span className="text-xs font-bold text-blue-900 block">Buat Kategori Nilai Baru:</span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Contoh: Kategori Nilai Kepemimpinan / Tahfidz..."
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      className="flex-1 border border-slate-200 bg-white rounded-lg px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCategory}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
+                    >
+                      Simpan Kategori
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setIsAddingNewCat(false); setNewCatName(''); }}
+                      className="bg-white border border-slate-200 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <select
                 value={selectedRaporCatIndex}
-                onChange={(e) => setSelectedRaporCatIndex(Number(e.target.value))}
+                onChange={(e) => {
+                  setSelectedRaporCatIndex(Number(e.target.value));
+                  setEditingRaporIndicatorIdx(null);
+                }}
                 className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 {customRaporStructure.map((cat, idx) => (
@@ -864,24 +1080,73 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 <span className="text-xs font-bold text-slate-700 block border-b border-slate-100 pb-1.5">
                   Daftar Indikator "{customRaporStructure[selectedRaporCatIndex]?.name}":
                 </span>
-                <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                  {(customRaporStructure[selectedRaporCatIndex]?.indicators || []).map((ind, iIdx) => (
-                    <div key={iIdx} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-700">
-                      <span className="font-medium text-[11px] leading-snug">
-                        <strong className="text-slate-400 font-mono mr-1.5">{iIdx + 1}.</strong> {ind}
-                      </span>
-                      {!isLocked && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteRaporIndicator(selectedRaporCatIndex, iIdx)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded transition shrink-0"
-                          title="Hapus Indikator Ini"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                  {(customRaporStructure[selectedRaporCatIndex]?.indicators || []).length === 0 ? (
+                    <p className="text-xs text-slate-400 italic p-2 text-center">Belum ada indikator pada kategori ini. Tambahkan indikator baru di atas.</p>
+                  ) : (
+                    (customRaporStructure[selectedRaporCatIndex]?.indicators || []).map((ind, iIdx) => {
+                      const isEditingThis = editingRaporIndicatorIdx === iIdx;
+                      return (
+                        <div key={iIdx} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-700 space-y-2">
+                          {isEditingThis ? (
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <input
+                                type="text"
+                                value={editingRaporIndicatorText}
+                                onChange={(e) => setEditingRaporIndicatorText(e.target.value)}
+                                className="flex-1 border border-blue-300 bg-white rounded px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                              />
+                              <div className="flex gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveInlineIndicator(selectedRaporCatIndex, iIdx)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded transition"
+                                >
+                                  Simpan
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingRaporIndicatorIdx(null)}
+                                  className="bg-slate-200 text-slate-700 hover:bg-slate-300 text-[11px] font-semibold px-2.5 py-1 rounded transition"
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium text-[11px] leading-snug flex-1">
+                                <strong className="text-slate-400 font-mono mr-1.5">{iIdx + 1}.</strong> {ind}
+                              </span>
+                              {!isLocked && (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingRaporIndicatorIdx(iIdx);
+                                      setEditingRaporIndicatorText(ind);
+                                    }}
+                                    className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+                                    title="Edit Indikator Ini"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteRaporIndicator(selectedRaporCatIndex, iIdx)}
+                                    className="p-1 text-red-500 hover:bg-red-50 rounded transition"
+                                    title="Hapus Indikator Ini"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>

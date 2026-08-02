@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { FileText, Info, HeartPulse, Stethoscope, AlertCircle, CheckCircle2, Signature, X, Printer, UserCheck } from 'lucide-react';
 import { Student, Violation, Counseling, Leave, AppConfig, MedicalRecord } from '../types';
 import { generateComprehensivePDF, ComprehensiveSignatory } from '../services/pdfGenerator';
@@ -22,7 +22,24 @@ export const RecapTab: React.FC<RecapTabProps> = ({
   config,
   onShowToast
 }) => {
-  const sortedStudents = [...students].sort((a, b) => (b.violationCount || 0) - (a.violationCount || 0));
+  // Calculate exact case distribution per student matching violations array
+  const studentViolationCounts = useMemo(() => {
+    return students.map((s) => {
+      const sId = String(s.id).trim().toLowerCase();
+      const sName = s.name ? s.name.trim().toLowerCase() : '';
+
+      const count = violations.filter((v) => {
+        const vId = v.studentId ? String(v.studentId).trim().toLowerCase() : '';
+        const vName = v.studentName ? v.studentName.trim().toLowerCase() : '';
+        return (vId && vId === sId) || (sName && vName && vName === sName);
+      }).length;
+
+      return {
+        student: s,
+        count
+      };
+    }).sort((a, b) => b.count - a.count);
+  }, [students, violations]);
 
   // Modal State for Signatories
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -101,10 +118,10 @@ export const RecapTab: React.FC<RecapTabProps> = ({
         <div className="bg-white p-5 md:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 lg:col-span-1">
           <div className="border-b border-slate-100 pb-3">
             <h3 className="font-bold text-slate-800 text-sm">Distribusi Kasus Per Siswa</h3>
-            <p className="text-[10px] text-slate-400">Menghitung total poin kepatuhan siswa asrama.</p>
+            <p className="text-[10px] text-slate-400">Total pelanggaran tercatat per siswa (Total: {violations.length} Pelanggaran).</p>
           </div>
           <div className="divide-y divide-slate-100 max-h-[350px] overflow-y-auto pr-1">
-            {sortedStudents.map((s) => (
+            {studentViolationCounts.map(({ student: s, count }) => (
               <div key={s.id} className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <h4 className="text-xs font-bold text-slate-800 truncate">{s.name}</h4>
@@ -114,14 +131,14 @@ export const RecapTab: React.FC<RecapTabProps> = ({
                 </div>
                 <span
                   className={`text-xs font-extrabold px-3 py-1 rounded-lg flex-shrink-0 ${
-                    (s.violationCount || 0) > 3
+                    count > 3
                       ? 'bg-red-50 text-red-700'
-                      : (s.violationCount || 0) > 0
+                      : count > 0
                       ? 'bg-amber-50 text-amber-700'
                       : 'bg-emerald-50 text-emerald-700'
                   }`}
                 >
-                  {s.violationCount || 0} Kasus
+                  {count} Kasus
                 </span>
               </div>
             ))}

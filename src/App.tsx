@@ -25,7 +25,9 @@ import {
   loadReports,
   saveReports,
   loadMedicalRecords,
-  saveMedicalRecords
+  saveMedicalRecords,
+  loadLastSyncTime,
+  saveLastSyncTime
 } from './services/storage';
 
 import { Header } from './components/Header';
@@ -68,6 +70,7 @@ export default function App() {
   );
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => loadLastSyncTime());
 
   // Toast State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -129,7 +132,13 @@ export default function App() {
   // Sync violation counts into students
   const studentsWithViolationCounts = useMemo(() => {
     return students.map((s) => {
-      const count = violations.filter((v) => String(v.studentId) === String(s.id)).length;
+      const sId = String(s.id).trim().toLowerCase();
+      const sName = s.name ? s.name.trim().toLowerCase() : '';
+      const count = violations.filter((v) => {
+        const vId = v.studentId ? String(v.studentId).trim().toLowerCase() : '';
+        const vName = v.studentName ? v.studentName.trim().toLowerCase() : '';
+        return (vId && vId === sId) || (sName && vName && vName === sName);
+      }).length;
       return { ...s, violationCount: count };
     });
   }, [students, violations]);
@@ -765,6 +774,10 @@ export default function App() {
             saveMedicalRecords(fetchedMedical);
           }
 
+          const nowIso = new Date().toISOString();
+          saveLastSyncTime(nowIso);
+          setLastSyncTime(nowIso);
+
           if (isManual) {
             showToast('Sinkronisasi Berhasil', 'Database berhasil diselaraskan dengan cloud.', 'success');
           }
@@ -834,6 +847,7 @@ export default function App() {
                 violations={violations}
                 counseling={counseling}
                 leaves={leaves}
+                medicalRecords={medicalRecords}
                 announcement={announcement}
                 onOpenViolationModal={() => {
                   setActiveTab('violations');
@@ -935,9 +949,12 @@ export default function App() {
               <ReportCardTab
                 students={studentsWithViolationCounts}
                 violations={violations}
+                counseling={counseling}
+                medicalRecords={medicalRecords}
                 reports={reports}
                 config={config}
                 onSaveReport={handleSaveReport}
+                onSaveConfig={handleSaveConfig}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
               />
@@ -960,6 +977,9 @@ export default function App() {
                 config={config}
                 onSaveConfig={handleSaveConfig}
                 onShowToast={showToast}
+                lastSyncTime={lastSyncTime}
+                onSync={() => syncCloudData(true)}
+                isSyncing={isSyncing}
               />
             )}
           </div>

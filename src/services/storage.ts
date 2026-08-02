@@ -172,9 +172,17 @@ export function calculateStudentDisciplineScore(
   violations: Violation[],
   config?: AppConfig,
   targetSemester?: 'Ganjil' | 'Genap',
-  targetAcademicYear?: string
+  targetAcademicYear?: string,
+  studentName?: string
 ): { score: number; status: DisciplineStatusThreshold; totalDeducted: number; violationCount: number; filteredViolations: Violation[] } {
-  let studentViolations = violations.filter((v) => String(v.studentId).trim() === String(studentId).trim());
+  const sId = String(studentId).trim().toLowerCase();
+  const sName = studentName ? studentName.trim().toLowerCase() : '';
+
+  let studentViolations = violations.filter((v) => {
+    const vId = v.studentId ? String(v.studentId).trim().toLowerCase() : '';
+    const vName = v.studentName ? v.studentName.trim().toLowerCase() : '';
+    return (vId && vId === sId) || (sName && vName && vName === sName);
+  });
 
   const activeSemester = targetSemester || config?.semester || 'Genap';
   const activeYear = targetAcademicYear || config?.academicYear || '2025/2026';
@@ -182,9 +190,15 @@ export function calculateStudentDisciplineScore(
 
   if (shouldResetPerSemester) {
     studentViolations = studentViolations.filter((v) => {
-      // If violation has semester/academicYear tagged, match strictly; if untagged, consider it active
-      const semMatch = !v.semester || v.semester === activeSemester;
-      const yearMatch = !v.academicYear || v.academicYear === activeYear;
+      // Normalize strings for robust matching
+      const vSem = v.semester ? String(v.semester).trim().toLowerCase() : '';
+      const actSem = activeSemester ? String(activeSemester).trim().toLowerCase() : '';
+      const semMatch = !vSem || vSem === actSem;
+
+      const vYear = v.academicYear ? String(v.academicYear).trim().replaceAll('-', '/').toLowerCase() : '';
+      const actYear = activeYear ? String(activeYear).trim().replaceAll('-', '/').toLowerCase() : '';
+      const yearMatch = !vYear || vYear === actYear;
+
       return semMatch && yearMatch;
     });
   }
@@ -410,6 +424,25 @@ export function loadMedicalRecords(): MedicalRecord[] {
 
 export function saveMedicalRecords(records: MedicalRecord[]): void {
   localStorage.setItem('sr_medical_records', JSON.stringify(records));
+}
+
+export function loadLastSyncTime(): string | null {
+  return localStorage.getItem('sr_last_sync_time');
+}
+
+export function saveLastSyncTime(isoDateString?: string): void {
+  const dateStr = isoDateString || new Date().toISOString();
+  localStorage.setItem('sr_last_sync_time', dateStr);
+}
+
+export function getDaysSinceLastSync(): number | null {
+  const last = loadLastSyncTime();
+  if (!last) return null;
+  const lastDate = new Date(last).getTime();
+  if (isNaN(lastDate)) return null;
+  const now = Date.now();
+  const diffMs = now - lastDate;
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
 
 // --- Image Compression helper to prevent UI lag ---

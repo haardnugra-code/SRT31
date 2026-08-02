@@ -10,9 +10,14 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Activity,
+  HeartPulse,
+  UserCheck,
+  FileText,
+  ChevronRight
 } from 'lucide-react';
-import { Student, Violation, Counseling, Leave } from '../types';
+import { Student, Violation, Counseling, Leave, MedicalRecord } from '../types';
 import { formatDateIndonesian, parseLocalDate } from '../utils/dateFormatter';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
@@ -43,6 +48,7 @@ interface DashboardTabProps {
   violations: Violation[];
   counseling: Counseling[];
   leaves: Leave[];
+  medicalRecords?: MedicalRecord[];
   announcement: string;
   onOpenViolationModal: () => void;
   onOpenLeaveModal: () => void;
@@ -54,6 +60,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   violations,
   counseling,
   leaves,
+  medicalRecords = [],
   announcement,
   onOpenViolationModal,
   onOpenLeaveModal,
@@ -127,24 +134,55 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     .filter((l) => l.urgency.status !== 'safe')
     .sort((a, b) => a.urgency.diffDays - b.urgency.diffDays);
 
-  // Monthly trends data
-  const monthlyViolations = [0, 0, 0, 0, 0, 0];
-  const monthlyLeaves = [0, 0, 0, 0, 0, 0];
+  // Running month calculations & 12-month trends data
+  const now = new Date();
+  const currentMonthIdx = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const monthShortNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+  const monthFullNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
+  const currentMonthName = monthFullNames[currentMonthIdx];
+
+  const monthlyViolations = Array(12).fill(0);
+  const monthlyLeaves = Array(12).fill(0);
+
+  let currentMonthViolationsCount = 0;
+  let currentMonthLeavesCount = 0;
 
   violations.forEach((v) => {
     if (!v.date) return;
-    const month = new Date(v.date).getMonth();
-    if (month >= 0 && month <= 5) monthlyViolations[month]++;
+    const d = parseLocalDate(v.date);
+    if (!d) return;
+    const m = d.getMonth();
+    const y = d.getFullYear();
+    if (m >= 0 && m < 12) {
+      monthlyViolations[m]++;
+      if (m === currentMonthIdx && y === currentYear) {
+        currentMonthViolationsCount++;
+      }
+    }
   });
 
   leaves.forEach((l) => {
     if (!l.leaveDate) return;
-    const month = new Date(l.leaveDate).getMonth();
-    if (month >= 0 && month <= 5) monthlyLeaves[month]++;
+    const d = parseLocalDate(l.leaveDate);
+    if (!d) return;
+    const m = d.getMonth();
+    const y = d.getFullYear();
+    if (m >= 0 && m < 12) {
+      monthlyLeaves[m]++;
+      if (m === currentMonthIdx && y === currentYear) {
+        currentMonthLeavesCount++;
+      }
+    }
   });
 
   const trendsData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+    labels: monthShortNames,
     datasets: [
       {
         label: 'Kasus Pelanggaran',
@@ -202,6 +240,77 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
   const recentViolations = violations.slice(0, 4);
   const recentLeaves = leaves.filter((l) => l.status === 'Active').slice(0, 4);
+
+  interface RecentActivityItem {
+    id: string;
+    module: 'violation' | 'medical' | 'counseling';
+    moduleLabel: string;
+    studentName: string;
+    date: string;
+    parsedDate: Date;
+    title: string;
+    description: string;
+    extraDetail?: string;
+    tabKey: 'violations' | 'medical' | 'counseling';
+  }
+
+  const recentActivities = React.useMemo(() => {
+    const items: RecentActivityItem[] = [];
+
+    violations.forEach((v) => {
+      const d = parseLocalDate(v.date) || new Date(0);
+      items.push({
+        id: `v-${v.id}`,
+        module: 'violation',
+        moduleLabel: 'Pelanggaran',
+        studentName: v.studentName,
+        date: v.date,
+        parsedDate: d,
+        title: v.violation,
+        description: `Tingkat ${v.level} • Sanksi: ${v.sanction || 'Teguran'}`,
+        extraDetail: v.reporter ? `Pelapor: ${v.reporter}` : undefined,
+        tabKey: 'violations'
+      });
+    });
+
+    (medicalRecords || []).forEach((m) => {
+      const d = parseLocalDate(m.date) || new Date(0);
+      items.push({
+        id: `m-${m.id}`,
+        module: 'medical',
+        moduleLabel: 'Kesehatan / UKS',
+        studentName: m.studentName,
+        date: m.date,
+        parsedDate: d,
+        title: m.symptoms || m.diagnosis || 'Pemeriksaan Kesehatan UKS',
+        description: `Diagnosa: ${m.diagnosis || '-'} • Status: ${m.status}`,
+        extraDetail: `Lokasi: ${m.location}`,
+        tabKey: 'medical'
+      });
+    });
+
+    counseling.forEach((c) => {
+      const d = parseLocalDate(c.date) || new Date(0);
+      items.push({
+        id: `c-${c.id}`,
+        module: 'counseling',
+        moduleLabel: 'Konseling BK',
+        studentName: c.studentName,
+        date: c.date,
+        parsedDate: d,
+        title: c.caseDescription,
+        description: `Status: ${c.status} • Konselor: ${c.counselor}`,
+        extraDetail: c.notes ? `Catatan: ${c.notes}` : undefined,
+        tabKey: 'counseling'
+      });
+    });
+
+    // Chronological sort: latest first
+    items.sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
+
+    // Top 5 entries
+    return items.slice(0, 5);
+  }, [violations, medicalRecords, counseling]);
 
   return (
     <div className="space-y-6">
@@ -328,10 +437,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-5 md:p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h3 className="font-bold text-slate-800 text-sm tracking-wide">
-              Tren Kasus & Perizinan Bulanan
-            </h3>
-            <span className="text-[10px] text-slate-400">Semester Genap TA 2025/2026</span>
+            <div>
+              <h3 className="font-bold text-slate-800 text-sm tracking-wide">
+                Tren Kasus & Perizinan Bulanan
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Bulan Berjalan ({currentMonthName} {currentYear}): <strong className="text-red-600">{currentMonthViolationsCount} Kasus Pelanggaran</strong> • <strong className="text-emerald-600">{currentMonthLeavesCount} Izin Pulang</strong>
+              </p>
+            </div>
+            <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg border border-slate-200">
+              Grafik Bulanan (Jan - Des)
+            </span>
           </div>
           <div className="h-60 sm:h-72 relative">
             <Line
@@ -507,6 +623,92 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             })}
           </div>
         )}
+      </div>
+
+      {/* Recent Activity Widget (5 Latest Entries Across Modules) */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-blue-100 text-blue-700 rounded-xl">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm md:text-base tracking-tight flex items-center gap-2">
+                Aktivitas Terkini (Recent Activity)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Daftar kronologis 5 catatan terbaru dari modul Pelanggaran, Kesehatan, & Konseling BK.
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200 self-start sm:self-auto shrink-0">
+            5 Entri Terbaru
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          {recentActivities.length === 0 ? (
+            <div className="py-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-slate-500">Belum ada catatan aktivitas terbaru.</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Catatan pelanggaran, kesehatan, atau konseling akan muncul secara otomatis di sini.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {recentActivities.map((act) => {
+                let moduleBadge = (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-50 text-red-700 border border-red-200 inline-flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3" /> Pelanggaran
+                  </span>
+                );
+
+                if (act.module === 'medical') {
+                  moduleBadge = (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                      <HeartPulse className="w-3 h-3" /> Kesehatan
+                    </span>
+                  );
+                } else if (act.module === 'counseling') {
+                  moduleBadge = (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1">
+                      <UserCheck className="w-3 h-3" /> Konseling BK
+                    </span>
+                  );
+                }
+
+                return (
+                  <div key={act.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 px-2 rounded-xl transition">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="pt-0.5 shrink-0">
+                        {moduleBadge}
+                      </div>
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-xs font-extrabold text-slate-900">{act.studentName}</h4>
+                          <span className="text-[10px] text-slate-400 font-mono">• {formatDateIndonesian(act.date)}</span>
+                        </div>
+                        <p className="text-xs text-slate-800 font-semibold leading-snug truncate">
+                          {act.title}
+                        </p>
+                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                          {act.description} {act.extraDetail && <span className="text-slate-400">({act.extraDetail})</span>}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => onNavigateTab(act.tabKey)}
+                      className="text-[11px] font-bold text-slate-700 hover:text-blue-700 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 px-3 py-1.5 rounded-lg transition shrink-0 flex items-center gap-1 shadow-sm active:scale-95 self-end sm:self-center"
+                    >
+                      Buka {act.moduleLabel} <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Recent Items Section */}

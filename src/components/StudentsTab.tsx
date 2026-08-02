@@ -179,7 +179,14 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
   const studentDisciplineInfo = useMemo(() => {
     if (!selectedStudentForHistory) return null;
-    return calculateStudentDisciplineScore(selectedStudentForHistory.id, violations, config);
+    return calculateStudentDisciplineScore(
+      selectedStudentForHistory.id,
+      violations,
+      config,
+      undefined,
+      undefined,
+      selectedStudentForHistory.name
+    );
   }, [selectedStudentForHistory, violations, config]);
 
   return (
@@ -247,7 +254,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           </div>
         ) : (
           filteredStudents.map((s) => {
-            const disc = calculateStudentDisciplineScore(s.id, violations, config);
+            const disc = calculateStudentDisciplineScore(s.id, violations, config, undefined, undefined, s.name);
             return (
               <div
                 key={s.id}

@@ -508,7 +508,9 @@ export async function printReportCardPDF(
   student: Student,
   repData: ReportCardData,
   violations: Violation[],
-  config: AppConfig
+  config: AppConfig,
+  counseling: Counseling[] = [],
+  medicalRecords: MedicalRecord[] = []
 ) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const leftLogoBase64 = await loadLogoImage(config.logoKiriUrl, 'left');
@@ -521,8 +523,6 @@ export async function printReportCardPDF(
   const customWaliAsramaNip = repData.customWaliAsramaNip || config.waliAsramaNip || "";
   const displaySemester = repData.semester || config.semester || "Genap";
   const displayAcademicYear = repData.academicYear || config.academicYear || "2025/2026";
-
-  let currentPage = 1;
 
   function drawReportHeaderPage1() {
     const kopKiriLines = config.kopKiri.split('\n');
@@ -632,31 +632,29 @@ export async function printReportCardPDF(
       3: { cellWidth: 'auto' }
     },
     styles: { fontSize: 7.5, cellPadding: 2.5 },
-    margin: { left: 15, right: 15, top: 22, bottom: 25 },
-    didDrawPage: function (data) {
-      if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
-      doc.setFontSize(8);
-      doc.setFont("Helvetica", "normal");
-      doc.setTextColor(148, 163, 184);
-      doc.text(`Rapor Keasramaan SRT31 Palembang - Semester ${displaySemester} TA ${displayAcademicYear}`, 15, 287);
-      doc.text(`Halaman ${currentPage}`, 195, 287, { align: "right" });
-      currentPage++;
-      if (data.pageNumber > 1) {
-        doc.setFont("Helvetica", "oblique");
-        doc.setFontSize(7.5);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`Rapor Keasramaan: ${student.name} (${student.id})`, 15, 12);
-        doc.setLineWidth(0.1);
-        doc.setDrawColor(200, 200, 200);
-        doc.line(15, 14, 195, 14);
-      }
-    }
+    margin: { left: 15, right: 15, top: 22, bottom: 25 }
+  });
+
+  // Filter student-specific records across modules
+  const sId = String(student.id).trim().toLowerCase();
+  const sName = student.name ? student.name.trim().toLowerCase() : '';
+
+  const studentCounseling = (counseling || []).filter((c) => {
+    const cId = c.studentId ? String(c.studentId).trim().toLowerCase() : '';
+    const cName = c.studentName ? c.studentName.trim().toLowerCase() : '';
+    return (cId && cId === sId) || (sName && cName && cName === sName);
+  });
+
+  const studentMedical = (medicalRecords || []).filter((m) => {
+    const mId = m.studentId ? String(m.studentId).trim().toLowerCase() : '';
+    const mName = m.studentName ? m.studentName.trim().toLowerCase() : '';
+    return (mId && mId === sId) || (sName && mName && mName === sName);
   });
 
   doc.addPage();
-  if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
   let finalY = 20;
 
+  // --- SECTION 1: EVALUASI RIWAYAT KEDISIPLINAN & PELANGGARAN ASRAMA ---
   doc.setFont("Helvetica", "bold");
   doc.setFontSize(9.5);
   doc.setTextColor(30, 41, 59);
@@ -665,7 +663,7 @@ export async function printReportCardPDF(
   doc.line(15, finalY + 2, 195, finalY + 2);
 
   // Calculate Discipline Score & Filtered Violations for current semester
-  const discInfo = calculateStudentDisciplineScore(student.id, violations, config, displaySemester as any, displayAcademicYear);
+  const discInfo = calculateStudentDisciplineScore(student.id, violations, config, displaySemester as any, displayAcademicYear, student.name);
   const studentViolations = discInfo.filteredViolations;
 
   // Render Discipline Score Summary Box
@@ -712,6 +710,93 @@ export async function printReportCardPDF(
     finalY = (doc as any).lastAutoTable.finalY + 10;
   }
 
+  // --- SECTION 2: RIWAYAT PENDAMPINGAN & KONSELING BK ---
+  if (finalY > 215) {
+    doc.addPage();
+    finalY = 20;
+  }
+
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text("RIWAYAT PENDAMPINGAN & KONSELING BK", 15, finalY);
+  doc.setLineWidth(0.2);
+  doc.line(15, finalY + 2, 195, finalY + 2);
+  finalY += 6;
+
+  if (studentCounseling.length === 0) {
+    doc.setFont("Helvetica", "italic");
+    doc.setFontSize(8.5);
+    doc.setTextColor(16, 185, 129);
+    doc.text("Catatan Terpuji: Anak asuh stabil, belum ada/tidak membutuhkan pendampingan konseling khusus pada semester ini.", 15, finalY);
+    finalY += 12;
+  } else {
+    const counselingBody = studentCounseling.map((c, i) => [
+      (i + 1).toString(),
+      formatDateIndonesian(c.date),
+      c.counselor,
+      c.caseDescription,
+      c.notes || c.followUp || '-',
+      c.status
+    ]);
+    autoTable(doc, {
+      head: [["No", "Tanggal", "Konselor", "Deskripsi Bimbingan / Kasus", "Catatan Hasil & Tindak Lanjut", "Status"]],
+      body: counselingBody,
+      startY: finalY,
+      theme: 'striped',
+      headStyles: { fillColor: [30, 58, 138], fontSize: 8 },
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      margin: { left: 15, right: 15 }
+    });
+    finalY = (doc as any).lastAutoTable.finalY + 10;
+  }
+
+  // --- SECTION 3: CATATAN PERKEMBANGAN KESEHATAN (UKS) ---
+  if (finalY > 215) {
+    doc.addPage();
+    finalY = 20;
+  }
+
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text("CATATAN PERKEMBANGAN KESEHATAN (UKS)", 15, finalY);
+  doc.setLineWidth(0.2);
+  doc.line(15, finalY + 2, 195, finalY + 2);
+  finalY += 6;
+
+  if (studentMedical.length === 0) {
+    doc.setFont("Helvetica", "italic");
+    doc.setFontSize(8.5);
+    doc.setTextColor(16, 185, 129);
+    doc.text("Catatan Sehat: Kondisi fisik dan kesehatan anak asuh prima sepanjang semester ini.", 15, finalY);
+    finalY += 12;
+  } else {
+    const medicalBody = studentMedical.map((m, i) => [
+      (i + 1).toString(),
+      formatDateIndonesian(m.date),
+      m.symptoms || m.diagnosis || '-',
+      m.treatment || m.notes || '-',
+      m.status
+    ]);
+    autoTable(doc, {
+      head: [["No", "Tanggal", "Keluhan / Diagnosa", "Tindakan / Penanganan UKS", "Status Kesehatan"]],
+      body: medicalBody,
+      startY: finalY,
+      theme: 'striped',
+      headStyles: { fillColor: [6, 95, 70], fontSize: 8 },
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      margin: { left: 15, right: 15 }
+    });
+    finalY = (doc as any).lastAutoTable.finalY + 10;
+  }
+
+  // --- SECTION 4: KETERANGAN PREDIKAT EVALUASI ---
+  if (finalY > 215) {
+    doc.addPage();
+    finalY = 20;
+  }
+
   doc.setFont("Helvetica", "bold");
   doc.setFontSize(9.5);
   doc.setTextColor(30, 41, 59);
@@ -741,8 +826,16 @@ export async function printReportCardPDF(
   });
 
   finalY = (doc as any).lastAutoTable.finalY + 10;
+
+  // --- SECTION 5: CATATAN KHUSUS PERKEMBANGAN WALI ASUH ---
+  if (finalY > 220) {
+    doc.addPage();
+    finalY = 20;
+  }
+
   doc.setFont("Helvetica", "bold");
   doc.setFontSize(9);
+  doc.setTextColor(30, 41, 59);
   doc.text("CATATAN KHUSUS PERKEMBANGAN WALI ASUH", 15, finalY);
   doc.line(15, finalY + 2, 195, finalY + 2);
 
@@ -752,9 +845,19 @@ export async function printReportCardPDF(
   const wrappedNotes = doc.splitTextToSize(specialNote, 175);
   doc.text(wrappedNotes, 15, finalY + 8);
 
-  const sigY = finalY + 45;
+  const noteLinesCount = Array.isArray(wrappedNotes) ? wrappedNotes.length : 1;
+  finalY += 8 + (noteLinesCount * 4.5) + 12;
+
+  // --- SECTION 6: LEMBAR PENGESAHAN / TANDA TANGAN ---
+  if (finalY > 210) {
+    doc.addPage();
+    finalY = 20;
+  }
+
+  const sigY = finalY;
   doc.setFontSize(8.5);
   doc.setFont("Helvetica", "normal");
+  doc.setTextColor(30, 41, 59);
   doc.text(`Palembang, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 140, sigY);
   doc.text("Mengetahui / Menyetujui:", 15, sigY + 5);
   doc.text("Wali Asuh Mandiri,", 15, sigY + 11);
@@ -772,7 +875,7 @@ export async function printReportCardPDF(
     doc.text(nipFormatted, 140, sigY + 28);
   }
 
-  const sigY2 = sigY + 45;
+  const sigY2 = sigY + 40;
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(8.5);
   doc.text("Orang Tua / Wali Murid,", 15, sigY2);
@@ -786,10 +889,28 @@ export async function printReportCardPDF(
     doc.text(`NIP. ${config.kepalaSekolahNip}`, 140, sigY2 + 28);
   }
 
-  doc.setFontSize(8);
-  doc.setTextColor(148, 163, 184);
-  doc.text("Rapor Keasramaan SRT31 Palembang - TA 2025/2026", 15, 287);
-  doc.text(`Halaman ${currentPage}`, 195, 287, { align: "right" });
+  // Draw Header/Footer & Watermark across ALL generated pages
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    if (watermarkBase64) {
+      doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
+    }
+    if (p > 1) {
+      doc.setFont("Helvetica", "oblique");
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Rapor Keasramaan: ${student.name} (${student.id})`, 15, 12);
+      doc.setLineWidth(0.1);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(15, 14, 195, 14);
+    }
+    doc.setFontSize(8);
+    doc.setFont("Helvetica", "normal");
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Rapor Keasramaan SRT31 Palembang - Semester ${displaySemester} TA ${displayAcademicYear}`, 15, 287);
+    doc.text(`Halaman ${p} dari ${totalPages}`, 195, 287, { align: "right" });
+  }
 
   doc.save(`Rapor_Keasramaan_${student.name.replace(/\s+/g, '_')}.pdf`);
 }

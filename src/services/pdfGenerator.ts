@@ -711,84 +711,88 @@ export async function printReportCardPDF(
   }
 
   // --- SECTION 2: RIWAYAT PENDAMPINGAN & KONSELING BK ---
-  if (finalY > 215) {
-    doc.addPage();
-    finalY = 20;
-  }
+  if (repData.includeCounseling !== false) {
+    if (finalY > 215) {
+      doc.addPage();
+      finalY = 20;
+    }
 
-  doc.setFont("Helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.setTextColor(30, 41, 59);
-  doc.text("RIWAYAT PENDAMPINGAN & KONSELING BK", 15, finalY);
-  doc.setLineWidth(0.2);
-  doc.line(15, finalY + 2, 195, finalY + 2);
-  finalY += 6;
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text("RIWAYAT PENDAMPINGAN & KONSELING BK", 15, finalY);
+    doc.setLineWidth(0.2);
+    doc.line(15, finalY + 2, 195, finalY + 2);
+    finalY += 6;
 
-  if (studentCounseling.length === 0) {
-    doc.setFont("Helvetica", "italic");
-    doc.setFontSize(8.5);
-    doc.setTextColor(16, 185, 129);
-    doc.text("Catatan Terpuji: Anak asuh stabil, belum ada/tidak membutuhkan pendampingan konseling khusus pada semester ini.", 15, finalY);
-    finalY += 12;
-  } else {
-    const counselingBody = studentCounseling.map((c, i) => [
-      (i + 1).toString(),
-      formatDateIndonesian(c.date),
-      c.counselor,
-      c.caseDescription,
-      c.notes || c.followUp || '-',
-      c.status
-    ]);
-    autoTable(doc, {
-      head: [["No", "Tanggal", "Konselor", "Deskripsi Bimbingan / Kasus", "Catatan Hasil & Tindak Lanjut", "Status"]],
-      body: counselingBody,
-      startY: finalY,
-      theme: 'striped',
-      headStyles: { fillColor: [30, 58, 138], fontSize: 8 },
-      styles: { fontSize: 7.5, cellPadding: 2 },
-      margin: { left: 15, right: 15 }
-    });
-    finalY = (doc as any).lastAutoTable.finalY + 10;
+    if (studentCounseling.length === 0) {
+      doc.setFont("Helvetica", "italic");
+      doc.setFontSize(8.5);
+      doc.setTextColor(16, 185, 129);
+      doc.text("Catatan Terpuji: Anak asuh stabil, belum ada/tidak membutuhkan pendampingan konseling khusus pada semester ini.", 15, finalY);
+      finalY += 12;
+    } else {
+      const counselingBody = studentCounseling.map((c, i) => [
+        (i + 1).toString(),
+        formatDateIndonesian(c.date),
+        c.counselor,
+        c.caseDescription,
+        c.notes || c.followUp || '-',
+        c.status
+      ]);
+      autoTable(doc, {
+        head: [["No", "Tanggal", "Konselor", "Deskripsi Bimbingan / Kasus", "Catatan Hasil & Tindak Lanjut", "Status"]],
+        body: counselingBody,
+        startY: finalY,
+        theme: 'striped',
+        headStyles: { fillColor: [30, 58, 138], fontSize: 8 },
+        styles: { fontSize: 7.5, cellPadding: 2 },
+        margin: { left: 15, right: 15 }
+      });
+      finalY = (doc as any).lastAutoTable.finalY + 10;
+    }
   }
 
   // --- SECTION 3: CATATAN PERKEMBANGAN KESEHATAN (UKS) ---
-  if (finalY > 215) {
-    doc.addPage();
-    finalY = 20;
-  }
+  if (repData.includeMedical !== false) {
+    if (finalY > 215) {
+      doc.addPage();
+      finalY = 20;
+    }
 
-  doc.setFont("Helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.setTextColor(30, 41, 59);
-  doc.text("CATATAN PERKEMBANGAN KESEHATAN (UKS)", 15, finalY);
-  doc.setLineWidth(0.2);
-  doc.line(15, finalY + 2, 195, finalY + 2);
-  finalY += 6;
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text("CATATAN PERKEMBANGAN KESEHATAN (UKS)", 15, finalY);
+    doc.setLineWidth(0.2);
+    doc.line(15, finalY + 2, 195, finalY + 2);
+    finalY += 6;
 
-  if (studentMedical.length === 0) {
-    doc.setFont("Helvetica", "italic");
-    doc.setFontSize(8.5);
-    doc.setTextColor(16, 185, 129);
-    doc.text("Catatan Sehat: Kondisi fisik dan kesehatan anak asuh prima sepanjang semester ini.", 15, finalY);
-    finalY += 12;
-  } else {
-    const medicalBody = studentMedical.map((m, i) => [
-      (i + 1).toString(),
-      formatDateIndonesian(m.date),
-      m.symptoms || m.diagnosis || '-',
-      m.treatment || m.notes || '-',
-      m.status
-    ]);
-    autoTable(doc, {
-      head: [["No", "Tanggal", "Keluhan / Diagnosa", "Tindakan / Penanganan UKS", "Status Kesehatan"]],
-      body: medicalBody,
-      startY: finalY,
-      theme: 'striped',
-      headStyles: { fillColor: [6, 95, 70], fontSize: 8 },
-      styles: { fontSize: 7.5, cellPadding: 2 },
-      margin: { left: 15, right: 15 }
-    });
-    finalY = (doc as any).lastAutoTable.finalY + 10;
+    if (studentMedical.length === 0) {
+      doc.setFont("Helvetica", "italic");
+      doc.setFontSize(8.5);
+      doc.setTextColor(16, 185, 129);
+      doc.text("Catatan Sehat: Kondisi fisik dan kesehatan anak asuh prima sepanjang semester ini.", 15, finalY);
+      finalY += 12;
+    } else {
+      const medicalBody = studentMedical.map((m, i) => [
+        (i + 1).toString(),
+        formatDateIndonesian(m.date),
+        m.symptoms || m.diagnosis || '-',
+        m.treatment || m.notes || '-',
+        m.status
+      ]);
+      autoTable(doc, {
+        head: [["No", "Tanggal", "Keluhan / Diagnosa", "Tindakan / Penanganan UKS", "Status Kesehatan"]],
+        body: medicalBody,
+        startY: finalY,
+        theme: 'striped',
+        headStyles: { fillColor: [6, 95, 70], fontSize: 8 },
+        styles: { fontSize: 7.5, cellPadding: 2 },
+        margin: { left: 15, right: 15 }
+      });
+      finalY = (doc as any).lastAutoTable.finalY + 10;
+    }
   }
 
   // --- SECTION 4: KETERANGAN PREDIKAT EVALUASI ---

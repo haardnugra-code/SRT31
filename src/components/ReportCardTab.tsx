@@ -41,6 +41,8 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
 
   const [grades, setGrades] = useState<Record<string, string>>({});
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
+  const [includeCounseling, setIncludeCounseling] = useState<boolean>(true);
+  const [includeMedical, setIncludeMedical] = useState<boolean>(true);
 
   const student = students.find((s) => String(s.id) === String(selectedStudentId));
 
@@ -210,6 +212,8 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       else setSemester(config.semester || 'Genap');
       if (rep.academicYear) setAcademicYear(rep.academicYear);
       else setAcademicYear(config.academicYear || '2025/2026');
+      setIncludeCounseling(rep.includeCounseling !== undefined ? rep.includeCounseling : true);
+      setIncludeMedical(rep.includeMedical !== undefined ? rep.includeMedical : true);
     } else {
       setGrades({});
       setDescriptions({});
@@ -218,6 +222,8 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       setCustomWaliAsramaNip(config.waliAsramaNip || '');
       setSemester(config.semester || 'Genap');
       setAcademicYear(config.academicYear || '2025/2026');
+      setIncludeCounseling(true);
+      setIncludeMedical(true);
     }
   }, [selectedStudentId, reports, student, config]);
 
@@ -302,7 +308,9 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       customWaliAsrama,
       customWaliAsramaNip,
       semester,
-      academicYear
+      academicYear,
+      includeCounseling,
+      includeMedical
     };
 
     onSaveReport(selectedStudentId, reportData);
@@ -328,7 +336,9 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       customWaliAsrama,
       customWaliAsramaNip,
       semester,
-      academicYear
+      academicYear,
+      includeCounseling,
+      includeMedical
     };
 
     if (Object.keys(grades).length === 0) {
@@ -554,15 +564,46 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
       {/* Counseling & Health Overview Widgets for PDF Integration */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Counseling BK Widget */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-            <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-              <UserCheck className="w-4 h-4 text-blue-600" /> Riwayat Bimbingan BK (Akan Dicetak di Rapor)
-            </h4>
-            <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
-              {studentCounseling.length} Catatan
-            </span>
+        <div className={`p-4 rounded-xl border transition-all shadow-sm space-y-3 ${includeCounseling ? 'bg-white border-blue-200 ring-1 ring-blue-100' : 'bg-slate-50 border-slate-200 opacity-75'}`}>
+          <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-2.5 gap-2">
+            <div className="flex items-center gap-2">
+              <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                <UserCheck className={`w-4 h-4 ${includeCounseling ? 'text-blue-600' : 'text-slate-400'}`} /> Riwayat Bimbingan BK
+              </h4>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${includeCounseling ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                {studentCounseling.length} Catatan
+              </span>
+            </div>
+
+            {/* Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIncludeCounseling(!includeCounseling)}
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-extrabold transition-all border ${
+                includeCounseling
+                  ? 'bg-blue-600 text-white border-blue-700 shadow-sm hover:bg-blue-700'
+                  : 'bg-slate-200 text-slate-600 border-slate-300 hover:bg-slate-300'
+              }`}
+              title="Klik untuk mengubah apakah riwayat BK ini dicetak di rapor atau tidak"
+            >
+              <span className="text-[10px] uppercase tracking-wider">
+                {includeCounseling ? 'Cetak di Rapor (ON)' : 'Tidak Dicetak (OFF)'}
+              </span>
+              <div
+                className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${
+                  includeCounseling ? 'translate-x-0' : '-translate-x-0.5 opacity-80'
+                }`}
+              />
+            </button>
           </div>
+
+          {!includeCounseling && (
+            <div className="p-2.5 bg-amber-50 rounded-lg text-amber-800 text-[11px] font-medium border border-amber-200 flex items-center gap-1.5">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Opsi Dinonaktifkan: Riwayat Bimbingan BK <strong className="font-bold">tidak akan ditampilkan</strong> di dokumen cetak PDF Rapor.</span>
+            </div>
+          )}
+
           <div className="text-xs text-slate-600 space-y-2">
             {studentCounseling.length === 0 ? (
               <div className="p-3 bg-slate-50 rounded-lg text-emerald-700 text-[11px] font-medium flex items-center gap-1.5 border border-slate-100">
@@ -587,15 +628,46 @@ export const ReportCardTab: React.FC<ReportCardTabProps> = ({
         </div>
 
         {/* Health / UKS Medical Widget */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-            <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-              <HeartPulse className="w-4 h-4 text-emerald-600" /> Catatan Kesehatan UKS (Akan Dicetak di Rapor)
-            </h4>
-            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
-              {studentMedical.length} Rekam Medis
-            </span>
+        <div className={`p-4 rounded-xl border transition-all shadow-sm space-y-3 ${includeMedical ? 'bg-white border-emerald-200 ring-1 ring-emerald-100' : 'bg-slate-50 border-slate-200 opacity-75'}`}>
+          <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-2.5 gap-2">
+            <div className="flex items-center gap-2">
+              <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                <HeartPulse className={`w-4 h-4 ${includeMedical ? 'text-emerald-600' : 'text-slate-400'}`} /> Catatan Kesehatan UKS
+              </h4>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${includeMedical ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                {studentMedical.length} Rekam Medis
+              </span>
+            </div>
+
+            {/* Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIncludeMedical(!includeMedical)}
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-extrabold transition-all border ${
+                includeMedical
+                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm hover:bg-emerald-700'
+                  : 'bg-slate-200 text-slate-600 border-slate-300 hover:bg-slate-300'
+              }`}
+              title="Klik untuk mengubah apakah rekam medis UKS ini dicetak di rapor atau tidak"
+            >
+              <span className="text-[10px] uppercase tracking-wider">
+                {includeMedical ? 'Cetak di Rapor (ON)' : 'Tidak Dicetak (OFF)'}
+              </span>
+              <div
+                className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${
+                  includeMedical ? 'translate-x-0' : '-translate-x-0.5 opacity-80'
+                }`}
+              />
+            </button>
           </div>
+
+          {!includeMedical && (
+            <div className="p-2.5 bg-amber-50 rounded-lg text-amber-800 text-[11px] font-medium border border-amber-200 flex items-center gap-1.5">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Opsi Dinonaktifkan: Catatan Kesehatan UKS <strong className="font-bold">tidak akan ditampilkan</strong> di dokumen cetak PDF Rapor.</span>
+            </div>
+          )}
+
           <div className="text-xs text-slate-600 space-y-2">
             {studentMedical.length === 0 ? (
               <div className="p-3 bg-slate-50 rounded-lg text-emerald-700 text-[11px] font-medium flex items-center gap-1.5 border border-slate-100">

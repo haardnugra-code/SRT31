@@ -120,6 +120,8 @@ export interface ReportCardData {
   customWaliAsramaNip?: string;
   semester?: 'Ganjil' | 'Genap';
   academicYear?: string;
+  includeCounseling?: boolean;
+  includeMedical?: boolean;
 }
 
 export interface DisciplineLevelConfig {

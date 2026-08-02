@@ -712,44 +712,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       </div>
 
       {/* Recent Items Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-5 md:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 text-sm">Pelanggaran Terkini</h3>
-            <button
-              onClick={() => onNavigateTab('violations')}
-              className="text-xs font-semibold text-red-600 hover:underline"
-            >
-              Lihat Semua
-            </button>
-          </div>
-          <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto pr-1">
-            {recentViolations.length === 0 ? (
-              <p className="text-xs text-slate-400 py-4 text-center">
-                Belum ada pencatatan kasus pelanggaran asrama.
-              </p>
-            ) : (
-              recentViolations.map((v) => (
-                <div key={v.id} className="py-3 flex items-start gap-3">
-                  <div className={`px-2.5 py-1 rounded text-xs font-extrabold flex-shrink-0 ${getBadgeClass(v.level)}`}>
-                    T{v.level}
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    <h4 className="text-xs font-bold text-slate-800 truncate">{v.studentName}</h4>
-                    <p className="text-[11px] text-slate-500 leading-tight truncate">{v.violation}</p>
-                    {v.note && (
-                      <p className="text-[10px] text-amber-700 bg-amber-50 px-1 py-0.5 rounded italic truncate">
-                        Catatan: {v.note}
-                      </p>
-                    )}
-                    <p className="text-[9px] text-slate-400">Kasus dilaporkan pada {formatDateIndonesian(v.date)}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
+      <div>
         <div className="bg-white p-5 md:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-800 text-sm">Siswa Sedang Izin Pulang</h3>

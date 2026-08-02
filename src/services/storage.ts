@@ -1,6 +1,6 @@
 import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord } from '../types';
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcXGzz_4gUFU5Ft7zB9bn7VgdpiZd2cLW7MF_f7O_okAA3zs4HqxYkJf3Y2YhPKlFI/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJCN9pcsTSEq-tBeFqKY5cdTL-upT_PUPslMUYx1Qc21FHtOJgyVoNKlLbkbL7DWpe/exec";
 
 export const DEFAULT_CONFIG: AppConfig = {
   googleScriptUrl: DEFAULT_SCRIPT_URL,
@@ -138,7 +138,7 @@ export function loadAppConfig(): AppConfig {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq_0rLuJfT5okbnlGR5F0b7ChJLH6sAsi0B-1TMIlO3ifzEaS')) {
+      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz')) {
         parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
       }
       return { ...DEFAULT_CONFIG, ...parsed };

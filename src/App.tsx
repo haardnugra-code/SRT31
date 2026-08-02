@@ -727,6 +727,38 @@ export default function App() {
             saveReports(fetchedReports);
           }
 
+          if (resJson.medicalRecords) {
+            let fetchedMedical: MedicalRecord[] = resJson.medicalRecords.map((m: any) => ({
+              id: m['ID Rekam Medis'] || m['id'] || '',
+              studentId: m['NISN/ID'] || m['studentId'] || '',
+              studentName: m['Nama Siswa'] || m['studentName'] || '',
+              date: m['Tanggal'] || m['date'] || '',
+              time: m['Waktu/Jam'] || m['time'] || '',
+              location: m['Lokasi'] || m['location'] || '',
+              symptoms: m['Gejala'] || m['symptoms'] || '',
+              diagnosis: m['Diagnosa'] || m['diagnosis'] || '',
+              treatment: m['Tindakan/Obat'] || m['treatment'] || '',
+              restDays: parseInt(m['Lama Istirahat (Hari)'] || m['restDays']) || 0,
+              isSickLeave: m['Izin Istirahat?'] === 'Ya' || m['isSickLeave'] === true,
+              status: m['Status Pemulihan'] || m['status'] || '',
+              officer: m['Petugas Medis'] || m['officer'] || '',
+              temperature: m['Suhu Tubuh'] || m['temperature'] || '',
+              vitalSigns: m['Tanda Vital/Tekanan Darah'] || m['vitalSigns'] || '',
+              notes: m['Catatan Medis'] || m['notes'] || ''
+            }));
+
+            if (validStudentIds.size > 0) {
+              fetchedMedical = fetchedMedical.filter((m) => {
+                const hasValidId = m.studentId && validStudentIds.has(String(m.studentId).trim());
+                const hasValidName = m.studentName && validStudentNames.has(m.studentName.trim().toLowerCase());
+                return hasValidId || hasValidName;
+              });
+            }
+
+            setMedicalRecords(fetchedMedical);
+            saveMedicalRecords(fetchedMedical);
+          }
+
           if (isManual) {
             showToast('Sinkronisasi Berhasil', 'Database berhasil diselaraskan dengan cloud.', 'success');
           }

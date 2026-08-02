@@ -811,7 +811,7 @@ export async function generateViolationNoticePDF(
   const doc = new jsPDF('p', 'mm', 'a4');
   const leftLogoBase64 = await loadLogoImage(config.logoKiriUrl, 'left');
   const rightLogoBase64 = await loadLogoImage(config.logoKananUrl, 'right');
-  const watermarkBase64 = await loadWatermarkImage(config.logoKiriUrl);
+  const watermarkBase64 = await generateWatermarkBase64(leftLogoBase64, config.watermarkOpacity || 0.04);
 
   if (watermarkBase64) {
     doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);

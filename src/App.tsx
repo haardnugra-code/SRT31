@@ -45,7 +45,7 @@ import { LeavesTab } from './components/LeavesTab';
 import { MedicalTab } from './components/MedicalTab';
 import { ReportCardTab } from './components/ReportCardTab';
 import { RecapTab } from './components/RecapTab';
-import { GuideTab } from './components/GuideTab';
+import { GuideTab, PptPrintSlides } from './components/GuideTab';
 import { SettingsTab } from './components/SettingsTab';
 
 export default function App() {
@@ -821,8 +821,8 @@ export default function App() {
       {/* Login Screen Modal */}
       <LoginModal isLoggedIn={isLoggedIn} onLoginSuccess={() => setIsLoggedIn(true)} />
 
-      {/* Main Row Container */}
-      <div className="flex flex-col md:flex-row min-h-screen flex-1 relative">
+      {/* Main Row Container (Screen View Only - Hidden when printing PPT) */}
+      <div className="no-print flex flex-col md:flex-row min-h-screen flex-1 relative">
         {/* Sidebar */}
         <Sidebar
           activeTab={activeTab}
@@ -989,6 +989,9 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      {/* DEDICATED GLOBAL PRINT PPT SLIDES CONTAINER (PRINT MODE ONLY) */}
+      <PptPrintSlides />
     </div>
   );
 }

@@ -48,12 +48,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isOpenMobile && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden"
+          className="no-print fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden"
         />
       )}
 
       <aside
-        className={`w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col border-r border-slate-800 fixed md:sticky inset-y-0 left-0 transform ${
+        className={`no-print app-sidebar w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col border-r border-slate-800 fixed md:sticky inset-y-0 left-0 transform ${
           isOpenMobile ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0 transition-transform duration-300 ease-in-out z-50 md:z-30 h-screen md:h-auto`}
       >

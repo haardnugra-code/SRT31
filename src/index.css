@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
 @media print {
-  .no-print {
+  /* Hide standard screen web app UI elements */
+  .no-print,
+  .app-sidebar,
+  .app-header,
+  header,
+  aside,
+  nav,
+  button:not(.print-keep) {
     display: none !important;
   }
+
   body {
     background: #0f172a !important;
     color: white !important;
@@ -12,10 +20,21 @@
     margin: 0 !important;
     padding: 0 !important;
   }
+
+  /* PPT Print container display */
+  .print-ppt-container {
+    display: block !important;
+  }
+
   .page-break-after {
     page-break-after: always !important;
     break-after: page !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 5mm;
   }
 }

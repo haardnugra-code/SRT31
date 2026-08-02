@@ -25,6 +25,531 @@ import {
   Info
 } from 'lucide-react';
 
+const pptSlides = [
+  {
+    title: "Sistem Informasi Keasramaan Sekolah Rakyat",
+    subtitle: "Panduan Operasional & Presentasi Modul Manajemen Keasramaan Terpadu",
+    tag: "SLIDE 1 • JUDUL UTAMA",
+    color: "from-slate-900 via-slate-800 to-red-950",
+    content: (
+      <div className="space-y-5 text-center py-4">
+        <div className="w-16 h-16 bg-red-600/20 border-2 border-red-500/40 rounded-2xl mx-auto flex items-center justify-center text-red-400 shadow-inner">
+          <BookOpen className="w-8 h-8" />
+        </div>
+        <div className="max-w-2xl mx-auto space-y-1.5">
+          <h3 className="text-xl md:text-2xl font-bold text-white tracking-tight">Digitalisasi Pengelolaan Asrama & Pembinaan Santri</h3>
+          <p className="text-slate-300 text-xs leading-relaxed">
+            Solusi terintegrasi untuk pencatatan observasi harian, rekam medis UKS, perizinan pulang, poin kedisiplinan, rapor karakter, serta sinkronisasi Google Sheets 2-arah.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2 pt-2 text-[11px] font-semibold">
+          <span className="px-3 py-1 bg-white/10 text-slate-200 rounded-full border border-white/10">✓ Google Sheets Sync</span>
+          <span className="px-3 py-1 bg-white/10 text-slate-200 rounded-full border border-white/10">✓ Cetak PDF Resmi Kop Sekolah</span>
+          <span className="px-3 py-1 bg-white/10 text-slate-200 rounded-full border border-white/10">✓ TTD Custom Wali Asuh & Wali Asrama</span>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Arsitektur Multi-Mode & Sinkronisasi",
+    subtitle: "Dua Moda Kerja: Cloud Google Sheets & Offline LocalStorage",
+    tag: "SLIDE 2 • ARSITEKTUR SYSTEM",
+    color: "from-blue-950 via-slate-900 to-indigo-950",
+    content: (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2 text-left">
+        <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10 space-y-2">
+          <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+            <Sparkles className="w-4 h-4" /> Mode Online Cloud
+          </div>
+          <p className="text-slate-200 text-xs leading-relaxed">
+            Terhubung langsung ke Google Sheets melalui Apps Script Web App URL. Data tersimpan terpusat dan dapat diakses multi-user.
+          </p>
+          <ul className="text-slate-300 text-[11px] space-y-1 list-disc pl-4">
+            <li>Sinkronisasi otomatis saat simpan data</li>
+            <li>Pembaruan data real-time via Tarik Data Cloud</li>
+            <li>Backup terpusat di Google Drive sekolah</li>
+          </ul>
+        </div>
+        <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10 space-y-2">
+          <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+            <Sliders className="w-4 h-4" /> Mode Offline Standalone
+          </div>
+          <p className="text-slate-200 text-xs leading-relaxed">
+            Jika koneksi internet terputus, seluruh transaksi data disimpan di LocalStorage browser tanpa hambatan.
+          </p>
+          <ul className="text-slate-300 text-[11px] space-y-1 list-disc pl-4">
+            <li>Tetap bisa input data & cetak PDF</li>
+            <li>Bisa sinkronisasi kapan saja saat internet tersedia</li>
+            <li>Penyimpanan cepat dan responsif</li>
+          </ul>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form Dashboard & Ringkasan Statistik KPI",
+    subtitle: "Pusat Pemantauan Indikator Kinerja Utama & Log Aktivitas Asrama",
+    tag: "SLIDE 3 • FORM DASHBOARD",
+    color: "from-slate-900 via-slate-800 to-blue-950",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-blue-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Menampilkan ringkasan KPI real-time (Total Santri, Izin Aktif di Luar, Rawat UKS, Total Poin Pelanggaran Bulan Ini), grafik statistik distribusi, serta log aktivitas harian terbaru.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div className="p-2.5 bg-white/5 rounded-lg border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-blue-500 text-white font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">1</span>
+            <span className="font-bold text-blue-300 block">Monitoring KPI</span>
+            <p className="text-[11px] text-slate-300">Pantau 4 kartu indikator utama kondisi asrama.</p>
+          </div>
+          <div className="p-2.5 bg-white/5 rounded-lg border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-blue-500 text-white font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">2</span>
+            <span className="font-bold text-blue-300 block">Shortcut Sync</span>
+            <p className="text-[11px] text-slate-300">Klik "Sinkronkan Sekarang" untuk update data cloud.</p>
+          </div>
+          <div className="p-2.5 bg-white/5 rounded-lg border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-blue-500 text-white font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">3</span>
+            <span className="font-bold text-blue-300 block">Analisis Grafik</span>
+            <p className="text-[11px] text-slate-300">Tinjau grafik perizinan & kategori pelanggaran.</p>
+          </div>
+          <div className="p-2.5 bg-white/5 rounded-lg border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-blue-500 text-white font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">4</span>
+            <span className="font-bold text-blue-300 block">Log Terkini</span>
+            <p className="text-[11px] text-slate-300">Cek perizinan keluar, rekam medis & konseling terbaru.</p>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form Data Murid & Impor Massal Excel/CSV",
+    subtitle: "Pengelolaan Master Biodata, Gedung Asrama, Wali Asuh & Riwayat Terpadu",
+    tag: "SLIDE 4 • FORM DATA MURID",
+    color: "from-slate-900 via-blue-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-blue-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Mendaftarkan santri baru, menentukan Gedung Asrama & Wali Asuh penanggung jawab, melakukan impor massal file Excel/CSV, serta menelusuri modal rekam jejak santri terpadu.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1.5">
+            <span className="font-bold text-blue-300 block">A. Pendaftaran Manual & Impor Excel:</span>
+            <ol className="list-decimal pl-4 space-y-1 text-slate-200 text-[11px]">
+              <li>Klik tombol <strong className="text-red-400">+ Tambah Murid</strong> atau <strong className="text-emerald-400">Impor Excel</strong>.</li>
+              <li>Isi NISN/ID, Nama Lengkap, Kelas, Gedung Asrama & Wali Asuh.</li>
+              <li>Klik <strong>Simpan Murid</strong> untuk merekam biodata master.</li>
+            </ol>
+          </div>
+          <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1.5">
+            <span className="font-bold text-blue-300 block">B. Penelusuran Riwayat Terpadu:</span>
+            <ol className="list-decimal pl-4 space-y-1 text-slate-200 text-[11px]">
+              <li>Cari nama santri pada kotak pencarian atau filter per kelas/asrama.</li>
+              <li>Klik tombol <strong className="text-cyan-300">Riwayat</strong> pada baris santri.</li>
+              <li>Buka modal gabungan rekam medis, izin pulang, poin & konseling.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form Ceklist Observasi Harian Pembiasaan",
+    subtitle: "Jurnal Harian 4 Aspek Karakter & Catatan Observasi Wali Asuh",
+    tag: "SLIDE 5 • FORM CEKLIST OBSERVASI",
+    color: "from-slate-900 via-emerald-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-emerald-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Mencatat jurnal observasi pembiasaan harian santri (Bangun Pagi, Shalat Berjamaah, Kebersihan Kamar, Etika Sosial) dan memberikan catatan perkembangan khusus dari Wali Asuh.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-emerald-500 text-slate-950 font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">1</span>
+            <span className="font-bold text-emerald-300 block">Pilih Tanggal</span>
+            <p className="text-[11px] text-slate-300">Pilih tanggal observasi & nama santri.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-emerald-500 text-slate-950 font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">2</span>
+            <span className="font-bold text-emerald-300 block">Bangun Pagi</span>
+            <p className="text-[11px] text-slate-300">Centang kedisiplinan bangun tepat waktu.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-emerald-500 text-slate-950 font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">3</span>
+            <span className="font-bold text-emerald-300 block">Shalat Berjamaah</span>
+            <p className="text-[11px] text-slate-300">Centang keikutsertaan ibadah harian.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-emerald-500 text-slate-950 font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">4</span>
+            <span className="font-bold text-emerald-300 block">Kebersihan Kamar</span>
+            <p className="text-[11px] text-slate-300">Centang kerapihan ranjang & lemari.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-emerald-500 text-slate-950 font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">5</span>
+            <span className="font-bold text-emerald-300 block">Catatan Wali Asuh</span>
+            <p className="text-[11px] text-slate-300">Tuliskan pesan khusus & simpan jurnal.</p>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form Pelanggaran & Surat Panggilan Orang Tua",
+    subtitle: "Input Kasus Kedisiplinan, Akumulasi Poin, & Cetak Surat Panggilan PDF",
+    tag: "SLIDE 6 • FORM PELANGGARAN",
+    color: "from-slate-900 via-rose-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-rose-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Mencatat kasus pelanggaran tata tertib asrama, mengkalkulasi akumulasi bobot poin kedisiplinan santri, dan menerbitkan Surat Panggilan Orang Tua PDF resmi.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-rose-500 text-white font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">1</span>
+            <span className="font-bold text-rose-300 block">Tombol Tambah</span>
+            <p className="text-[11px] text-slate-300">Klik "+ Catat Pelanggaran".</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-rose-500 text-white font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">2</span>
+            <span className="font-bold text-rose-300 block">Pilih Murid</span>
+            <p className="text-[11px] text-slate-300">Pilih nama, NISN & Kelas terisi otomatis.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-rose-500 text-white font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">3</span>
+            <span className="font-bold text-rose-300 block">Kategori & Poin</span>
+            <p className="text-[11px] text-slate-300">Atur Ringan/Sedang/Berat & bobot poin.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-rose-500 text-white font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">4</span>
+            <span className="font-bold text-rose-300 block">Deskripsi Kasus</span>
+            <p className="text-[11px] text-slate-300">Input tanggal, lokasi & uraian kejadian.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="w-5 h-5 bg-rose-500 text-white font-extrabold rounded-full inline-flex items-center justify-center text-[10px] mb-1">5</span>
+            <span className="font-bold text-rose-300 block">Cetak PDF</span>
+            <p className="text-[11px] text-slate-300">Klik "Cetak Surat Panggilan" ber-Kop.</p>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form Bimbingan Konseling (BK)",
+    subtitle: "Pencatatan Sesi Psikologis, Penanganan Masalah & Tindak Lanjut Pembinaan",
+    tag: "SLIDE 7 • FORM KONSELING BK",
+    color: "from-slate-900 via-indigo-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-indigo-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Merekam sesi konsultasi psikologis, keluhan santri, rekomendasi penanganan, klasifikasi sifat catatan (Rahasia/Umum), dan memantau status penyelesaian masalah.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-indigo-300 block">1. Sesi & Konselor</span>
+            <p className="text-[11px] text-slate-300">Klik "+ Tambah Sesi", pilih Santri & Konselor BK.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-indigo-300 block">2. Sifat Catatan</span>
+            <p className="text-[11px] text-slate-300">Atur Rahasia (khusus tim BK) atau Umum.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-indigo-300 block">3. Keluhan & Solusi</span>
+            <p className="text-[11px] text-slate-300">Isi uraian masalah, hasil & rekomendasi.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-indigo-300 block">4. Status Pemantauan</span>
+            <p className="text-[11px] text-slate-300">Update status: Belum Selesai / Dalam Pemantauan / Selesai.</p>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form Perizinan Pulang & Surat Izin PDF",
+    subtitle: "Pengajuan Keluar Asrama, Tanggal Kembali, & Cetak Surat Izin Pulang PDF",
+    tag: "SLIDE 8 • FORM PERIZINAN PULANG",
+    color: "from-slate-900 via-purple-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-purple-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Mengajukan perizinan keluar/pulang santri, menetapkan batas tanggal kembali, melacak status perizinan secara otomatis (Aktif/Kembali/Terlambat), dan mencetak Surat Izin Pulang PDF.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1.5">
+            <span className="font-bold text-purple-300 block">A. Input Perizinan & TTD:</span>
+            <ol className="list-decimal pl-4 space-y-1 text-slate-200 text-[11px]">
+              <li>Klik <strong>+ Buat Perizinan Baru</strong>, pilih Nama Santri & Alasan.</li>
+              <li>Isi Tanggal Berangkat & Tanggal Wajib Kembali.</li>
+              <li>Pilih / Input Nama & NIP Wali Asuh serta Wali Asrama.</li>
+            </ol>
+          </div>
+          <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1.5">
+            <span className="font-bold text-purple-300 block">B. Pratinjau PDF & Update Status:</span>
+            <ol className="list-decimal pl-4 space-y-1 text-slate-200 text-[11px]">
+              <li>Klik ikon <strong>Cetak PDF Surat Izin</strong> pada tabel perizinan.</li>
+              <li>Edit Nama/NIP TTD langsung di jendela pratinjau jika diperlukan.</li>
+              <li>Klik <strong>Sudah Kembali</strong> saat santri telah pulang ke asrama.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form UKS & Rekam Medis Santri",
+    subtitle: "Pemeriksaan Vital Signs, Diagnosis, Obat UKS & Surat Izin Sakit PDF",
+    tag: "SLIDE 9 • FORM REKAM MEDIS UKS",
+    color: "from-slate-900 via-teal-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-teal-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Merekam pemeriksaan kesehatan fisik santri, mencatat vital signs (Suhu Tubuh °C, Tensi, Nadi), diagnosis penyakit, resep obat UKS, status perawatan, dan mencetak Surat Izin Sakit PDF.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-teal-300 block">1. Vital Signs</span>
+            <p className="text-[11px] text-slate-300">Input Suhu (°C), Tekanan Darah & Nadi santri.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-teal-300 block">2. Diagnosis & Obat</span>
+            <p className="text-[11px] text-slate-300">Tulis keluhan utama, diagnosis & resep obat UKS.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-teal-300 block">3. Status & Cetak PDF</span>
+            <p className="text-[11px] text-slate-300">Atur status (Rawat UKS/Rujukan) & unduh Surat Sakit PDF.</p>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form Rapor Keasramaan & Karakter Santri",
+    subtitle: "Evaluasi Semesteran Capaian Karakter, Catatan Perkembangan & Export A4 PDF",
+    tag: "SLIDE 10 • FORM RAPOR KEASRAMAAN",
+    color: "from-slate-900 via-amber-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-amber-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Menilai indikator karakter semesteran santri (Kedisiplinan, Ibadah, Kebersihan, Kemandirian, Sosial) dengan predikat A/B/C/D, menyusun deskripsi perkembangan, serta mencetak Rapor A4 PDF Kop Sekolah.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1.5">
+            <span className="font-bold text-amber-300 block">A. Nilai Indikator Karakter:</span>
+            <ol className="list-decimal pl-4 space-y-1 text-slate-200 text-[11px]">
+              <li>Pilih Nama Santri, Semester & Tahun Ajaran.</li>
+              <li>Isi predikat (A / B / C / D) untuk 4 indikator karakter.</li>
+              <li>Tuliskan narasi deskripsi perkembangan santri oleh Wali Asuh.</li>
+            </ol>
+          </div>
+          <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1.5">
+            <span className="font-bold text-amber-300 block">B. Pengesahan & Unduh PDF:</span>
+            <ol className="list-decimal pl-4 space-y-1 text-slate-200 text-[11px]">
+              <li>Masukkan Nama & NIP Wali Asuh serta Wali Asrama.</li>
+              <li>Klik <strong>Simpan Data Rapor</strong>.</li>
+              <li>Klik <strong>Unduh PDF Rapor Keasramaan</strong> (Format A4).</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form Rekapitulasi & Laporan Pengesahan Pimpinan",
+    subtitle: "Filter Laporan Berkala (Pelanggaran, Izin, UKS, Karakter) & Dual TTD",
+    tag: "SLIDE 11 • FORM REKAPITULASI",
+    color: "from-slate-900 via-cyan-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-cyan-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Menyusun laporan rekapitulasi ringkasan berkala untuk pimpinan, Kepala Sekolah, dan Dinas Pendidikan dengan Dual TTD pengesahan resmi.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-cyan-300 block">1. Jenis Laporan</span>
+            <p className="text-[11px] text-slate-300">Pilih Rekap Poin, Perizinan, UKS, atau Karakter.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-cyan-300 block">2. Periode Laporan</span>
+            <p className="text-[11px] text-slate-300">Atur filter bulan atau semester tertentu.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-cyan-300 block">3. Dual TTD</span>
+            <p className="text-[11px] text-slate-300">Isi TTD Wali Asrama & Kepala Sekolah + NIP.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-cyan-300 block">4. Cetak PDF</span>
+            <p className="text-[11px] text-slate-300">Klik "Pratinjau / Cetak Laporan Rekap PDF".</p>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Form Pengaturan Sistem & Integrasi Google Sheets",
+    subtitle: "Identitas Sekolah, Kop Surat, Master Wali Asuh, & Dual-Sync Cloud Database",
+    tag: "SLIDE 12 • FORM PENGATURAN",
+    color: "from-slate-900 via-emerald-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-emerald-300 block">Fungsi Utama Form:</span>
+          <p className="text-slate-300 text-[11px] leading-relaxed">
+            Mengatur identitas sekolah, Kop Surat resmi, URL Logo, master daftar Wali Asuh, default penandatangan, dan mengelola sinkronisasi 2-arah dengan Google Sheets.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-emerald-300 block">1. Identitas & Kop Surat</span>
+            <p className="text-[11px] text-slate-300">Isi Nama Sekolah, Alamat, Telp & URL Logo.</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-emerald-300 block">2. Master Wali Asuh</span>
+            <p className="text-[11px] text-slate-300">Daftarkan list Wali Asuh & NIP (Nama|NIP).</p>
+          </div>
+          <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-emerald-300 block">3. Dual Sync Cloud</span>
+            <p className="text-[11px] text-slate-300">Pasang Apps Script URL, jalankan Tarik/Kirim Data.</p>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Modul Kustomisasi Penandatangan Dokumen",
+    subtitle: "Fleksibilitas Pengubahan Nama & NIP Wali Asuh, Wali Asrama & Kepala Sekolah",
+    tag: "SLIDE 13 • KUSTOMISASI TTD",
+    color: "from-slate-900 via-slate-800 to-indigo-950",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+          <span className="font-bold text-indigo-300 block">Fitur Kustomisasi TTD di Seluruh Dokumen:</span>
+          <p className="text-slate-200 text-[11px] leading-relaxed">
+            Seluruh lembar pengesahan dan dokumen PDF (Surat Izin Pulang, Surat Sakit, Surat Panggilan, Rapor & Laporan Rekap) mendukung pengubahan Nama dan NIP penandatangan secara dinamis langsung pada form transaksi maupun pada jendela modal pratinjau sebelum dicetak.
+          </p>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Panduan Setup Google Apps Script",
+    subtitle: "Langkah Pemasangan Database Cloud Gratis Menggunakan Google Sheets",
+    tag: "SLIDE 14 • SETUP GOOGLE SHEETS",
+    color: "from-slate-900 via-emerald-950 to-slate-900",
+    content: (
+      <div className="space-y-3 py-1 text-left text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-emerald-300 block">Langkah 1: Salin Script</span>
+            <p className="text-[11px] text-slate-300">Buka Pengaturan Sistem &rarr; Klik "Salin Kode Apps Script".</p>
+          </div>
+          <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-emerald-300 block">Langkah 2: Deploy Web App</span>
+            <p className="text-[11px] text-slate-300">Tempel ke Google Sheets (Extensions &gt; Apps Script), lalu Publish Web App (Anyone).</p>
+          </div>
+          <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+            <span className="font-bold text-emerald-300 block">Langkah 3: Tempel URL & Sync</span>
+            <p className="text-[11px] text-slate-300">Salin Web App URL, masukan ke form Pengaturan & simpan. Jalankan "Tarik Data Cloud".</p>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Penutup & Petunjuk Cetak PPT ke PDF",
+    subtitle: "Siap Digunakan Secara Penuh untuk Efisiensi Pengelolaan Asrama",
+    tag: "SLIDE 15 • PENUTUP & CETAK SLIDE",
+    color: "from-slate-900 via-slate-800 to-red-950",
+    content: (
+      <div className="space-y-4 text-center py-4">
+        <h3 className="text-lg md:text-xl font-bold text-white">Sistem Keasramaan Siap Digunakan</h3>
+        <p className="text-xs text-slate-300 max-w-xl mx-auto leading-relaxed">
+          Klik tombol di bawah ini untuk mencetak seluruh slide presentasi ini ke dalam format PDF berorientasi cetak bersih per halaman.
+        </p>
+        <div className="pt-2 no-print">
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-xl transition-all active:scale-95"
+          >
+            <Printer className="w-4 h-4" /> Cetak / Export Seluruh Slide PPT ke PDF
+          </button>
+        </div>
+      </div>
+    )
+  }
+];
+
+export const PptPrintSlides: React.FC = () => {
+  return (
+    <div className="hidden print:block print-ppt-container space-y-6">
+      <div className="text-center pb-4 border-b border-white/20 mb-6">
+        <h1 className="text-2xl font-black text-white uppercase tracking-tight">
+          PANDUAN OPERASIONAL & PRESENTASI PPT SISTEM KEASRAMAAN
+        </h1>
+        <p className="text-xs font-semibold text-slate-300 mt-1">
+          Sekolah Rakyat • Dokumentasi Langkah Demi Langkah Setiap Form, Cetak PDF, & Pengaturan TTD
+        </p>
+      </div>
+
+      {pptSlides.map((slide, idx) => (
+        <div
+          key={idx}
+          className="page-break-after border-2 border-slate-700 rounded-2xl p-6 bg-slate-950 text-white space-y-4 my-4 shadow-none min-h-[175mm] flex flex-col justify-between"
+          style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
+        >
+          {/* Header Slide */}
+          <div className="flex items-center justify-between border-b border-white/20 pb-3">
+            <span className="text-[11px] font-extrabold text-red-400 bg-red-950 border border-red-500/50 px-3 py-1 rounded-full uppercase tracking-wider">
+              {slide.tag}
+            </span>
+            <span className="text-xs font-mono text-slate-300 font-bold">
+              SLIDE {idx + 1} / {pptSlides.length}
+            </span>
+          </div>
+
+          {/* Title & Body */}
+          <div className="flex-1 flex flex-col justify-center py-2">
+            <h2 className="text-xl font-bold text-white tracking-tight mb-1">{slide.title}</h2>
+            <p className="text-xs text-slate-300 font-medium mb-3">{slide.subtitle}</p>
+            <div className="text-xs text-slate-100">{slide.content}</div>
+          </div>
+
+          {/* Footer Slide */}
+          <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+            <span>Sistem Keasramaan • Sekolah Rakyat Kemensos RI</span>
+            <span>Slide {idx + 1} dari {pptSlides.length}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const GuideTab: React.FC = () => {
   const [viewMode, setViewMode] = useState<'manual' | 'presentation'>('presentation');
   const [activeSection, setActiveSection] = useState<string>('intro');
@@ -1068,42 +1593,7 @@ export const GuideTab: React.FC = () => {
         </div>
       )}
 
-      {/* DEDICATED PRINT-ONLY PPT SLIDES LAYOUT (VISIBLE ONLY WHEN PRINTING TO PDF / PRINTER) */}
-      <div className="hidden print:block space-y-6">
-        <div className="text-center pb-4 border-b-2 border-slate-900 mb-6">
-          <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-            PANDUAN OPERASIONAL & PRESENTASI PPT SISTEM KEASRAMAAN
-          </h1>
-          <p className="text-xs font-semibold text-slate-700 mt-1">
-            Sekolah Rakyat • Dokumentasi Langkah Demi Langkah Setiap Form, Cetak PDF, & Pengaturan TTD
-          </p>
-        </div>
-
-        {pptSlides.map((slide, idx) => (
-          <div
-            key={idx}
-            className="page-break-after border-2 border-slate-900 rounded-2xl p-6 bg-slate-950 text-white space-y-4 my-4 shadow-none"
-            style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
-          >
-            {/* Header Slide */}
-            <div className="flex items-center justify-between border-b border-white/20 pb-3">
-              <span className="text-[11px] font-extrabold text-red-400 bg-red-950 border border-red-500/50 px-3 py-1 rounded-full uppercase tracking-wider">
-                {slide.tag}
-              </span>
-              <span className="text-xs font-mono text-slate-300 font-bold">
-                SLIDE {idx + 1} / {pptSlides.length}
-              </span>
-            </div>
-
-            {/* Title & Body */}
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">{slide.title}</h2>
-              <p className="text-xs text-slate-300 font-medium mb-3">{slide.subtitle}</p>
-              <div className="text-xs text-slate-100">{slide.content}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Global print layout is rendered at App root via PptPrintSlides */}
     </div>
   );
 };

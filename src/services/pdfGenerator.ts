@@ -987,23 +987,6 @@ export async function generateViolationNoticePDF(
   doc.text("( .................................................... )", 20, row1Y + 28);
   doc.text(`( ${student?.caretaker || violation.reporter} )`, 135, row1Y + 28);
 
-  // Row 2 Signature: Mengetahui Kepala Sekolah / Penanggung Jawab Keasramaan
-  const row2Y = row1Y + 35;
-  doc.setFont("Helvetica", "normal");
-  doc.text("Mengetahui,", 105, row2Y, { align: "center" });
-  doc.text("Kepala Sekolah / Penanggung Jawab,", 105, row2Y + 4.5, { align: "center" });
-
-  doc.setFont("Helvetica", "bold");
-  const ksekName = config.kepalaSekolah || "Kepala Sekolah Rakyat Terpadu 31";
-  doc.text(`( ${ksekName} )`, 105, row2Y + 26, { align: "center" });
-
-  if (config.kepalaSekolahNip) {
-    doc.setFont("Helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`NIP. ${config.kepalaSekolahNip}`, 105, row2Y + 30.5, { align: "center" });
-  }
-
   doc.save(`Surat_Pemberitahuan_Pelanggaran_${violation.studentName.replace(/\s+/g, '_')}_${violation.date}.pdf`);
 }
 

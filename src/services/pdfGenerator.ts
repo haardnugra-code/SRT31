@@ -808,93 +808,94 @@ export async function generateViolationNoticePDF(
   student: Student | undefined,
   config: AppConfig
 ) {
-  // Paper size: LEGAL (215.9 mm x 355.6 mm) to ensure complete 1-page fit
-  const doc = new jsPDF('p', 'mm', 'legal');
+  // Standard A4 page (210mm x 297mm) calibrated to strictly fit on 1 PAGE
+  const doc = new jsPDF('p', 'mm', 'a4');
   const leftLogoBase64 = await loadLogoImage(config.logoKiriUrl, 'left');
   const rightLogoBase64 = await loadLogoImage(config.logoKananUrl, 'right');
   const watermarkBase64 = await generateWatermarkBase64(leftLogoBase64, config.watermarkOpacity || 0.04);
 
-  // Center watermark on Legal page (215.9 x 355.6 mm)
+  // Watermark centered on A4
   if (watermarkBase64) {
-    doc.addImage(watermarkBase64, 'PNG', 48, 117, 120, 120);
+    doc.addImage(watermarkBase64, 'PNG', 55, 95, 100, 100);
   }
 
   // Header Kop
   doc.setTextColor(30, 41, 59);
-  let startY = 16;
+  let startY = 14;
   const kopKiriLines = config.kopKiri.split('\n');
   const kopKananLines = config.kopKanan.split('\n');
 
   doc.setFont("Helvetica", "bold");
-  doc.setFontSize(11.5);
+  doc.setFontSize(11);
   if (kopKiriLines.length > 0) {
-    doc.text(kopKiriLines[0] || "SEKOLAH RAKYAT TERPADU 31 PALEMBANG", 108, startY, { align: "center" });
-    startY += 5;
+    doc.text(kopKiriLines[0] || "SEKOLAH RAKYAT TERPADU 31 PALEMBANG", 105, startY, { align: "center" });
+    startY += 4.5;
   }
 
   doc.setFont("Helvetica", "normal");
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   for (let i = 1; i < kopKiriLines.length; i++) {
-    doc.text(kopKiriLines[i] || "", 108, startY, { align: "center" });
-    startY += 4.5;
-  }
-
-  doc.setFont("Helvetica", "bold");
-  doc.setFontSize(10);
-  if (kopKananLines.length > 0) {
-    doc.text(kopKananLines[0] || "", 108, startY, { align: "center" });
-    startY += 4.5;
-  }
-
-  doc.setFont("Helvetica", "normal");
-  doc.setFontSize(8.5);
-  for (let i = 1; i < kopKananLines.length; i++) {
-    doc.text(kopKananLines[i] || "", 108, startY, { align: "center" });
+    doc.text(kopKiriLines[i] || "", 105, startY, { align: "center" });
     startY += 4;
   }
 
-  doc.addImage(leftLogoBase64, 'PNG', 15, 12, 22, 22);
-  doc.addImage(rightLogoBase64, 'PNG', 179, 12, 22, 22);
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(9.5);
+  if (kopKananLines.length > 0) {
+    doc.text(kopKananLines[0] || "", 105, startY, { align: "center" });
+    startY += 4;
+  }
+
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(8);
+  for (let i = 1; i < kopKananLines.length; i++) {
+    doc.text(kopKananLines[i] || "", 105, startY, { align: "center" });
+    startY += 3.5;
+  }
+
+  doc.addImage(leftLogoBase64, 'PNG', 15, 11, 20, 20);
+  doc.addImage(rightLogoBase64, 'PNG', 175, 11, 20, 20);
 
   const lineY = startY + 2;
   doc.setDrawColor(30, 41, 59);
   doc.setLineWidth(0.6);
-  doc.line(15, lineY, 201, lineY);
+  doc.line(15, lineY, 195, lineY);
   doc.setLineWidth(0.15);
-  doc.line(15, lineY + 1, 201, lineY + 1);
+  doc.line(15, lineY + 1, 195, lineY + 1);
 
-  // Document Title
-  const titleY = lineY + 10;
+  // Document Title & Number
+  const titleY = lineY + 8;
   doc.setFont("Helvetica", "bold");
-  doc.setFontSize(12.5);
+  doc.setFontSize(12);
   doc.setTextColor(185, 28, 28);
-  doc.text("SURAT PEMBERITAHUAN PELANGGARAN KEPADA ORANG TUA / WALI", 108, titleY, { align: "center" });
+  doc.text("SURAT PEMBERITAHUAN PELANGGARAN KEPADA ORANG TUA / WALI", 105, titleY, { align: "center" });
 
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   doc.setFont("Helvetica", "normal");
   doc.setTextColor(71, 85, 105);
   const docNum = `Nomor: ${violation.id.toUpperCase()}/SRT31/DISIPLIN/${new Date().getFullYear()}`;
-  doc.text(docNum, 108, titleY + 5.5, { align: "center" });
+  doc.text(docNum, 105, titleY + 5, { align: "center" });
 
-  let contentY = titleY + 15;
-  doc.setFontSize(10);
+  // Recipient & Intro
+  let contentY = titleY + 13;
+  doc.setFontSize(9.5);
   doc.setTextColor(30, 41, 59);
   doc.text("Kepada Yth.", 15, contentY);
   doc.setFont("Helvetica", "bold");
-  doc.text("Bapak / Ibu Orang Tua / Wali Siswa", 15, contentY + 5.5);
+  doc.text("Bapak / Ibu Orang Tua / Wali Siswa", 15, contentY + 4.5);
   doc.setFont("Helvetica", "normal");
-  doc.text("di Tempat", 15, contentY + 11);
+  doc.text("di Tempat", 15, contentY + 9);
 
-  contentY += 20;
+  contentY += 16;
   doc.text("Dengan hormat,", 15, contentY);
-  contentY += 6;
+  contentY += 5;
 
   const introText = "Melalui surat ini, kami memberitahukan bahwa berdasarkan catatan ketertiban dan disiplin Keasramaan Sekolah Rakyat Terpadu 31 Palembang, peserta didik di bawah ini:";
-  const wrappedIntro = doc.splitTextToSize(introText, 185);
+  const wrappedIntro = doc.splitTextToSize(introText, 180);
   doc.text(wrappedIntro, 15, contentY);
-  contentY += wrappedIntro.length * 5 + 4;
+  contentY += wrappedIntro.length * 4.5 + 3;
 
-  // Student Info Box
+  // Student Info Table
   autoTable(doc, {
     body: [
       ["Nama Peserta Didik", `: ${violation.studentName}`],
@@ -904,21 +905,22 @@ export async function generateViolationNoticePDF(
     ],
     startY: contentY,
     theme: 'plain',
-    styles: { fontSize: 10, cellPadding: 2, textColor: [30, 41, 59] },
+    styles: { fontSize: 9, cellPadding: 1.5, textColor: [30, 41, 59] },
     columnStyles: {
-      0: { cellWidth: 52, fontStyle: 'bold' },
+      0: { cellWidth: 48, fontStyle: 'bold' },
       1: { cellWidth: 'auto', fontStyle: 'bold' }
     },
-    margin: { left: 20, right: 15 }
+    margin: { left: 20, right: 15 },
+    pageBreak: 'avoid'
   });
 
-  contentY = (doc as any).lastAutoTable.finalY + 8;
+  contentY = (doc as any).lastAutoTable.finalY + 5;
 
   doc.setFont("Helvetica", "normal");
   const statementText = "Telah melakukan tindakan pelanggaran terhadap Peraturan & Tata Tertib Keasramaan dengan rincian data laporan sebagai berikut:";
-  const wrappedStatement = doc.splitTextToSize(statementText, 185);
+  const wrappedStatement = doc.splitTextToSize(statementText, 180);
   doc.text(wrappedStatement, 15, contentY);
-  contentY += wrappedStatement.length * 5 + 5;
+  contentY += wrappedStatement.length * 4.5 + 3;
 
   // Violation Details Table
   let formattedDate = violation.date;
@@ -943,23 +945,25 @@ export async function generateViolationNoticePDF(
     ],
     startY: contentY,
     theme: 'grid',
-    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 10, halign: 'left' },
-    styles: { fontSize: 9.5, cellPadding: 3.5, textColor: [30, 41, 59] },
+    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 9, halign: 'left' },
+    styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [30, 41, 59] },
     columnStyles: {
-      0: { cellWidth: 62, fontStyle: 'bold', fillColor: [248, 250, 252] },
+      0: { cellWidth: 58, fontStyle: 'bold', fillColor: [248, 250, 252] },
       1: { cellWidth: 'auto' }
     },
-    margin: { left: 15, right: 15 }
+    margin: { left: 15, right: 15 },
+    pageBreak: 'avoid'
   });
 
-  contentY = (doc as any).lastAutoTable.finalY + 10;
+  contentY = (doc as any).lastAutoTable.finalY + 6;
 
+  // Closing Paragraph
   const closingText = "Demikian surat pemberitahuan ini kami sampaikan. Besar harapan kami agar Bapak/Ibu Orang Tua/Wali dapat turut serta memberikan perhatian, bimbingan, serta kerja sama yang baik demi pembentukan karakter dan kebaikan peserta didik di masa mendatang. Atas perhatian dan kerja samanya, kami ucapkan terima kasih.";
-  const wrappedClosing = doc.splitTextToSize(closingText, 185);
+  const wrappedClosing = doc.splitTextToSize(closingText, 180);
   doc.text(wrappedClosing, 15, contentY);
-  contentY += wrappedClosing.length * 5 + 16;
+  contentY += wrappedClosing.length * 4.5 + 8;
 
-  // Signatures
+  // Signatures Section (Formatted for complete TTD)
   const dateStr = new Date(violation.date || new Date()).toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
@@ -967,17 +971,38 @@ export async function generateViolationNoticePDF(
   });
 
   doc.setFont("Helvetica", "normal");
-  doc.setFontSize(9.5);
-  doc.text(`Palembang, ${dateStr}`, 140, contentY);
+  doc.setFontSize(9);
+  doc.text(`Palembang, ${dateStr}`, 135, contentY);
 
-  doc.text("Mengetahui / Memahami,", 20, contentY + 6);
-  doc.text("Orang Tua / Wali Siswa,", 20, contentY + 12);
+  // Row 1 Signatures: Orang Tua/Wali & Tim Disiplin/Wali Asuh
+  const row1Y = contentY + 5;
+  doc.text("Mengetahui / Memahami,", 20, row1Y);
+  doc.text("Orang Tua / Wali Siswa,", 20, row1Y + 4.5);
 
-  doc.text("Tim Disiplin / Wali Asuh,", 140, contentY + 12);
+  doc.text("Tim Disiplin / Wali Asuh,", 135, row1Y);
+  doc.text("Sekolah Rakyat Terpadu 31,", 135, row1Y + 4.5);
+
+  // TTD Space (20mm)
+  doc.setFont("Helvetica", "bold");
+  doc.text("( .................................................... )", 20, row1Y + 28);
+  doc.text(`( ${student?.caretaker || violation.reporter} )`, 135, row1Y + 28);
+
+  // Row 2 Signature: Mengetahui Kepala Sekolah / Penanggung Jawab Keasramaan
+  const row2Y = row1Y + 35;
+  doc.setFont("Helvetica", "normal");
+  doc.text("Mengetahui,", 105, row2Y, { align: "center" });
+  doc.text("Kepala Sekolah / Penanggung Jawab,", 105, row2Y + 4.5, { align: "center" });
 
   doc.setFont("Helvetica", "bold");
-  doc.text("( .................................................... )", 20, contentY + 38);
-  doc.text(`( ${student?.caretaker || violation.reporter} )`, 140, contentY + 38);
+  const ksekName = config.kepalaSekolah || "Kepala Sekolah Rakyat Terpadu 31";
+  doc.text(`( ${ksekName} )`, 105, row2Y + 26, { align: "center" });
+
+  if (config.kepalaSekolahNip) {
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`NIP. ${config.kepalaSekolahNip}`, 105, row2Y + 30.5, { align: "center" });
+  }
 
   doc.save(`Surat_Pemberitahuan_Pelanggaran_${violation.studentName.replace(/\s+/g, '_')}_${violation.date}.pdf`);
 }

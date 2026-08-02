@@ -1,6 +1,5 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
 import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord } from '../types';
 
 // Helper to generate canvas base64 logo if URL fails or is empty
@@ -809,89 +808,91 @@ export async function generateViolationNoticePDF(
   student: Student | undefined,
   config: AppConfig
 ) {
-  const doc = new jsPDF('p', 'mm', 'a4');
+  // Paper size: LEGAL (215.9 mm x 355.6 mm) to ensure complete 1-page fit
+  const doc = new jsPDF('p', 'mm', 'legal');
   const leftLogoBase64 = await loadLogoImage(config.logoKiriUrl, 'left');
   const rightLogoBase64 = await loadLogoImage(config.logoKananUrl, 'right');
   const watermarkBase64 = await generateWatermarkBase64(leftLogoBase64, config.watermarkOpacity || 0.04);
 
+  // Center watermark on Legal page (215.9 x 355.6 mm)
   if (watermarkBase64) {
-    doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
+    doc.addImage(watermarkBase64, 'PNG', 48, 117, 120, 120);
   }
 
   // Header Kop
   doc.setTextColor(30, 41, 59);
-  let startY = 15;
+  let startY = 16;
   const kopKiriLines = config.kopKiri.split('\n');
   const kopKananLines = config.kopKanan.split('\n');
 
   doc.setFont("Helvetica", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(11.5);
   if (kopKiriLines.length > 0) {
-    doc.text(kopKiriLines[0] || "SEKOLAH RAKYAT TERPADU 31 PALEMBANG", 105, startY, { align: "center" });
+    doc.text(kopKiriLines[0] || "SEKOLAH RAKYAT TERPADU 31 PALEMBANG", 108, startY, { align: "center" });
+    startY += 5;
+  }
+
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(9.5);
+  for (let i = 1; i < kopKiriLines.length; i++) {
+    doc.text(kopKiriLines[i] || "", 108, startY, { align: "center" });
+    startY += 4.5;
+  }
+
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(10);
+  if (kopKananLines.length > 0) {
+    doc.text(kopKananLines[0] || "", 108, startY, { align: "center" });
     startY += 4.5;
   }
 
   doc.setFont("Helvetica", "normal");
-  doc.setFontSize(9);
-  for (let i = 1; i < kopKiriLines.length; i++) {
-    doc.text(kopKiriLines[i] || "", 105, startY, { align: "center" });
-    startY += 4;
-  }
-
-  doc.setFont("Helvetica", "bold");
-  doc.setFontSize(9.5);
-  if (kopKananLines.length > 0) {
-    doc.text(kopKananLines[0] || "", 105, startY, { align: "center" });
-    startY += 4;
-  }
-
-  doc.setFont("Helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   for (let i = 1; i < kopKananLines.length; i++) {
-    doc.text(kopKananLines[i] || "", 105, startY, { align: "center" });
-    startY += 3.5;
+    doc.text(kopKananLines[i] || "", 108, startY, { align: "center" });
+    startY += 4;
   }
 
-  doc.addImage(leftLogoBase64, 'PNG', 15, 12, 18, 18);
-  doc.addImage(rightLogoBase64, 'PNG', 177, 12, 18, 18);
+  doc.addImage(leftLogoBase64, 'PNG', 15, 12, 22, 22);
+  doc.addImage(rightLogoBase64, 'PNG', 179, 12, 22, 22);
 
   const lineY = startY + 2;
   doc.setDrawColor(30, 41, 59);
   doc.setLineWidth(0.6);
-  doc.line(15, lineY, 195, lineY);
+  doc.line(15, lineY, 201, lineY);
   doc.setLineWidth(0.15);
-  doc.line(15, lineY + 1, 195, lineY + 1);
+  doc.line(15, lineY + 1, 201, lineY + 1);
 
   // Document Title
-  const titleY = lineY + 9;
+  const titleY = lineY + 10;
   doc.setFont("Helvetica", "bold");
-  doc.setFontSize(12);
+  doc.setFontSize(12.5);
   doc.setTextColor(185, 28, 28);
-  doc.text("SURAT PEMBERITAHUAN PELANGGARAN KEPADA ORANG TUA / WALI", 105, titleY, { align: "center" });
+  doc.text("SURAT PEMBERITAHUAN PELANGGARAN KEPADA ORANG TUA / WALI", 108, titleY, { align: "center" });
 
-  doc.setFontSize(9);
+  doc.setFontSize(9.5);
   doc.setFont("Helvetica", "normal");
   doc.setTextColor(71, 85, 105);
   const docNum = `Nomor: ${violation.id.toUpperCase()}/SRT31/DISIPLIN/${new Date().getFullYear()}`;
-  doc.text(docNum, 105, titleY + 5, { align: "center" });
+  doc.text(docNum, 108, titleY + 5.5, { align: "center" });
 
-  let contentY = titleY + 14;
-  doc.setFontSize(9.5);
+  let contentY = titleY + 15;
+  doc.setFontSize(10);
   doc.setTextColor(30, 41, 59);
   doc.text("Kepada Yth.", 15, contentY);
   doc.setFont("Helvetica", "bold");
-  doc.text("Bapak / Ibu Orang Tua / Wali Siswa", 15, contentY + 5);
+  doc.text("Bapak / Ibu Orang Tua / Wali Siswa", 15, contentY + 5.5);
   doc.setFont("Helvetica", "normal");
-  doc.text("di Tempat", 15, contentY + 10);
+  doc.text("di Tempat", 15, contentY + 11);
 
-  contentY += 18;
+  contentY += 20;
   doc.text("Dengan hormat,", 15, contentY);
-  contentY += 5;
+  contentY += 6;
 
   const introText = "Melalui surat ini, kami memberitahukan bahwa berdasarkan catatan ketertiban dan disiplin Keasramaan Sekolah Rakyat Terpadu 31 Palembang, peserta didik di bawah ini:";
-  const wrappedIntro = doc.splitTextToSize(introText, 180);
+  const wrappedIntro = doc.splitTextToSize(introText, 185);
   doc.text(wrappedIntro, 15, contentY);
-  contentY += wrappedIntro.length * 4.5 + 3;
+  contentY += wrappedIntro.length * 5 + 4;
 
   // Student Info Box
   autoTable(doc, {
@@ -903,21 +904,21 @@ export async function generateViolationNoticePDF(
     ],
     startY: contentY,
     theme: 'plain',
-    styles: { fontSize: 9.5, cellPadding: 1.5, textColor: [30, 41, 59] },
+    styles: { fontSize: 10, cellPadding: 2, textColor: [30, 41, 59] },
     columnStyles: {
-      0: { cellWidth: 48, fontStyle: 'bold' },
+      0: { cellWidth: 52, fontStyle: 'bold' },
       1: { cellWidth: 'auto', fontStyle: 'bold' }
     },
     margin: { left: 20, right: 15 }
   });
 
-  contentY = (doc as any).lastAutoTable.finalY + 6;
+  contentY = (doc as any).lastAutoTable.finalY + 8;
 
   doc.setFont("Helvetica", "normal");
   const statementText = "Telah melakukan tindakan pelanggaran terhadap Peraturan & Tata Tertib Keasramaan dengan rincian data laporan sebagai berikut:";
-  const wrappedStatement = doc.splitTextToSize(statementText, 180);
+  const wrappedStatement = doc.splitTextToSize(statementText, 185);
   doc.text(wrappedStatement, 15, contentY);
-  contentY += wrappedStatement.length * 4.5 + 4;
+  contentY += wrappedStatement.length * 5 + 5;
 
   // Violation Details Table
   let formattedDate = violation.date;
@@ -942,27 +943,21 @@ export async function generateViolationNoticePDF(
     ],
     startY: contentY,
     theme: 'grid',
-    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 9.5, halign: 'left' },
-    styles: { fontSize: 9, cellPadding: 3, textColor: [30, 41, 59] },
+    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 10, halign: 'left' },
+    styles: { fontSize: 9.5, cellPadding: 3.5, textColor: [30, 41, 59] },
     columnStyles: {
-      0: { cellWidth: 60, fontStyle: 'bold', fillColor: [248, 250, 252] },
+      0: { cellWidth: 62, fontStyle: 'bold', fillColor: [248, 250, 252] },
       1: { cellWidth: 'auto' }
     },
     margin: { left: 15, right: 15 }
   });
 
-  contentY = (doc as any).lastAutoTable.finalY + 8;
+  contentY = (doc as any).lastAutoTable.finalY + 10;
 
   const closingText = "Demikian surat pemberitahuan ini kami sampaikan. Besar harapan kami agar Bapak/Ibu Orang Tua/Wali dapat turut serta memberikan perhatian, bimbingan, serta kerja sama yang baik demi pembentukan karakter dan kebaikan peserta didik di masa mendatang. Atas perhatian dan kerja samanya, kami ucapkan terima kasih.";
-  const wrappedClosing = doc.splitTextToSize(closingText, 180);
+  const wrappedClosing = doc.splitTextToSize(closingText, 185);
   doc.text(wrappedClosing, 15, contentY);
-  contentY += wrappedClosing.length * 4.5 + 12;
-
-  if (contentY > 230) {
-    doc.addPage();
-    if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
-    contentY = 30;
-  }
+  contentY += wrappedClosing.length * 5 + 16;
 
   // Signatures
   const dateStr = new Date(violation.date || new Date()).toLocaleDateString('id-ID', {
@@ -972,213 +967,18 @@ export async function generateViolationNoticePDF(
   });
 
   doc.setFont("Helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(`Palembang, ${dateStr}`, 135, contentY);
+  doc.setFontSize(9.5);
+  doc.text(`Palembang, ${dateStr}`, 140, contentY);
 
   doc.text("Mengetahui / Memahami,", 20, contentY + 6);
-  doc.text("Orang Tua / Wali Siswa,", 20, contentY + 11);
+  doc.text("Orang Tua / Wali Siswa,", 20, contentY + 12);
 
-  doc.text("Tim Disiplin / Wali Asuh,", 135, contentY + 11);
+  doc.text("Tim Disiplin / Wali Asuh,", 140, contentY + 12);
 
   doc.setFont("Helvetica", "bold");
-  doc.text("( .................................................... )", 20, contentY + 36);
-  doc.text(`( ${student?.caretaker || violation.reporter} )`, 135, contentY + 36);
+  doc.text("( .................................................... )", 20, contentY + 38);
+  doc.text(`( ${student?.caretaker || violation.reporter} )`, 140, contentY + 38);
 
   doc.save(`Surat_Pemberitahuan_Pelanggaran_${violation.studentName.replace(/\s+/g, '_')}_${violation.date}.pdf`);
-}
-
-export async function generateViolationNoticePNG(
-  violation: Violation,
-  student: Student | undefined,
-  config: AppConfig
-) {
-  const leftLogoBase64 = await loadLogoImage(config.logoKiriUrl, 'left');
-  const rightLogoBase64 = await loadLogoImage(config.logoKananUrl, 'right');
-
-  let formattedDate = violation.date;
-  try {
-    formattedDate = new Date(violation.date).toLocaleDateString('id-ID', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  } catch (e) {}
-
-  const dateStr = new Date(violation.date || new Date()).toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
-
-  const kopKiriLines = config.kopKiri.split('\n').filter(Boolean);
-  const kopKananLines = config.kopKanan.split('\n').filter(Boolean);
-
-  const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.top = '-9999px';
-  container.style.left = '-9999px';
-  container.style.width = '820px';
-  container.style.backgroundColor = '#ffffff';
-  container.style.padding = '48px';
-  container.style.boxSizing = 'border-box';
-  container.style.fontFamily = 'Arial, Helvetica, sans-serif';
-  container.style.color = '#1e293b';
-  container.style.position = 'relative';
-
-  container.innerHTML = `
-    <!-- Watermark -->
-    <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; pointer-events: none; z-index: 0;">
-      <img src="${leftLogoBase64}" style="width: 320px; height: 320px; object-fit: contain;" />
-    </div>
-
-    <!-- Content Wrapper -->
-    <div style="position: relative; z-index: 1;">
-      <!-- Header Kop -->
-      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 3px double #1e293b; padding-bottom: 12px; margin-bottom: 20px;">
-        <img src="${leftLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />
-        <div style="text-align: center; flex: 1; padding: 0 16px;">
-          <h2 style="margin: 0; font-size: 15px; font-weight: bold; color: #1e293b; text-transform: uppercase;">
-            ${kopKiriLines[0] || 'SEKOLAH RAKYAT TERPADU 31 PALEMBANG'}
-          </h2>
-          ${kopKiriLines.slice(1).map(l => `<p style="margin: 2px 0 0 0; font-size: 11px; color: #475569;">${l}</p>`).join('')}
-          ${kopKananLines.map(l => `<p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b; font-weight: 500;">${l}</p>`).join('')}
-        </div>
-        <img src="${rightLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />
-      </div>
-
-      <!-- Title -->
-      <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="margin: 0; font-size: 15px; font-weight: bold; color: #b91c1c; text-decoration: underline;">
-          SURAT PEMBERITAHUAN PELANGGARAN KEPADA ORANG TUA / WALI
-        </h1>
-        <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">
-          Nomor: ${violation.id.toUpperCase()}/SRT31/DISIPLIN/${new Date().getFullYear()}
-        </p>
-      </div>
-
-      <!-- Address -->
-      <div style="font-size: 12px; margin-bottom: 20px; line-height: 1.6;">
-        <p style="margin: 0;">Kepada Yth.</p>
-        <p style="margin: 0; font-weight: bold; color: #0f172a;">Bapak / Ibu Orang Tua / Wali Siswa</p>
-        <p style="margin: 0;">di Tempat</p>
-      </div>
-
-      <!-- Intro -->
-      <p style="font-size: 12px; line-height: 1.6; margin-bottom: 14px; text-align: justify; color: #334155;">
-        Dengan hormat,<br />
-        Melalui surat ini, kami memberitahukan bahwa berdasarkan catatan ketertiban dan disiplin Keasramaan Sekolah Rakyat Terpadu 31 Palembang, peserta didik di bawah ini:
-      </p>
-
-      <!-- Student Box -->
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="width: 170px; font-weight: bold; padding: 4px 0; color: #475569;">Nama Peserta Didik</td>
-            <td style="font-weight: bold; padding: 4px 0; color: #0f172a;">: ${violation.studentName}</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold; padding: 4px 0; color: #475569;">NISN / ID Siswa</td>
-            <td style="font-weight: bold; padding: 4px 0; color: #0f172a;">: ${violation.studentId}</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold; padding: 4px 0; color: #475569;">Kelas & Asrama</td>
-            <td style="font-weight: bold; padding: 4px 0; color: #0f172a;">: ${student ? `${student.class} - ${student.dorm}` : '-'}</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold; padding: 4px 0; color: #475569;">Wali Asuh Pendamping</td>
-            <td style="font-weight: bold; padding: 4px 0; color: #0f172a;">: ${student?.caretaker || violation.reporter}</td>
-          </tr>
-        </table>
-      </div>
-
-      <p style="font-size: 12px; line-height: 1.6; margin-bottom: 14px; color: #334155;">
-        Telah melakukan tindakan pelanggaran terhadap Peraturan & Tata Tertib Keasramaan dengan rincian data laporan sebagai berikut:
-      </p>
-
-      <!-- Details Table -->
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11.5px; border: 1px solid #cbd5e1;">
-        <thead>
-          <tr style="background-color: #b91c1c; color: #ffffff;">
-            <th style="padding: 10px; text-align: left; width: 35%; border: 1px solid #991b1b; font-weight: bold;">RINCIAN LAPORAN PELANGGARAN</th>
-            <th style="padding: 10px; text-align: left; border: 1px solid #991b1b; font-weight: bold;">KETERANGAN HASIL PENCATATAN</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="padding: 8px 10px; font-weight: bold; background-color: #f8fafc; border: 1px solid #cbd5e1;">Hari & Tanggal Pelanggaran</td>
-            <td style="padding: 8px 10px; border: 1px solid #cbd5e1; color: #0f172a;">${formattedDate}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 10px; font-weight: bold; background-color: #f8fafc; border: 1px solid #cbd5e1;">Kategori / Tingkat Pelanggaran</td>
-            <td style="padding: 8px 10px; border: 1px solid #cbd5e1; font-weight: bold; color: #b91c1c;">Tingkat ${violation.level}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 10px; font-weight: bold; background-color: #f8fafc; border: 1px solid #cbd5e1;">Bentuk / Jenis Pelanggaran</td>
-            <td style="padding: 8px 10px; border: 1px solid #cbd5e1; color: #0f172a;">${violation.violation}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 10px; font-weight: bold; background-color: #f8fafc; border: 1px solid #cbd5e1;">Sanksi / Tindakan Disiplin</td>
-            <td style="padding: 8px 10px; border: 1px solid #cbd5e1; color: #0f172a;">${violation.sanction}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 10px; font-weight: bold; background-color: #f8fafc; border: 1px solid #cbd5e1;">Catatan Tambahan Asrama</td>
-            <td style="padding: 8px 10px; border: 1px solid #cbd5e1; color: #334155;">${violation.note || 'Tidak ada catatan khusus.'}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 10px; font-weight: bold; background-color: #f8fafc; border: 1px solid #cbd5e1;">Pelapor / Wali Asrama</td>
-            <td style="padding: 8px 10px; border: 1px solid #cbd5e1; color: #0f172a;">${violation.reporter}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Closing -->
-      <p style="font-size: 11.5px; line-height: 1.6; margin-bottom: 28px; text-align: justify; color: #334155;">
-        Demikian surat pemberitahuan ini kami sampaikan. Besar harapan kami agar Bapak/Ibu Orang Tua/Wali dapat turut serta memberikan perhatian, bimbingan, serta kerja sama yang baik demi pembentukan karakter dan kebaikan peserta didik di masa mendatang. Atas perhatian dan kerja samanya, kami ucapkan terima kasih.
-      </p>
-
-      <!-- Signatures -->
-      <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-top: 20px;">
-        <div style="text-align: center; width: 220px;">
-          <p style="margin: 0;">&nbsp;</p>
-          <p style="margin: 4px 0 0 0; color: #475569;">Mengetahui / Memahami,</p>
-          <p style="margin: 2px 0 0 0; font-weight: bold; color: #0f172a;">Orang Tua / Wali Siswa,</p>
-          <div style="height: 60px;"></div>
-          <p style="margin: 0; font-weight: bold; color: #0f172a;">( .................................................... )</p>
-        </div>
-        <div style="text-align: center; width: 240px;">
-          <p style="margin: 0; color: #0f172a;">Palembang, ${dateStr}</p>
-          <p style="margin: 4px 0 0 0; color: #475569;">Tim Disiplin / Wali Asuh,</p>
-          <p style="margin: 2px 0 0 0; color: #475569;">Sekolah Rakyat Terpadu 31</p>
-          <div style="height: 50px;"></div>
-          <p style="margin: 0; font-weight: bold; color: #0f172a;">( ${student?.caretaker || violation.reporter} )</p>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(container);
-
-  try {
-    const canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    });
-
-    document.body.removeChild(container);
-
-    const dataUrl = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `Surat_Pemberitahuan_Pelanggaran_${violation.studentName.replace(/\s+/g, '_')}_${violation.date}.png`;
-    a.click();
-  } catch (err) {
-    if (document.body.contains(container)) {
-      document.body.removeChild(container);
-    }
-    throw err;
-  }
 }
 

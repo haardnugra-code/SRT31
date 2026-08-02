@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Edit2, Trash2, X, AlertTriangle, Image as ImageIcon, ImageOff, Printer, FileText, FileImage, Download } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, AlertTriangle, Image as ImageIcon, ImageOff, Printer, FileText } from 'lucide-react';
 import { Student, Violation, AppConfig } from '../types';
 import { VIOLATION_TEMPLATES, compressImageFile } from '../services/storage';
-import { generateViolationNoticePDF, generateViolationNoticePNG } from '../services/pdfGenerator';
+import { generateViolationNoticePDF } from '../services/pdfGenerator';
 
 interface ViolationsTabProps {
   students: Student[];
@@ -48,10 +48,6 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
 
   // Evidence Photo Preview Modal
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
-
-  // Print Format Selection Modal State
-  const [selectedViolationForPrint, setSelectedViolationForPrint] = useState<Violation | null>(null);
-  const [isExportingFormat, setIsExportingFormat] = useState<boolean>(false);
 
   // Template options for selected level
   const templates = VIOLATION_TEMPLATES[level] || [];
@@ -181,35 +177,11 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
     }
   };
 
-  const handleExportNoticePDF = async (v: Violation) => {
-    try {
-      setIsExportingFormat(true);
-      const student = students.find((s) => String(s.id) === String(v.studentId));
-      onShowToast('Mengekspor Surat PDF', `Membuat dokumen PDF Surat Pemberitahuan Orang Tua untuk ${v.studentName}...`, 'warning');
-      await generateViolationNoticePDF(v, student, config);
-      onShowToast('PDF Berhasil Diunduh', `Surat Pemberitahuan Pelanggaran (PDF) untuk ${v.studentName} telah siap.`, 'success');
-    } catch (e) {
-      onShowToast('Gagal Ekspor PDF', 'Terjadi kesalahan saat memproses file PDF.', 'error');
-    } finally {
-      setIsExportingFormat(false);
-      setSelectedViolationForPrint(null);
-    }
-  };
-
-  const handleExportNoticePNG = async (v: Violation) => {
-    try {
-      setIsExportingFormat(true);
-      const student = students.find((s) => String(s.id) === String(v.studentId));
-      onShowToast('Mengekspor Gambar PNG', `Membuat gambar PNG Surat Pemberitahuan Orang Tua untuk ${v.studentName}...`, 'warning');
-      await generateViolationNoticePNG(v, student, config);
-      onShowToast('PNG Berhasil Diunduh', `Surat Pemberitahuan Pelanggaran (PNG) untuk ${v.studentName} telah diunduh.`, 'success');
-    } catch (e) {
-      console.error(e);
-      onShowToast('Gagal Ekspor PNG', 'Terjadi kesalahan saat merender gambar PNG.', 'error');
-    } finally {
-      setIsExportingFormat(false);
-      setSelectedViolationForPrint(null);
-    }
+  const handlePrintNotice = async (v: Violation) => {
+    const student = students.find((s) => String(s.id) === String(v.studentId));
+    onShowToast('Mengekspor Surat', `Membuat Surat Pemberitahuan Orang Tua (Legal 1 Halaman) untuk ${v.studentName}...`, 'warning');
+    await generateViolationNoticePDF(v, student, config);
+    onShowToast('Surat Berhasil Dibuat', `Surat Pemberitahuan Pelanggaran untuk ${v.studentName} telah diunduh.`, 'success');
   };
 
   const filteredViolations = useMemo(() => {
@@ -339,9 +311,9 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
 
               <div className="flex items-center gap-2 w-full md:w-auto justify-end border-t border-slate-100 md:border-none pt-3 md:pt-0 flex-wrap">
                 <button
-                  onClick={() => setSelectedViolationForPrint(v)}
+                  onClick={() => handlePrintNotice(v)}
                   className="flex-1 md:flex-initial text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-2 rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                  title="Generate & Cetak Surat Pemberitahuan Orang Tua (PDF / PNG)"
+                  title="Generate & Cetak Surat Pemberitahuan Orang Tua (PDF Legal 1 Halaman)"
                 >
                   <Printer className="w-3.5 h-3.5" /> Surat Ortu
                 </button>
@@ -585,99 +557,6 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
             <p className="text-center text-xs text-slate-400 mt-2">
               Bukti Fisik Kejadian Siswa - Sekolah Rakyat
             </p>
-          </div>
-        </div>
-      )}
-
-      {/* Print Format Selection Modal */}
-      {selectedViolationForPrint && (
-        <div
-          className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in"
-          onClick={() => !isExportingFormat && setSelectedViolationForPrint(null)}
-        >
-          <div
-            className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-red-800 to-red-900 text-white p-5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center text-white">
-                  <Printer className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-white">Cetak Surat Pemberitahuan</h3>
-                  <p className="text-xs text-red-100">Untuk Orang Tua / Wali {selectedViolationForPrint.studentName}</p>
-                </div>
-              </div>
-              <button
-                disabled={isExportingFormat}
-                onClick={() => setSelectedViolationForPrint(null)}
-                className="text-red-200 hover:text-white p-2 rounded-xl hover:bg-white/10 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 space-y-4 text-xs text-slate-600">
-              <p className="text-slate-700 font-medium leading-relaxed">
-                Pilih format dokumen Surat Pemberitahuan Orang Tua yang ingin Anda hasilkan dan unduh:
-              </p>
-
-              <div className="grid grid-cols-1 gap-3">
-                {/* PNG Button */}
-                <button
-                  disabled={isExportingFormat}
-                  onClick={() => handleExportNoticePNG(selectedViolationForPrint)}
-                  className="p-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100/80 hover:border-emerald-400 text-left transition flex items-center gap-3.5 group active:scale-95 disabled:opacity-50"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform shrink-0">
-                    <FileImage className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-slate-900 text-sm">Unduh Format PNG (Gambar)</h4>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">HIGH-RES</span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 mt-0.5">
-                      Sangat cocok dikirimkan langsung via WhatsApp / HP kepada orang tua.
-                    </p>
-                  </div>
-                </button>
-
-                {/* PDF Button */}
-                <button
-                  disabled={isExportingFormat}
-                  onClick={() => handleExportNoticePDF(selectedViolationForPrint)}
-                  className="p-4 rounded-2xl border-2 border-red-200 bg-red-50/60 hover:bg-red-100/80 hover:border-red-400 text-left transition flex items-center gap-3.5 group active:scale-95 disabled:opacity-50"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-red-700 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform shrink-0">
-                    <FileText className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-slate-900 text-sm">Unduh Format PDF (Dokumen)</h4>
-                      <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-md">A4 PRINT</span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 mt-0.5">
-                      Sangat cocok untuk dicetak ke kertas fisik A4 dan arsip surat resmi.
-                    </p>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-              <button
-                disabled={isExportingFormat}
-                onClick={() => setSelectedViolationForPrint(null)}
-                className="text-xs font-bold text-slate-600 hover:text-slate-900 px-4 py-2 rounded-xl transition"
-              >
-                Batal
-              </button>
-            </div>
           </div>
         </div>
       )}

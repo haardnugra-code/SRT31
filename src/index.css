@@ -13,13 +13,21 @@
     display: none !important;
   }
 
-  body {
+  /* Reset body and container bounds for printing */
+  html, body, #root, main {
     background: #ffffff !important;
     color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  div {
+    overflow: visible !important;
   }
 
   /* Print containers display */
@@ -44,7 +52,7 @@
     page-break-inside: avoid !important;
   }
 
-  /* CR80 Standard ID Card Exact Print Sizing (85.6mm x 53.98mm) */
+  /* CR80 Standard ID Card Exact Print Sizing (85.6mm x 54mm) */
   .cr80-card-print {
     width: 85.6mm !important;
     height: 54mm !important;

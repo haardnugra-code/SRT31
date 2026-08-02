@@ -837,8 +837,8 @@ export default function App() {
       {/* Login Screen Modal */}
       <LoginModal isLoggedIn={isLoggedIn} onLoginSuccess={() => setIsLoggedIn(true)} />
 
-      {/* Main Row Container (Screen View Only - Hidden when printing PPT) */}
-      <div className="no-print flex flex-col md:flex-row min-h-screen flex-1 relative">
+      {/* Main Row Container */}
+      <div className="flex flex-col md:flex-row min-h-screen flex-1 relative">
         {/* Sidebar */}
         <Sidebar
           activeTab={activeTab}
@@ -1017,8 +1017,8 @@ export default function App() {
         </main>
       </div>
 
-      {/* DEDICATED GLOBAL PRINT PPT SLIDES CONTAINER (PRINT MODE ONLY) */}
-      <PptPrintSlides />
+      {/* DEDICATED GLOBAL PRINT PPT SLIDES CONTAINER (PRINT MODE ONLY - GUIDE TAB) */}
+      {activeTab === 'guide' && <PptPrintSlides />}
     </div>
   );
 }

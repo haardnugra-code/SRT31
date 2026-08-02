@@ -33,7 +33,12 @@ import {
   FileSpreadsheet,
   SwitchCamera,
   Smartphone,
-  UserCheck
+  UserCheck,
+  Users,
+  CheckSquare,
+  Square,
+  Filter,
+  ListFilter
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -104,6 +109,18 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   const [cardPrintSide, setCardPrintSide] = useState<'front' | 'both'>('front'); // 'front' = Tampak Depan Saja, 'both' = 2 Sisi (Depan & Belakang CR80)
   const [cardColorMode, setCardColorMode] = useState<'full' | 'grayscale'>('full'); // 'full' = Full Color HD, 'grayscale' = Hemat Tinta
   const [showCropMarks, setShowCropMarks] = useState<boolean>(true); // Garis Potong Presisi (Crop Marks)
+
+  // Interactive Checklist & Mass Actions States
+  const [showChecklistModal, setShowChecklistModal] = useState<boolean>(false);
+  const [checklistSearch, setChecklistSearch] = useState<string>('');
+  const [checklistClassFilter, setChecklistClassFilter] = useState<string>('');
+  const [checklistDormFilter, setChecklistDormFilter] = useState<string>('');
+  const [checklistStatusFilter, setChecklistStatusFilter] = useState<string>('Semua');
+  const [selectedChecklistIds, setSelectedChecklistIds] = useState<string[]>([]);
+
+  // Live Log View States
+  const [liveLogSearch, setLiveLogSearch] = useState<string>('');
+  const [liveLogViewMode, setLiveLogViewMode] = useState<'scanned' | 'all'>('scanned');
 
   // Recap Filter States
   const [recapDateFilter, setRecapDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -385,12 +402,172 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     alert(`Berhasil menandai ${newAlpaRecords.length} murid yang belum scan untuk sholat ${selectedPrayerTime}!`);
   };
 
+  // Mark All Students as Hadir for selected session & date
+  const handleMarkAllHadir = () => {
+    if (
+      !window.confirm(
+        `Konfirmasi: Tandai SELURUH murid (${students.length} murid) sebagai "HADIR" untuk Sholat ${selectedPrayerTime} tanggal ${selectedDate}?`
+      )
+    ) {
+      return;
+    }
+
+    const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const existingForSession = prayerAttendance.filter(
+      (p) => p.date === selectedDate && p.prayerTime === selectedPrayerTime
+    );
+    const existingMap = new Map<string, PrayerAttendance>(
+      existingForSession.map((p) => [String(p.studentId).trim().toLowerCase(), p])
+    );
+
+    const newRecords: PrayerAttendance[] = students.map((s) => {
+      const sid = String(s.id).trim().toLowerCase();
+      const existing = existingMap.get(sid);
+
+      // Check active leave / medical status for smart default
+      const onLeave = leaves.some(
+        (l) =>
+          l.status === 'Active' &&
+          (String(l.studentId).trim().toLowerCase() === sid || String(l.studentName).trim().toLowerCase() === String(s.name).trim().toLowerCase())
+      );
+      const inUks = medicalRecords.some(
+        (m) =>
+          (m.status === 'Dalam Perawatan' || m.status === 'Istirahat di Kamar') &&
+          (String(m.studentId).trim().toLowerCase() === sid || String(m.studentName).trim().toLowerCase() === String(s.name).trim().toLowerCase())
+      );
+
+      let defaultStatus: PrayerAttendance['status'] = 'Hadir';
+      if (onLeave) defaultStatus = 'Izin Pulang';
+      else if (inUks) defaultStatus = 'Izin Sakit';
+
+      return {
+        id: existing?.id || `PA-ALLHADIR-${Date.now().toString().slice(-5)}-${s.id}`,
+        studentId: s.id,
+        studentName: s.name,
+        class: s.class,
+        dorm: s.dorm,
+        prayerTime: selectedPrayerTime,
+        date: selectedDate,
+        timestamp: existing?.timestamp || nowTime,
+        status: defaultStatus,
+        note: existing?.note || 'Presensi Massal Hadir Semua',
+        scannedBy: officerName
+      };
+    });
+
+    const otherSessionRecords = prayerAttendance.filter(
+      (p) => !(p.date === selectedDate && p.prayerTime === selectedPrayerTime)
+    );
+
+    onSavePrayerAttendance([...newRecords, ...otherSessionRecords]);
+    playBeep('success');
+  };
+
+  // Update status for a single student directly
+  const handleUpdateStudentStatus = (
+    studentId: string,
+    studentName: string,
+    studentClass: string,
+    studentDorm: string,
+    newStatus: PrayerAttendance['status']
+  ) => {
+    const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const sid = String(studentId).trim().toLowerCase();
+
+    const existingIndex = prayerAttendance.findIndex(
+      (p) =>
+        p.date === selectedDate &&
+        p.prayerTime === selectedPrayerTime &&
+        String(p.studentId).trim().toLowerCase() === sid
+    );
+
+    let updatedList = [...prayerAttendance];
+    if (existingIndex >= 0) {
+      updatedList[existingIndex] = {
+        ...updatedList[existingIndex],
+        status: newStatus,
+        timestamp: nowTime,
+        scannedBy: officerName
+      };
+    } else {
+      updatedList.unshift({
+        id: `PA-MANUAL-${Date.now().toString().slice(-5)}-${studentId}`,
+        studentId: studentId,
+        studentName: studentName,
+        class: studentClass,
+        dorm: studentDorm,
+        prayerTime: selectedPrayerTime,
+        date: selectedDate,
+        timestamp: nowTime,
+        status: newStatus,
+        scannedBy: officerName
+      });
+    }
+
+    onSavePrayerAttendance(updatedList);
+  };
+
+  // Batch update for selected students in checklist modal
+  const handleBatchSetStatus = (targetStatus: PrayerAttendance['status']) => {
+    if (selectedChecklistIds.length === 0) return;
+
+    const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const targetSet = new Set(selectedChecklistIds.map((id) => String(id).trim().toLowerCase()));
+    const targetStudents = students.filter((s) => targetSet.has(String(s.id).trim().toLowerCase()));
+
+    let updatedList = [...prayerAttendance];
+
+    targetStudents.forEach((s) => {
+      const sid = String(s.id).trim().toLowerCase();
+      const existingIndex = updatedList.findIndex(
+        (p) =>
+          p.date === selectedDate &&
+          p.prayerTime === selectedPrayerTime &&
+          String(p.studentId).trim().toLowerCase() === sid
+      );
+
+      if (existingIndex >= 0) {
+        updatedList[existingIndex] = {
+          ...updatedList[existingIndex],
+          status: targetStatus,
+          timestamp: nowTime,
+          scannedBy: officerName
+        };
+      } else {
+        updatedList.unshift({
+          id: `PA-BATCH-${Date.now().toString().slice(-5)}-${s.id}`,
+          studentId: s.id,
+          studentName: s.name,
+          class: s.class,
+          dorm: s.dorm,
+          prayerTime: selectedPrayerTime,
+          date: selectedDate,
+          timestamp: nowTime,
+          status: targetStatus,
+          scannedBy: officerName
+        });
+      }
+    });
+
+    onSavePrayerAttendance(updatedList);
+    setSelectedChecklistIds([]);
+    playBeep('success');
+  };
+
   // Stats calculation for today's selected session
   const todaySessionRecords = useMemo(() => {
     return prayerAttendance.filter(
       (p) => p.date === selectedDate && p.prayerTime === selectedPrayerTime
     );
   }, [prayerAttendance, selectedDate, selectedPrayerTime]);
+
+  const todaySessionMap = useMemo(() => {
+    const map = new Map<string, PrayerAttendance>();
+    todaySessionRecords.forEach((p) => {
+      map.set(String(p.studentId).trim().toLowerCase(), p);
+    });
+    return map;
+  }, [todaySessionRecords]);
 
   const stats = useMemo(() => {
     const total = students.length;
@@ -681,6 +858,42 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
               </div>
             </div>
 
+            {/* Quick Action Row for Hadir Semua & Selecting Absent Students */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                <Zap className="w-4 h-4 text-amber-500 animate-bounce" /> Aksi Cepat Presensi Sesi Ini:
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleMarkAllHadir}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 active:scale-95"
+                  title="Tandai seluruh murid sebagai HADIR sekaligus"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Hadirkan Semua ({students.length} Murid)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowChecklistModal(true)}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 border border-slate-700 active:scale-95"
+                  title="Buka checklist murid untuk memilih siapa saja yang tidak hadir / izin / sakit"
+                >
+                  <UserCheck className="w-4 h-4 text-amber-400" /> Pilih Siswa Tidak Hadir / Checklist
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBulkMarkUnscannedAsAlpa}
+                  className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 active:scale-95"
+                  title="Tandai sisa murid yang belum scan sebagai Alpa"
+                >
+                  <UserX className="w-3.5 h-3.5" /> Tutup Sesi (Alpa)
+                </button>
+              </div>
+            </div>
+
             {/* Live KPI Metric Cards for selected prayer */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 pt-2 border-t border-slate-100">
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-center">
@@ -902,93 +1115,651 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
               )}
             </div>
 
-            {/* Right Column: Live Scanned List for selected session */}
-            <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-md flex flex-col justify-between">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b pb-3">
+            {/* Right Column: Live Scanned List & Interactive Checklist for selected session */}
+            <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-md flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b pb-3">
                   <div>
                     <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-red-600" /> Log Hadir Live ({selectedPrayerTime} • {selectedDate})
+                      <Clock className="w-4 h-4 text-red-600" /> Log Absensi Sesi ({selectedPrayerTime} • {selectedDate})
                     </h3>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Daftar murid yang telah terdata pada sesi sholat ini ({todaySessionRecords.length} terdata).
+                      Daftar status presensi sholat murid terintegrasi ({stats.hadir} Hadir, {stats.alpa} Alpa, {stats.belumScan} Belum Scan).
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 bg-red-50 text-red-700 font-bold rounded-full text-[11px] border border-red-200">
-                    {todaySessionRecords.length} / {students.length} Murid
-                  </span>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleMarkAllHadir}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] shadow transition-all flex items-center gap-1 active:scale-95"
+                      title="Klik untuk set seluruh murid sebagai Hadir"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Hadir Semua
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowChecklistModal(true)}
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] shadow transition-all flex items-center gap-1 active:scale-95"
+                      title="Kelola & pilih siswa yang tidak hadir"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-amber-400" /> Filter Absen
+                    </button>
+                  </div>
                 </div>
 
-                {/* Scanned Items Feed Table */}
-                <div className="max-h-[380px] overflow-y-auto space-y-2 pr-1">
-                  {todaySessionRecords.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400 space-y-2">
-                      <QrCode className="w-10 h-10 mx-auto opacity-30 text-slate-500" />
-                      <p className="text-xs font-medium">Belum ada data scan untuk sholat {selectedPrayerTime} hari ini.</p>
-                      <p className="text-[11px] text-slate-400">Silakan scan QR code kartu murid atau gunakan input manual.</p>
-                    </div>
-                  ) : (
-                    todaySessionRecords.map((rec) => (
-                      <div
-                        key={rec.id}
-                        className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs hover:border-slate-300 transition-all"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                              rec.status === 'Hadir'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : rec.status === 'Terlambat'
-                                ? 'bg-amber-100 text-amber-800'
-                                : rec.status === 'Izin Pulang' || rec.status === 'Izin Sakit'
-                                ? 'bg-purple-100 text-purple-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {rec.studentName.charAt(0)}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-slate-900 leading-tight">{rec.studentName}</h4>
-                            <p className="text-[10px] text-slate-500 font-medium">
-                              NISN: {rec.studentId} • Kelas {rec.class} ({rec.dorm})
-                            </p>
-                          </div>
-                        </div>
+                {/* View Mode Switcher & Realtime Search Bar */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
+                  <div className="inline-flex p-0.5 bg-slate-200 rounded-lg text-[11px] font-bold w-full sm:w-auto">
+                    <button
+                      onClick={() => setLiveLogViewMode('scanned')}
+                      className={`flex-1 sm:flex-none px-3 py-1 rounded-md transition-all ${
+                        liveLogViewMode === 'scanned'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Terdata ({todaySessionRecords.length})
+                    </button>
+                    <button
+                      onClick={() => setLiveLogViewMode('all')}
+                      className={`flex-1 sm:flex-none px-3 py-1 rounded-md transition-all ${
+                        liveLogViewMode === 'all'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Semua Siswa ({students.length})
+                    </button>
+                  </div>
 
-                        <div className="text-right space-y-0.5">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                              rec.status === 'Hadir'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                : rec.status === 'Terlambat'
-                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                : rec.status === 'Izin Pulang' || rec.status === 'Izin Sakit'
-                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                                : 'bg-rose-100 text-rose-800 border border-rose-200'
+                  <div className="relative w-full sm:w-48">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                    <input
+                      type="text"
+                      value={liveLogSearch}
+                      onChange={(e) => setLiveLogSearch(e.target.value)}
+                      placeholder="Cari siswa..."
+                      className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500/30"
+                    />
+                  </div>
+                </div>
+
+                {/* Live Feed List */}
+                <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1">
+                  {liveLogViewMode === 'scanned' ? (
+                    /* MODE 1: SCANNED / RECORDED ONLY */
+                    todaySessionRecords.filter((rec) =>
+                      rec.studentName.toLowerCase().includes(liveLogSearch.toLowerCase()) ||
+                      rec.studentId.toLowerCase().includes(liveLogSearch.toLowerCase())
+                    ).length === 0 ? (
+                      <div className="text-center py-10 text-slate-400 space-y-2">
+                        <QrCode className="w-10 h-10 mx-auto opacity-30 text-slate-500" />
+                        <p className="text-xs font-medium">Belum ada data presensi untuk sholat {selectedPrayerTime}.</p>
+                        <p className="text-[11px] text-slate-400">
+                          Klik <button onClick={handleMarkAllHadir} className="text-emerald-600 font-bold underline">Hadir Semua</button> atau beralih ke tab <button onClick={() => setLiveLogViewMode('all')} className="text-slate-800 font-bold underline">Semua Siswa</button> untuk pilih yang tidak hadir.
+                        </p>
+                      </div>
+                    ) : (
+                      todaySessionRecords
+                        .filter((rec) =>
+                          rec.studentName.toLowerCase().includes(liveLogSearch.toLowerCase()) ||
+                          rec.studentId.toLowerCase().includes(liveLogSearch.toLowerCase())
+                        )
+                        .map((rec) => (
+                          <div
+                            key={rec.id}
+                            className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs hover:border-slate-300 transition-all gap-2"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                                  rec.status === 'Hadir'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : rec.status === 'Terlambat'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : rec.status === 'Izin Pulang' || rec.status === 'Izin Sakit'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}
+                              >
+                                {rec.studentName.charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-slate-900 leading-tight truncate">{rec.studentName}</h4>
+                                <p className="text-[10px] text-slate-500 font-medium truncate">
+                                  {rec.studentId} • Kelas {rec.class} ({rec.dorm})
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Direct Status Selector */}
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <select
+                                value={rec.status}
+                                onChange={(e) =>
+                                  handleUpdateStudentStatus(
+                                    rec.studentId,
+                                    rec.studentName,
+                                    rec.class,
+                                    rec.dorm,
+                                    e.target.value as PrayerAttendance['status']
+                                  )
+                                }
+                                className={`text-[10px] font-extrabold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
+                                  rec.status === 'Hadir'
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                    : rec.status === 'Terlambat'
+                                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                    : rec.status === 'Izin Sakit'
+                                    ? 'bg-teal-100 text-teal-800 border-teal-300'
+                                    : rec.status === 'Izin Pulang'
+                                    ? 'bg-purple-100 text-purple-800 border-purple-300'
+                                    : 'bg-rose-100 text-rose-800 border-rose-300'
+                                }`}
+                              >
+                                <option value="Hadir">✓ Hadir</option>
+                                <option value="Terlambat">⏱ Terlambat</option>
+                                <option value="Izin Sakit">🤒 Izin Sakit</option>
+                                <option value="Izin Pulang">🏖 Izin Pulang</option>
+                                <option value="Alpa / Tanpa Keterangan">❌ Alpa / Abse</option>
+                              </select>
+                            </div>
+                          </div>
+                        ))
+                    )
+                  ) : (
+                    /* MODE 2: ALL REGISTERED STUDENTS CHECKLIST */
+                    students
+                      .filter((s) =>
+                        s.name.toLowerCase().includes(liveLogSearch.toLowerCase()) ||
+                        s.id.toLowerCase().includes(liveLogSearch.toLowerCase()) ||
+                        s.dorm.toLowerCase().includes(liveLogSearch.toLowerCase())
+                      )
+                      .map((s) => {
+                        const sid = String(s.id).trim().toLowerCase();
+                        const existingRec = todaySessionMap.get(sid);
+                        const currentStatus = existingRec ? existingRec.status : 'Belum Scan';
+
+                        return (
+                          <div
+                            key={s.id}
+                            className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 rounded-xl border text-xs transition-all gap-2 ${
+                              currentStatus === 'Hadir'
+                                ? 'bg-emerald-50/60 border-emerald-200'
+                                : currentStatus === 'Terlambat'
+                                ? 'bg-amber-50/60 border-amber-200'
+                                : currentStatus === 'Izin Sakit' || currentStatus === 'Izin Pulang'
+                                ? 'bg-purple-50/60 border-purple-200'
+                                : currentStatus === 'Alpa / Tanpa Keterangan'
+                                ? 'bg-rose-50/60 border-rose-200'
+                                : 'bg-white border-slate-200 hover:border-slate-300'
                             }`}
                           >
-                            {rec.status}
-                          </span>
-                          <p className="text-[10px] text-slate-400 font-mono">{rec.timestamp}</p>
-                        </div>
-                      </div>
-                    ))
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] flex-shrink-0 ${
+                                  currentStatus === 'Hadir'
+                                    ? 'bg-emerald-600 text-white'
+                                    : currentStatus === 'Terlambat'
+                                    ? 'bg-amber-600 text-white'
+                                    : currentStatus === 'Izin Sakit' || currentStatus === 'Izin Pulang'
+                                    ? 'bg-purple-600 text-white'
+                                    : currentStatus === 'Alpa / Tanpa Keterangan'
+                                    ? 'bg-rose-600 text-white'
+                                    : 'bg-slate-200 text-slate-700'
+                                }`}
+                              >
+                                {s.name.charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-slate-900 leading-tight truncate text-[11px]">{s.name}</h4>
+                                <p className="text-[10px] text-slate-500 font-medium truncate">
+                                  {s.id} • {s.class} ({s.dorm})
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Direct Quick Toggle Buttons */}
+                            <div className="flex flex-wrap items-center gap-1 w-full sm:w-auto justify-end">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Hadir')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                  currentStatus === 'Hadir'
+                                    ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400'
+                                    : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                }`}
+                              >
+                                ✓ Hadir
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Terlambat')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                  currentStatus === 'Terlambat'
+                                    ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-400'
+                                    : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                }`}
+                              >
+                                ⏱ Telat
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Izin Sakit')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                  currentStatus === 'Izin Sakit'
+                                    ? 'bg-teal-600 text-white shadow-sm ring-2 ring-teal-400'
+                                    : 'bg-teal-100 text-teal-800 hover:bg-teal-200'
+                                }`}
+                              >
+                                🤒 Sakit
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Izin Pulang')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                  currentStatus === 'Izin Pulang'
+                                    ? 'bg-purple-600 text-white shadow-sm ring-2 ring-purple-400'
+                                    : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                }`}
+                              >
+                                🏖 Pulang
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Alpa / Tanpa Keterangan')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                  currentStatus === 'Alpa / Tanpa Keterangan'
+                                    ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400'
+                                    : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                                }`}
+                              >
+                                ❌ Alpa
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
                   )}
                 </div>
               </div>
 
               {/* Bottom Footer Note */}
               <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-                <span>Catatan: Presensi disimpan otomatis ke penyimpanan lokal.</span>
+                <span>Presensi otomatis tersimpan.</span>
                 <button
                   onClick={() => setActiveSubTab('recap')}
                   className="text-red-600 hover:underline font-bold flex items-center gap-1"
                 >
-                  Lihat Semua Laporan Rekap &rarr;
+                  Lihat Rekap Full &rarr;
                 </button>
               </div>
             </div>
           </div>
+
+          {/* INTERACTIVE MODAL CHECKLIST FOR SELECTING ABSENT STUDENTS */}
+          {showChecklistModal && (
+            <div className="no-print fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+                {/* Modal Header */}
+                <div className="bg-slate-900 text-white p-5 flex items-start justify-between relative">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px] font-bold border border-amber-500/30 mb-1">
+                      <UserCheck className="w-3.5 h-3.5" /> Modul Presensi Cepat & Checklist Murid
+                    </div>
+                    <h3 className="font-extrabold text-lg text-white">
+                      Kelola & Pilih Siswa Tidak Hadir
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Sesi Sholat <span className="font-bold text-amber-300">{selectedPrayerTime}</span> • Tanggal <span className="font-bold text-amber-300">{selectedDate}</span>
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowChecklistModal(false)}
+                    className="p-1.5 text-slate-400 hover:text-white bg-white/10 rounded-full transition-all"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Modal Quick Actions Toolbar */}
+                <div className="bg-slate-50 border-b border-slate-200 p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleMarkAllHadir}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Mark Hadir Semua ({students.length})
+                      </button>
+
+                      {selectedChecklistIds.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-300 shadow-sm">
+                          <span className="text-[11px] font-bold text-slate-700 px-2">
+                            Aksi {selectedChecklistIds.length} Terpilih:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleBatchSetStatus('Alpa / Tanpa Keterangan')}
+                            className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-2.5 py-1 rounded-lg text-xs"
+                          >
+                            Set Alpa
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBatchSetStatus('Terlambat')}
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-2.5 py-1 rounded-lg text-xs"
+                          >
+                            Set Terlambat
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBatchSetStatus('Izin Sakit')}
+                            className="bg-teal-600 hover:bg-teal-500 text-white font-bold px-2.5 py-1 rounded-lg text-xs"
+                          >
+                            Set Sakit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBatchSetStatus('Izin Pulang')}
+                            className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-2.5 py-1 rounded-lg text-xs"
+                          >
+                            Set Pulang
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-xs font-bold text-slate-700 flex items-center gap-3">
+                      <span className="text-emerald-700">✓ Hadir: {stats.hadir}</span>
+                      <span className="text-rose-700">❌ Alpa: {stats.alpa}</span>
+                      <span className="text-slate-500">Belum Scan: {stats.belumScan}</span>
+                    </div>
+                  </div>
+
+                  {/* Filter & Search Bar */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="relative sm:col-span-1">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        value={checklistSearch}
+                        onChange={(e) => setChecklistSearch(e.target.value)}
+                        placeholder="Cari nama atau NISN..."
+                        className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      />
+                    </div>
+
+                    <div>
+                      <select
+                        value={checklistClassFilter}
+                        onChange={(e) => setChecklistClassFilter(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      >
+                        <option value="">Semua Jenjang / Kelas</option>
+                        <option value="SD">SD</option>
+                        <option value="SMP">SMP</option>
+                        <option value="SMA">SMA</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <select
+                        value={checklistDormFilter}
+                        onChange={(e) => setChecklistDormFilter(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      >
+                        <option value="">Semua Gedung Asrama</option>
+                        {Array.from(new Set(students.map((s) => s.dorm))).map((dorm) => (
+                          <option key={dorm} value={dorm}>
+                            {dorm}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <select
+                        value={checklistStatusFilter}
+                        onChange={(e) => setChecklistStatusFilter(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      >
+                        <option value="Semua">Semua Status Presensi</option>
+                        <option value="Belum Scan">Belum Scan / Absen</option>
+                        <option value="Hadir">Hadir</option>
+                        <option value="Terlambat">Terlambat</option>
+                        <option value="Izin Sakit">Izin Sakit</option>
+                        <option value="Izin Pulang">Izin Pulang</option>
+                        <option value="Alpa / Tanpa Keterangan">Alpa</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Student Table List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-700 font-extrabold border-b border-slate-200">
+                          <th className="p-3 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedChecklistIds.length > 0 &&
+                                selectedChecklistIds.length ===
+                                  students.filter((s) => {
+                                    const matchSearch =
+                                      s.name.toLowerCase().includes(checklistSearch.toLowerCase()) ||
+                                      s.id.toLowerCase().includes(checklistSearch.toLowerCase());
+                                    const matchClass = !checklistClassFilter || s.class === checklistClassFilter;
+                                    const matchDorm = !checklistDormFilter || s.dorm === checklistDormFilter;
+                                    return matchSearch && matchClass && matchDorm;
+                                  }).length
+                              }
+                              onChange={(e) => {
+                                const matching = students.filter((s) => {
+                                  const matchSearch =
+                                    s.name.toLowerCase().includes(checklistSearch.toLowerCase()) ||
+                                    s.id.toLowerCase().includes(checklistSearch.toLowerCase());
+                                  const matchClass = !checklistClassFilter || s.class === checklistClassFilter;
+                                  const matchDorm = !checklistDormFilter || s.dorm === checklistDormFilter;
+                                  return matchSearch && matchClass && matchDorm;
+                                });
+                                if (e.target.checked) {
+                                  setSelectedChecklistIds(matching.map((m) => m.id));
+                                } else {
+                                  setSelectedChecklistIds([]);
+                                }
+                              }}
+                              className="rounded text-red-600 focus:ring-red-500"
+                            />
+                          </th>
+                          <th className="p-3">Nama Murid & NISN</th>
+                          <th className="p-3">Kelas & Asrama</th>
+                          <th className="p-3">Status Saat Ini</th>
+                          <th className="p-3 text-right">Aksi Ubah Status Cepat</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 font-medium">
+                        {students
+                          .filter((s) => {
+                            const matchSearch =
+                              s.name.toLowerCase().includes(checklistSearch.toLowerCase()) ||
+                              s.id.toLowerCase().includes(checklistSearch.toLowerCase());
+                            const matchClass = !checklistClassFilter || s.class === checklistClassFilter;
+                            const matchDorm = !checklistDormFilter || s.dorm === checklistDormFilter;
+
+                            const sid = String(s.id).trim().toLowerCase();
+                            const rec = todaySessionMap.get(sid);
+                            const st = rec ? rec.status : 'Belum Scan';
+
+                            const matchStatus =
+                              checklistStatusFilter === 'Semua' ||
+                              (checklistStatusFilter === 'Belum Scan' ? st === 'Belum Scan' : st === checklistStatusFilter);
+
+                            return matchSearch && matchClass && matchDorm && matchStatus;
+                          })
+                          .map((s) => {
+                            const sid = String(s.id).trim().toLowerCase();
+                            const rec = todaySessionMap.get(sid);
+                            const currentStatus = rec ? rec.status : 'Belum Scan';
+                            const isChecked = selectedChecklistIds.includes(s.id);
+
+                            return (
+                              <tr
+                                key={s.id}
+                                className={`hover:bg-slate-50 transition-all ${
+                                  isChecked ? 'bg-red-50/40' : ''
+                                }`}
+                              >
+                                <td className="p-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedChecklistIds([...selectedChecklistIds, s.id]);
+                                      } else {
+                                        setSelectedChecklistIds(selectedChecklistIds.filter((id) => id !== s.id));
+                                      }
+                                    }}
+                                    className="rounded text-red-600 focus:ring-red-500"
+                                  />
+                                </td>
+                                <td className="p-3">
+                                  <h4 className="font-bold text-slate-900 leading-tight">{s.name}</h4>
+                                  <span className="text-[10px] font-mono font-bold text-slate-500">
+                                    NISN: {s.id}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-slate-700">
+                                  <span className="font-bold text-red-700">Kelas {s.class}</span>
+                                  <span className="block text-[10px] text-slate-500">{s.dorm}</span>
+                                </td>
+                                <td className="p-3">
+                                  <span
+                                    className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
+                                      currentStatus === 'Hadir'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : currentStatus === 'Terlambat'
+                                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                        : currentStatus === 'Izin Sakit' || currentStatus === 'Izin Pulang'
+                                        ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                                        : currentStatus === 'Alpa / Tanpa Keterangan'
+                                        ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                        : 'bg-slate-100 text-slate-600 border border-slate-300'
+                                    }`}
+                                  >
+                                    {currentStatus}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-right">
+                                  <div className="inline-flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Hadir')
+                                      }
+                                      className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                                        currentStatus === 'Hadir'
+                                          ? 'bg-emerald-600 text-white shadow'
+                                          : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                                      }`}
+                                    >
+                                      ✓ Hadir
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Terlambat')
+                                      }
+                                      className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                                        currentStatus === 'Terlambat'
+                                          ? 'bg-amber-600 text-white shadow'
+                                          : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                                      }`}
+                                    >
+                                      ⏱ Telat
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Izin Sakit')
+                                      }
+                                      className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                                        currentStatus === 'Izin Sakit'
+                                          ? 'bg-teal-600 text-white shadow'
+                                          : 'bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200'
+                                      }`}
+                                    >
+                                      🤒 Sakit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Izin Pulang')
+                                      }
+                                      className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                                        currentStatus === 'Izin Pulang'
+                                          ? 'bg-purple-600 text-white shadow'
+                                          : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
+                                      }`}
+                                    >
+                                      🏖 Pulang
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleUpdateStudentStatus(
+                                          s.id,
+                                          s.name,
+                                          s.class,
+                                          s.dorm,
+                                          'Alpa / Tanpa Keterangan'
+                                        )
+                                      }
+                                      className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                                        currentStatus === 'Alpa / Tanpa Keterangan'
+                                          ? 'bg-rose-600 text-white shadow'
+                                          : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'
+                                      }`}
+                                    >
+                                      ❌ Alpa
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="bg-slate-100 border-t border-slate-200 p-4 flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-medium">
+                    Total {students.length} murid terdaftar dalam sistem.
+                  </span>
+                  <button
+                    onClick={() => setShowChecklistModal(false)}
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-2 rounded-xl text-xs shadow transition-all"
+                  >
+                    Selesai / Tutup Checklist
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -193,13 +193,51 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     }
   }, [students]);
 
+  // Maintain latest refs to avoid stale closure issues in scanner callback
+  const prayerAttendanceRef = useRef(prayerAttendance);
+  const studentsRef = useRef(students);
+  const leavesRef = useRef(leaves);
+  const medicalRecordsRef = useRef(medicalRecords);
+  const selectedDateRef = useRef(selectedDate);
+  const selectedPrayerTimeRef = useRef(selectedPrayerTime);
+  const officerNameRef = useRef(officerName);
+  const onSavePrayerAttendanceRef = useRef(onSavePrayerAttendance);
+
+  useEffect(() => {
+    prayerAttendanceRef.current = prayerAttendance;
+    studentsRef.current = students;
+    leavesRef.current = leaves;
+    medicalRecordsRef.current = medicalRecords;
+    selectedDateRef.current = selectedDate;
+    selectedPrayerTimeRef.current = selectedPrayerTime;
+    officerNameRef.current = officerName;
+    onSavePrayerAttendanceRef.current = onSavePrayerAttendance;
+  });
+
+  const lastScanTimeRef = useRef<{ code: string; time: number }>({ code: '', time: 0 });
+
   // Process a Scanned Student ID
   const handleProcessScan = (rawScannedCode: string) => {
     const cleanId = rawScannedCode.trim().toUpperCase();
     if (!cleanId) return;
 
+    // Prevent duplicate rapid scanning of the same ID within 1.5s
+    const now = Date.now();
+    if (cleanId === lastScanTimeRef.current.code && now - lastScanTimeRef.current.time < 1500) {
+      return;
+    }
+    lastScanTimeRef.current = { code: cleanId, time: now };
+
+    const currentStudents = studentsRef.current;
+    const currentAttendance = prayerAttendanceRef.current;
+    const currentLeaves = leavesRef.current;
+    const currentMedical = medicalRecordsRef.current;
+    const curDate = selectedDateRef.current;
+    const curPrayer = selectedPrayerTimeRef.current;
+    const curOfficer = officerNameRef.current;
+
     // Find student by ID or exact Name match
-    const foundStudent = students.find(
+    const foundStudent = currentStudents.find(
       (s) =>
         s.id.trim().toUpperCase() === cleanId ||
         s.name.trim().toUpperCase() === cleanId
@@ -219,7 +257,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     }
 
     // Check if student currently on active leave
-    const onLeave = leaves.some(
+    const onLeave = currentLeaves.some(
       (l) =>
         l.status === 'Active' &&
         (String(l.studentId).trim().toLowerCase() === String(foundStudent.id).trim().toLowerCase() ||
@@ -227,7 +265,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     );
 
     // Check if student currently in UKS / sick
-    const inUks = medicalRecords.some(
+    const inUks = currentMedical.some(
       (m) =>
         (m.status === 'Dalam Perawatan' || m.status === 'Istirahat di Kamar') &&
         (String(m.studentId).trim().toLowerCase() === String(foundStudent.id).trim().toLowerCase() ||
@@ -252,39 +290,39 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     // Check if attendance already exists for this prayer & date
-    const existingIndex = prayerAttendance.findIndex(
+    const existingIndex = currentAttendance.findIndex(
       (p) =>
-        p.date === selectedDate &&
-        p.prayerTime === selectedPrayerTime &&
+        p.date === curDate &&
+        p.prayerTime === curPrayer &&
         String(p.studentId).trim().toLowerCase() === String(foundStudent.id).trim().toLowerCase()
     );
 
-    let updatedList = [...prayerAttendance];
+    let updatedList = [...currentAttendance];
     if (existingIndex >= 0) {
       updatedList[existingIndex] = {
         ...updatedList[existingIndex],
         timestamp: nowTime,
         status: defaultStatus,
-        scannedBy: officerName
+        scannedBy: curOfficer
       };
       statusMessage += ' (Data diperbarui)';
     } else {
       const newRecord: PrayerAttendance = {
-        id: `PA-${Date.now().toString().slice(-6)}`,
+        id: `PA-${Date.now().toString().slice(-6)}-${foundStudent.id}`,
         studentId: foundStudent.id,
         studentName: foundStudent.name,
         class: foundStudent.class,
         dorm: foundStudent.dorm,
-        prayerTime: selectedPrayerTime,
-        date: selectedDate,
+        prayerTime: curPrayer,
+        date: curDate,
         timestamp: nowTime,
         status: defaultStatus,
-        scannedBy: officerName
+        scannedBy: curOfficer
       };
       updatedList = [newRecord, ...updatedList];
     }
 
-    onSavePrayerAttendance(updatedList);
+    onSavePrayerAttendanceRef.current(updatedList);
     setLastScannedResult({
       student: foundStudent,
       status: defaultStatus,

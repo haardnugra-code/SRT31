@@ -1319,3 +1319,185 @@ export async function generateViolationNoticePDF(
   doc.save(`Surat_Pemberitahuan_Pelanggaran_${violation.studentName.replace(/\s+/g, '_')}_${violation.date}.pdf`);
 }
 
+// --- 6. SURAT KETERANGAN IZIN SAKIT & REKAM MEDIS UKS PDF ---
+export async function printSickLeavePDF(
+  record: MedicalRecord,
+  student?: Student,
+  config?: AppConfig
+) {
+  const doc = new jsPDF('p', 'mm', 'a4');
+
+  const kopKiriText =
+    config?.kopKiri ||
+    "PEMERINTAH PROVINSI SUMATERA SELATAN\nDINAS PENDIDIKAN\nSEKOLAH RAKYAT TERPADU 31 PALEMBANG";
+  const kopKananText =
+    config?.kopKanan ||
+    "Jalan Seniman Amri Yahya, Jakabaring, Palembang\nTelepon: (0711) 510000 | Email: asrama@sekolahrakyat.sch.id\nLAMAN: www.sekolahrakyat.sch.id";
+
+  const leftLogoBase64 = await loadLogoImage(config?.logoKiriUrl, 'left');
+  const rightLogoBase64 = await loadLogoImage(config?.logoKananUrl, 'right');
+  const watermarkBase64 = await generateWatermarkBase64(
+    leftLogoBase64,
+    config?.watermarkOpacity || 0.08
+  );
+
+  // Background Watermark
+  if (watermarkBase64) {
+    doc.addImage(watermarkBase64, 'PNG', 30, 70, 150, 150);
+  }
+
+  // Draw Kop Surat
+  doc.addImage(leftLogoBase64, 'PNG', 12, 10, 22, 22);
+  doc.addImage(rightLogoBase64, 'PNG', 176, 10, 22, 22);
+
+  doc.setTextColor(30, 41, 59);
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(10);
+  const leftLines = kopKiriText.split('\n');
+  let yKop = 13;
+  leftLines.forEach((line) => {
+    doc.text(line, 105, yKop, { align: 'center' });
+    yKop += 4.5;
+  });
+
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  const rightLines = kopKananText.split('\n');
+  rightLines.forEach((line) => {
+    doc.text(line, 105, yKop, { align: 'center' });
+    yKop += 3.8;
+  });
+
+  // Double Divider Lines
+  const lineY = Math.max(yKop + 2, 35);
+  doc.setLineWidth(0.8);
+  doc.setDrawColor(30, 41, 59);
+  doc.line(12, lineY, 198, lineY);
+
+  doc.setLineWidth(0.2);
+  doc.setDrawColor(100, 116, 139);
+  doc.line(12, lineY + 1.2, 198, lineY + 1.2);
+
+  // Document Title & Letter Number
+  const titleY = lineY + 9;
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(12.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text("SURAT KETERANGAN IZIN SAKIT & REKAM MEDIS UKS", 105, titleY, { align: "center" });
+
+  doc.setFontSize(9);
+  doc.setFont("Helvetica", "normal");
+  doc.setTextColor(51, 65, 85);
+  const yearStr = record.date ? new Date(record.date).getFullYear() : new Date().getFullYear();
+  const letterNo = `${record.id.slice(-4)}/UKS-SR31/${yearStr}`;
+  doc.text(`Nomor: ${letterNo}`, 105, titleY + 5.5, { align: "center" });
+
+  // Opening Paragraph
+  let contentY = titleY + 14;
+  doc.setFontSize(9.5);
+  doc.setTextColor(30, 41, 59);
+
+  const introText =
+    "Yang bertanda tangan di bawah ini, Tim Layanan Kesehatan Unit Kesehatan Sekolah (UKS) dan Pembina Keasramaan, menerangkan bahwa peserta didik berikut:";
+  const wrappedIntro = doc.splitTextToSize(introText, 180);
+  doc.text(wrappedIntro, 15, contentY);
+  contentY += wrappedIntro.length * 4.5 + 4;
+
+  // Student Info Table
+  autoTable(doc, {
+    head: [["IDENTITAS SISWA", "INFORMASI DATA KEASRAMAAN"]],
+    body: [
+      ["Nama Lengkap Siswa", record.studentName],
+      ["NISN / ID Siswa", student?.id || record.studentId || "-"],
+      ["Kelas / Angkatan", student?.class ? `Kelas ${student.class}` : "-"],
+      ["Lokasi Asrama", student?.dorm || "-"],
+      ["Tanggal & Waktu Periksa", `${formatDateIndonesian(record.date, true)} Pukul ${record.time || '08:00'} WIB`],
+      ["Lokasi Penanganan Medis", record.location || "UKS Asrama"]
+    ],
+    startY: contentY,
+    theme: 'grid',
+    headStyles: { fillColor: [30, 58, 138], fontStyle: 'bold', fontSize: 9, halign: 'left' },
+    styles: { fontSize: 8.5, cellPadding: 2.2, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { cellWidth: 55, fontStyle: 'bold', fillColor: [248, 250, 252] },
+      1: { cellWidth: 'auto' }
+    },
+    margin: { left: 15, right: 15 },
+    pageBreak: 'avoid'
+  });
+
+  contentY = (doc as any).lastAutoTable.finalY + 5;
+
+  // Medical Results Table
+  const restText = record.restDays === 1 ? '1 (satu)' : record.restDays === 2 ? '2 (dua)' : record.restDays === 3 ? '3 (tiga)' : `${record.restDays}`;
+
+  autoTable(doc, {
+    head: [["PARAMETER PEMERIKSAAN", "HASIL DIAGNOSA & REKOMENDASI MEDIS"]],
+    body: [
+      ["Gejala / Keluhan Utama", record.symptoms || "-"],
+      ["Pemeriksaan Fisik", `Suhu: ${record.temperature || '-'} | Vital Signs: ${record.vitalSigns || '-'}`],
+      ["Diagnosa Medis", record.diagnosis || "Sakit / Perlu Istirahat"],
+      ["Tindakan & Obat (Terapi)", record.treatment || "-"],
+      ["Status Penanganan", record.status || "Dalam Perawatan"],
+      ["Rekomendasi Izin Sakit", record.isSickLeave ? `Izin Istirahat / Berobat selama ${restText} hari terhitung sejak tanggal ${formatDateIndonesian(record.date, true)}` : "Diizinkan kembali beraktivitas dengan pemantauan"],
+      ["Catatan Tambahan UKS", record.notes || "Tidak ada."]
+    ],
+    startY: contentY,
+    theme: 'grid',
+    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 9, halign: 'left' },
+    styles: { fontSize: 8.5, cellPadding: 2.2, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { cellWidth: 55, fontStyle: 'bold', fillColor: [248, 250, 252] },
+      1: { cellWidth: 'auto' }
+    },
+    margin: { left: 15, right: 15 },
+    pageBreak: 'avoid'
+  });
+
+  contentY = (doc as any).lastAutoTable.finalY + 6;
+
+  // Closing Paragraph
+  const closingText =
+    "Demikian Surat Keterangan Izin Sakit & Rekam Medis ini diterbitkan oleh tim kesehatan UKS untuk dipergunakan sebagaimana mestinya demi keselamatan, kesehatan, dan pemulihan peserta didik.";
+  const wrappedClosing = doc.splitTextToSize(closingText, 180);
+  doc.text(wrappedClosing, 15, contentY);
+  contentY += wrappedClosing.length * 4.5 + 8;
+
+  // Signatures Section
+  const dateStr = formatDateIndonesian(record.date || new Date().toISOString().split('T')[0], true);
+
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(9);
+
+  const row1Y = contentY;
+  doc.text("Mengetahui,", 20, row1Y);
+  doc.text("Wali Asrama / Pembina Keasramaan,", 20, row1Y + 4.5);
+
+  doc.text(`Palembang, ${dateStr}`, 135, row1Y);
+  doc.text("Petugas Medis / Pembina UKS,", 135, row1Y + 4.5);
+
+  // TTD Space (24mm)
+  const waliName = config?.waliAsrama || 'Wali Asrama';
+  const waliNip = config?.waliAsramaNip ? `NIP. ${config.waliAsramaNip}` : '';
+  const officerName = record.officer || 'Petugas UKS';
+
+  doc.setFont("Helvetica", "bold");
+  doc.text(waliName, 20, row1Y + 26);
+  if (waliNip) {
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(waliNip, 20, row1Y + 30);
+  }
+
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text(officerName, 135, row1Y + 26);
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("Penanggung Jawab Kesehatan UKS", 135, row1Y + 30);
+
+  doc.save(`Surat_Izin_Sakit_${record.studentName.replace(/\s+/g, '_')}_${record.date}.pdf`);
+}
+
+

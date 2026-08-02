@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { formatDateIndonesian } from '../utils/dateFormatter';
+import { printSickLeavePDF } from '../services/pdfGenerator';
 import {
   HeartPulse,
   Plus,
@@ -24,7 +25,8 @@ import {
   ChevronRight,
   ShieldAlert,
   ClipboardList,
-  Sparkles
+  Sparkles,
+  Download
 } from 'lucide-react';
 import { Student, MedicalRecord, AppConfig } from '../types';
 
@@ -208,6 +210,13 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleExportPDF = (record: MedicalRecord) => {
+    const student = students.find(
+      (s) => String(s.id) === String(record.studentId) || s.name.toLowerCase() === record.studentName.toLowerCase()
+    );
+    printSickLeavePDF(record, student, config);
   };
 
   return (
@@ -475,8 +484,16 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                           <td className="py-3 px-4 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1">
                               <button
+                                onClick={() => handleExportPDF(rec)}
+                                title="Unduh PDF Surat Izin Sakit"
+                                className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-bold"
+                              >
+                                <FileText className="w-4 h-4" />
+                                <span className="hidden sm:inline">PDF</span>
+                              </button>
+                              <button
                                 onClick={() => setPrintRecord(rec)}
-                                title="Cetak Surat Izin / Rekam Medis"
+                                title="Pratinjau & Cetak Surat Izin"
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               >
                                 <Printer className="w-4 h-4" />
@@ -636,6 +653,15 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                                 Pemeriksa: {rec.officer}
                               </p>
                             )}
+                            <div className="pt-2 flex items-center gap-2 border-t border-slate-200/70 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => handleExportPDF(rec)}
+                                className="text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all shadow-sm"
+                              >
+                                <FileText className="w-3.5 h-3.5" /> Unduh Surat Izin Sakit PDF
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -940,12 +966,21 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handlePrint}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-lg text-xs shadow"
+                  type="button"
+                  onClick={() => handleExportPDF(printRecord)}
+                  className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all active:scale-95"
                 >
-                  <Printer className="w-4 h-4" /> Cetak / PDF
+                  <FileText className="w-4 h-4" /> Unduh PDF
                 </button>
                 <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all active:scale-95"
+                >
+                  <Printer className="w-4 h-4" /> Cetak Browser
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPrintRecord(null)}
                   className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
                 >

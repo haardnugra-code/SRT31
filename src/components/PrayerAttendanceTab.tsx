@@ -38,7 +38,18 @@ import {
   CheckSquare,
   Square,
   Filter,
-  ListFilter
+  ListFilter,
+  Cpu,
+  Radio,
+  HardDrive,
+  Terminal,
+  Settings,
+  Plug,
+  Unplug,
+  Copy,
+  Code2,
+  Laptop,
+  Usb
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -83,6 +94,16 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   const [availableCameras, setAvailableCameras] = useState<Array<{ id: string; label: string }>>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+  // Arduino & Web Serial RFID Scanner Hardware States
+  const [isArduinoModalOpen, setIsArduinoModalOpen] = useState<boolean>(false);
+  const [arduinoCodeTab, setArduinoCodeTab] = useState<'serial' | 'hid'>('serial');
+  const [isSerialConnected, setIsSerialConnected] = useState<boolean>(false);
+  const [serialPort, setSerialPort] = useState<any>(null);
+  const [serialReader, setSerialReader] = useState<any>(null);
+  const [serialBaudRate, setSerialBaudRate] = useState<number>(115200);
+  const [serialLogs, setSerialLogs] = useState<string[]>([]);
+  const [copiedCodeToast, setCopiedCodeToast] = useState<boolean>(false);
 
   // Enumerate cameras on component mount
   useEffect(() => {
@@ -216,7 +237,81 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
   const lastScanTimeRef = useRef<{ code: string; time: number }>({ code: '', time: 0 });
 
-  // Process a Scanned Student ID
+  // Web Serial API Connection Handler for Arduino/ESP32 RFID Readers
+  const connectWebSerial = async () => {
+    if (!('serial' in navigator)) {
+      alert('Browser Anda belum mendukung Web Serial API. Silakan gunakan Google Chrome atau Microsoft Edge pada PC/Laptop.');
+      return;
+    }
+    try {
+      const port = await (navigator as any).serial.requestPort();
+      await port.open({ baudRate: serialBaudRate });
+      setSerialPort(port);
+      setIsSerialConnected(true);
+      setSerialLogs((prev) => [
+        `[${new Date().toLocaleTimeString()}] ✅ Terhubung ke Arduino/ESP32 Serial Port (${serialBaudRate} Baud)`,
+        ...prev
+      ]);
+      readSerialStream(port);
+    } catch (err: any) {
+      console.error('Serial connect error:', err);
+      setSerialLogs((prev) => [
+        `[${new Date().toLocaleTimeString()}] ❌ Koneksi dibatalkan / gagal: ${err?.message || 'Error'}`,
+        ...prev
+      ]);
+    }
+  };
+
+  const disconnectWebSerial = async () => {
+    if (serialPort) {
+      try {
+        if (serialReader) {
+          await serialReader.cancel();
+        }
+        await serialPort.close();
+      } catch (err) {
+        console.error('Serial close error:', err);
+      }
+      setSerialPort(null);
+      setSerialReader(null);
+      setIsSerialConnected(false);
+      setSerialLogs((prev) => [`[${new Date().toLocaleTimeString()}] 🔌 Serial Port terputus.`, ...prev]);
+    }
+  };
+
+  const readSerialStream = async (port: any) => {
+    try {
+      const textDecoder = new TextDecoderStream();
+      port.readable.pipeTo(textDecoder.writable);
+      const reader = textDecoder.readable.getReader();
+      setSerialReader(reader);
+
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          buffer += value;
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed) {
+              setSerialLogs((prev) => [`[${new Date().toLocaleTimeString()}] 📥 RX: ${trimmed}`, ...prev.slice(0, 49)]);
+              const cleanUid = trimmed.replace(/^(RFID:|UID:|CARD:)/i, '').trim();
+              if (cleanUid) {
+                handleProcessScan(cleanUid);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Serial read stream stopped:', err);
+    }
+  };
+
+  // Process a Scanned Student ID or RFID Tag UID
   const handleProcessScan = (rawScannedCode: string) => {
     const cleanId = rawScannedCode.trim().toUpperCase();
     if (!cleanId) return;
@@ -236,10 +331,11 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     const curPrayer = selectedPrayerTimeRef.current;
     const curOfficer = officerNameRef.current;
 
-    // Find student by ID or exact Name match
+    // Find student by ID (NISN), RFID Tag UID, or exact Name match
     const foundStudent = currentStudents.find(
       (s) =>
         s.id.trim().toUpperCase() === cleanId ||
+        (s.rfidTag && s.rfidTag.trim().toUpperCase() === cleanId) ||
         s.name.trim().toUpperCase() === cleanId
     );
 
@@ -814,6 +910,12 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
             >
               <FileSpreadsheet className="w-4 h-4" /> Laporan Rekap Hadir
             </button>
+            <button
+              onClick={() => setIsArduinoModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all whitespace-nowrap bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border border-amber-400/30 text-xs"
+            >
+              <Cpu className="w-4 h-4 text-amber-300" /> Hardware & Arduino RFID
+            </button>
           </div>
         </div>
         <QrCode className="absolute right-4 -bottom-8 w-60 h-60 text-white/5 pointer-events-none" />
@@ -963,8 +1065,70 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
           {/* MAIN SCANNER AREA & MANUAL INPUT */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column: QR Webcam Scanner & Hardware Gun Simulator */}
+            {/* Left Column: Arduino RFID Hardware, QR Webcam Scanner & USB Gun Input */}
             <div className="lg:col-span-6 space-y-4">
+              {/* ARDUINO & WEB SERIAL RFID LIVE STATUS PANEL */}
+              <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-4 shadow-md space-y-3 relative overflow-hidden">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-amber-400" />
+                    <span className="font-bold text-xs">Arduino / ESP32 RFID Web Serial Reader</span>
+                  </div>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                      isSerialConnected
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}
+                  >
+                    {isSerialConnected ? '● Serial Connected' : 'Serial Disconnected'}
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-3">
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    {isSerialConnected
+                      ? `Mendengarkan data tap kartu RFID dari Arduino via Web Serial (${serialBaudRate} Baud)...`
+                      : 'Hubungkan modul Arduino/ESP32 RFID via USB Serial untuk absensi tap kartu otomatis.'}
+                  </p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {isSerialConnected ? (
+                      <button
+                        type="button"
+                        onClick={disconnectWebSerial}
+                        className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all shadow"
+                      >
+                        <Unplug className="w-3.5 h-3.5" /> Putuskan
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={connectWebSerial}
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all shadow"
+                      >
+                        <Plug className="w-3.5 h-3.5" /> Hubungkan Serial
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsArduinoModalOpen(true)}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold p-1.5 rounded-lg text-xs border border-slate-700 transition"
+                      title="Pengaturan Hardware & Sketsa Arduino"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {serialLogs.length > 0 && (
+                  <div className="bg-slate-950 rounded-xl p-2.5 border border-slate-800 font-mono text-[10px] text-emerald-400 max-h-24 overflow-y-auto space-y-0.5 shadow-inner">
+                    {serialLogs.slice(0, 4).map((log, i) => (
+                      <div key={i} className="truncate">{log}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-md space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
                   <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
@@ -1950,6 +2114,11 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                       </span>
                       <h3 className="font-extrabold text-sm text-white leading-tight">{s.name}</h3>
                       <p className="text-[10px] text-slate-300 font-mono">NISN: {s.id}</p>
+                      {s.rfidTag && (
+                        <p className="text-[10px] text-amber-300 font-mono font-bold flex items-center gap-1">
+                          <Cpu className="w-3 h-3 text-amber-400" /> RFID: {s.rfidTag}
+                        </p>
+                      )}
                       <p className="text-[10px] text-slate-400">Gedung: {s.dorm}</p>
                     </div>
 
@@ -2425,6 +2594,328 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ARDUINO & RFID HARDWARE CONFIGURATION MODAL */}
+      {isArduinoModalOpen && (
+        <div className="no-print fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-3 md:p-6 animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400">
+                  <Cpu className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white flex items-center gap-2">
+                    Integrasi Hardware Scanner RFID & Arduino
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Konfigurasi Pemindai RFID MFRC522, ESP32, atau Barcode Scanner USB Keyboard Wedge
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsArduinoModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Tabs Navigation */}
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-2 flex items-center gap-2 overflow-x-auto text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setArduinoCodeTab('serial')}
+                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  arduinoCodeTab === 'serial'
+                    ? 'bg-slate-900 text-amber-400 shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Plug className="w-4 h-4" /> Mode Web Serial (Direct USB)
+              </button>
+              <button
+                type="button"
+                onClick={() => setArduinoCodeTab('hid')}
+                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  arduinoCodeTab === 'hid'
+                    ? 'bg-slate-900 text-amber-400 shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Usb className="w-4 h-4" /> Mode USB Keyboard Wedge (HID)
+              </button>
+            </div>
+
+            {/* Modal Content Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
+              {/* TAB 1: WEB SERIAL MODE */}
+              {arduinoCodeTab === 'serial' && (
+                <div className="space-y-5">
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs space-y-2">
+                    <h4 className="font-extrabold text-amber-900 flex items-center gap-1.5 text-sm">
+                      <Sparkles className="w-4 h-4 text-amber-600" /> Cara Kerja Mode Web Serial (Rekomendasi Utama)
+                    </h4>
+                    <p className="text-amber-800 leading-relaxed">
+                      Arduino/ESP32 terhubung via kabel USB ke Komputer/Laptop. Web Serial API membaca data UID kartu RFID dari Serial Monitor secara langsung tanpa membutuhkan aplikasi driver tambahan di OS!
+                    </p>
+                  </div>
+
+                  {/* Serial Connect Controls */}
+                  <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                      <div>
+                        <span className="text-xs text-slate-400 font-semibold uppercase block">Koneksi Hardware Serial</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`w-3 h-3 rounded-full ${isSerialConnected ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}`} />
+                          <span className="font-extrabold text-sm text-white">
+                            {isSerialConnected ? 'Status: Terhubung (Listening RFID Tap)' : 'Status: Belum Terhubung'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-slate-400 font-bold">Baud Rate:</span>
+                          <select
+                            value={serialBaudRate}
+                            onChange={(e) => setSerialBaudRate(Number(e.target.value))}
+                            disabled={isSerialConnected}
+                            className="bg-slate-800 text-white border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-xs font-bold focus:outline-none"
+                          >
+                            <option value={9600}>9600 Baud</option>
+                            <option value={57600}>57600 Baud</option>
+                            <option value={115200}>115200 Baud (Default)</option>
+                          </select>
+                        </div>
+
+                        {isSerialConnected ? (
+                          <button
+                            type="button"
+                            onClick={disconnectWebSerial}
+                            className="bg-rose-600 hover:bg-rose-500 text-white font-extrabold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow"
+                          >
+                            <Unplug className="w-4 h-4" /> Putuskan Koneksi
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={connectWebSerial}
+                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow transition-all"
+                          >
+                            <Plug className="w-4 h-4" /> Pilih COM Port & Hubungkan
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Serial Monitor Log Window */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
+                        <span className="flex items-center gap-1.5">
+                          <Terminal className="w-3.5 h-3.5 text-emerald-400" /> Terminal Live Monitor (Rx Log):
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSerialLogs([])}
+                          className="hover:text-white transition"
+                        >
+                          Bersihkan Log
+                        </button>
+                      </div>
+                      <div className="bg-slate-950 rounded-xl p-3 border border-slate-800 font-mono text-xs text-emerald-400 h-36 overflow-y-auto space-y-1">
+                        {serialLogs.length === 0 ? (
+                          <div className="text-slate-600 italic">Log data serial kosong. Tap kartu RFID pada reader untuk melihat data UID...</div>
+                        ) : (
+                          serialLogs.map((log, idx) => (
+                            <div key={idx} className="leading-tight">{log}</div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* C++ Code Box */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                        <Code2 className="w-4 h-4 text-red-600" /> Sketsa Arduino C++ (Mode Web Serial MFRC522):
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const code = `#include <SPI.h>\n#include <MFRC522.h>\n\n#define SS_PIN 10\n#define RST_PIN 9\n#define BUZZER_PIN 8\n#define LED_PIN 7\n\nMFRC522 rfid(SS_PIN, RST_PIN);\n\nvoid setup() {\n  Serial.begin(115200);\n  SPI.begin();\n  rfid.PCD_Init();\n  pinMode(BUZZER_PIN, OUTPUT);\n  pinMode(LED_PIN, OUTPUT);\n}\n\nvoid loop() {\n  if (!rfid.PICC_IsNewCardPresent()) return;\n  if (!rfid.PICC_ReadCardSerial()) return;\n\n  String uidStr = "";\n  for (byte i = 0; i < rfid.uid.size; i++) {\n    if (rfid.uid.uidByte[i] < 0x10) uidStr += "0";\n    uidStr += String(rfid.uid.uidByte[i], HEX);\n  }\n  uidStr.toUpperCase();\n\n  Serial.println(uidStr);\n\n  digitalWrite(BUZZER_PIN, HIGH);\n  digitalWrite(LED_PIN, HIGH);\n  delay(120);\n  digitalWrite(BUZZER_PIN, LOW);\n  digitalWrite(LED_PIN, LOW);\n\n  rfid.PICC_HaltA();\n  rfid.PCD_StopCrypto1();\n  delay(1200);\n}`;
+                          navigator.clipboard.writeText(code);
+                          setCopiedCodeToast(true);
+                          setTimeout(() => setCopiedCodeToast(false), 2000);
+                        }}
+                        className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow"
+                      >
+                        <Copy className="w-3.5 h-3.5" /> {copiedCodeToast ? 'Terkopi!' : 'Salin Kode Arduino'}
+                      </button>
+                    </div>
+
+                    <pre className="bg-slate-950 text-slate-200 p-4 rounded-xl text-xs font-mono overflow-x-auto border border-slate-800 leading-relaxed max-h-56">
+{`/* 
+ * SKETSA ARDUINO / ESP32 RFID SCANNER (Web Serial API)
+ * Aplikasi: Sistem Absensi Sekolah Rakyat Kemensos RI
+ */
+
+#include <SPI.h>
+#include <MFRC522.h>
+
+#define SS_PIN 10
+#define RST_PIN 9
+#define BUZZER_PIN 8
+#define LED_PIN 7
+
+MFRC522 rfid(SS_PIN, RST_PIN);
+
+void setup() {
+  Serial.begin(115200); // Baud rate 115200
+  SPI.begin();
+  rfid.PCD_Init();
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
+}
+
+void loop() {
+  if (!rfid.PICC_IsNewCardPresent()) return;
+  if (!rfid.PICC_ReadCardSerial()) return;
+
+  String uidStr = "";
+  for (byte i = 0; i < rfid.uid.size; i++) {
+    if (rfid.uid.uidByte[i] < 0x10) uidStr += "0";
+    uidStr += String(rfid.uid.uidByte[i], HEX);
+  }
+  uidStr.toUpperCase();
+
+  // Kirim UID Kartu ke Aplikasi Web via USB Serial
+  Serial.println(uidStr);
+
+  digitalWrite(BUZZER_PIN, HIGH);
+  digitalWrite(LED_PIN, HIGH);
+  delay(120);
+  digitalWrite(BUZZER_PIN, LOW);
+  digitalWrite(LED_PIN, LOW);
+
+  rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
+  delay(1200);
+}`}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: USB KEYBOARD WEDGE MODE */}
+              {arduinoCodeTab === 'hid' && (
+                <div className="space-y-5">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs space-y-2">
+                    <h4 className="font-extrabold text-emerald-900 flex items-center gap-1.5 text-sm">
+                      <Usb className="w-4 h-4 text-emerald-600" /> Cara Kerja Mode USB Keyboard Wedge (HID)
+                    </h4>
+                    <p className="text-emerald-800 leading-relaxed">
+                      Menggunakan Arduino Leonardo, Pro Micro, atau ESP32-S2/S3. Saat kartu RFID ditap, hardware bertindak seperti keyboard USB fisik yang mengetik UID kartu secara otomatis lalu menekan tombol Enter!
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 text-xs">
+                    <h4 className="font-bold text-slate-900">Petunjuk Penggunaan USB Keyboard Wedge / Barcode Gun:</h4>
+                    <ol className="list-decimal list-inside space-y-1.5 text-slate-700 font-medium">
+                      <li>Colokkan Barcode Gun USB atau Arduino HID ke Laptop/PC.</li>
+                      <li>Buka tab <strong>QR Scanner Live</strong> di aplikasi ini.</li>
+                      <li>Arahkan kursor ke input box <strong>"Scanner Gun USB / Input Manual NISN"</strong>.</li>
+                      <li>Tap Kartu RFID / scan Barcode. UID akan terisi otomatis dan memicu proses absensi seketika!</li>
+                    </ol>
+                  </div>
+
+                  {/* C++ Code Box HID */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                        <Code2 className="w-4 h-4 text-red-600" /> Sketsa C++ Arduino Leonardo / HID Keyboard RFID:
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const code = `#include <SPI.h>\n#include <MFRC522.h>\n#include <Keyboard.h>\n\n#define SS_PIN 10\n#define RST_PIN 9\n#define BUZZER_PIN 8\n\nMFRC522 rfid(SS_PIN, RST_PIN);\n\nvoid setup() {\n  SPI.begin();\n  rfid.PCD_Init();\n  Keyboard.begin();\n  pinMode(BUZZER_PIN, OUTPUT);\n}\n\nvoid loop() {\n  if (!rfid.PICC_IsNewCardPresent()) return;\n  if (!rfid.PICC_ReadCardSerial()) return;\n\n  String uidStr = "";\n  for (byte i = 0; i < rfid.uid.size; i++) {\n    if (rfid.uid.uidByte[i] < 0x10) uidStr += "0";\n    uidStr += String(rfid.uid.uidByte[i], HEX);\n  }\n  uidStr.toUpperCase();\n\n  Keyboard.print(uidStr);\n  Keyboard.write(KEY_RETURN);\n\n  digitalWrite(BUZZER_PIN, HIGH);\n  delay(100);\n  digitalWrite(BUZZER_PIN, LOW);\n\n  rfid.PICC_HaltA();\n  rfid.PCD_StopCrypto1();\n  delay(1200);\n}`;
+                          navigator.clipboard.writeText(code);
+                          setCopiedCodeToast(true);
+                          setTimeout(() => setCopiedCodeToast(false), 2000);
+                        }}
+                        className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow"
+                      >
+                        <Copy className="w-3.5 h-3.5" /> {copiedCodeToast ? 'Terkopi!' : 'Salin Sketsa HID'}
+                      </button>
+                    </div>
+
+                    <pre className="bg-slate-950 text-slate-200 p-4 rounded-xl text-xs font-mono overflow-x-auto border border-slate-800 leading-relaxed max-h-56">
+{`/* 
+ * ARDUINO LEONARDO / PRO MICRO USB KEYBOARD HID RFID
+ */
+
+#include <SPI.h>
+#include <MFRC522.h>
+#include <Keyboard.h>
+
+#define SS_PIN 10
+#define RST_PIN 9
+#define BUZZER_PIN 8
+
+MFRC522 rfid(SS_PIN, RST_PIN);
+
+void setup() {
+  SPI.begin();
+  rfid.PCD_Init();
+  Keyboard.begin();
+  pinMode(BUZZER_PIN, OUTPUT);
+}
+
+void loop() {
+  if (!rfid.PICC_IsNewCardPresent()) return;
+  if (!rfid.PICC_ReadCardSerial()) return;
+
+  String uidStr = "";
+  for (byte i = 0; i < rfid.uid.size; i++) {
+    if (rfid.uid.uidByte[i] < 0x10) uidStr += "0";
+    uidStr += String(rfid.uid.uidByte[i], HEX);
+  }
+  uidStr.toUpperCase();
+
+  // Ketik UID ke input box aktif lalu Enter
+  Keyboard.print(uidStr);
+  Keyboard.write(KEY_RETURN);
+
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(100);
+  digitalWrite(BUZZER_PIN, LOW);
+
+  rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
+  delay(1200);
+}`}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-100 border-t border-slate-200 px-6 py-3 flex items-center justify-between text-xs font-bold">
+              <span className="text-slate-500">Mendukung MFRC522 13.56MHz, PN532, EM4100, Barcode Gun USB</span>
+              <button
+                type="button"
+                onClick={() => setIsArduinoModalOpen(false)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-extrabold px-5 py-2 rounded-xl text-xs shadow transition"
+              >
+                Tutup Window
+              </button>
             </div>
           </div>
         </div>

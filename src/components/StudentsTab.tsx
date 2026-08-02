@@ -58,6 +58,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formNisn, setFormNisn] = useState('');
+  const [formRfidTag, setFormRfidTag] = useState('');
   const [formClass, setFormClass] = useState<ClassLevel>('SD');
   const [formDorm, setFormDorm] = useState(config.dormList[0] || 'Asrama Terpadu');
   const [formCaretaker, setFormCaretaker] = useState(
@@ -70,7 +71,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const filteredStudents = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return students.filter((s) => {
-      const matchName = s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q);
+      const matchName =
+        s.name.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q) ||
+        (s.rfidTag && s.rfidTag.toLowerCase().includes(q));
       const matchClass = classFilter === '' || s.class === classFilter;
       const matchDorm = dormFilter === '' || s.dorm === dormFilter;
       return matchName && matchClass && matchDorm;
@@ -81,6 +85,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     setEditingStudentId(null);
     setFormName('');
     setFormNisn('');
+    setFormRfidTag('');
     setFormClass('SD');
     setFormDorm(config.dormList[0] || 'Asrama Terpadu');
     setFormCaretaker(cleanWaliAsuh[0] || 'M. ARDIAN NUGRAHA, S.H');
@@ -91,6 +96,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     setEditingStudentId(student.id);
     setFormName(student.name);
     setFormNisn(student.id);
+    setFormRfidTag(student.rfidTag || '');
     setFormClass(student.class);
     setFormDorm(student.dorm);
     setFormCaretaker(student.caretaker);
@@ -101,6 +107,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     e.preventDefault();
     const name = formName.trim();
     const nisn = formNisn.trim();
+    const rfidTag = formRfidTag.trim().toUpperCase();
 
     if (!name || !nisn) {
       onShowToast('Data Tidak Lengkap', 'Nama dan NISN/ID wajib diisi.', 'warning');
@@ -111,6 +118,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       const updatedStudent: Student = {
         id: editingStudentId,
         name,
+        rfidTag: rfidTag || undefined,
         class: formClass,
         dorm: formDorm,
         caretaker: formCaretaker
@@ -125,6 +133,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       const newStudent: Student = {
         id: nisn,
         name,
+        rfidTag: rfidTag || undefined,
         class: formClass,
         dorm: formDorm,
         caretaker: formCaretaker,
@@ -664,6 +673,22 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       placeholder="e.g. SR0088"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                    RFID Tag / NFC Chip UID (Opsional untuk Kartu Smart RFID)
+                  </label>
+                  <input
+                    type="text"
+                    value={formRfidTag}
+                    onChange={(e) => setFormRfidTag(e.target.value)}
+                    className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3.5 py-2 text-xs md:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                    placeholder="e.g. 1029384756 atau 04:A2:3B:8C (Tap kartu ke scanner RFID)"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Isi jika menggunakan kartu chip RFID (MFRC522/PN532/USB RFID Reader) atau tap langsung ke scanner.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

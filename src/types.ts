@@ -2,6 +2,7 @@ export type ClassLevel = 'SD' | 'SMP' | 'SMA';
 
 export interface Student {
   id: string; // NISN or Registration ID
+  rfidTag?: string; // Optional RFID / NFC Tag UID (e.g. 1029384756 or 04:A2:3B:8C)
   name: string;
   class: ClassLevel;
   dorm: string;

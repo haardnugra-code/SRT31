@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import QRCode from 'qrcode';
-import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
 import {
   Student,
   PrayerAttendance,
@@ -30,7 +30,10 @@ import {
   Check,
   Zap,
   Calendar,
-  FileSpreadsheet
+  FileSpreadsheet,
+  SwitchCamera,
+  Smartphone,
+  UserCheck
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -69,9 +72,25 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     message: string;
   } | null>(null);
 
-  // QR Scanner Instance State
+  // QR Scanner Instance & Camera Selection States
   const [isScannerActive, setIsScannerActive] = useState<boolean>(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
+  const [availableCameras, setAvailableCameras] = useState<Array<{ id: string; label: string }>>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+  // Enumerate cameras on component mount
+  useEffect(() => {
+    Html5Qrcode.getCameras()
+      .then((cameras) => {
+        if (cameras && cameras.length > 0) {
+          setAvailableCameras(cameras);
+        }
+      })
+      .catch((err) => {
+        console.log('Notice: camera enumeration fallback handled:', err);
+      });
+  }, []);
 
   // QR Card States
   const [cardSearch, setCardSearch] = useState<string>('');
@@ -253,17 +272,22 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     setManualInputId('');
   };
 
-  // Start HTML5 QR Code Scanner
+  // Start / Restart HTML5 QR Code Scanner with facing mode or exact device ID
   useEffect(() => {
     if (activeSubTab === 'scanner' && isScannerActive) {
       const timer = setTimeout(() => {
         try {
           if (!scannerRef.current) {
+            const videoConstraints: MediaTrackConstraints = selectedCameraId
+              ? { deviceId: { exact: selectedCameraId } }
+              : { facingMode: cameraFacingMode };
+
             const scanner = new Html5QrcodeScanner(
               'qr-reader-element',
               {
                 fps: 10,
                 qrbox: { width: 250, height: 250 },
+                videoConstraints: videoConstraints,
                 supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
               },
               /* verbose= */ false
@@ -298,7 +322,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
         scannerRef.current = null;
       }
     }
-  }, [activeSubTab, isScannerActive, selectedDate, selectedPrayerTime, officerName]);
+  }, [activeSubTab, isScannerActive, cameraFacingMode, selectedCameraId, selectedDate, selectedPrayerTime, officerName]);
 
   // Bulk Mark Unscanned as Alpa
   const handleBulkMarkUnscannedAsAlpa = () => {
@@ -684,9 +708,9 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
             {/* Left Column: QR Webcam Scanner & Hardware Gun Simulator */}
             <div className="lg:col-span-6 space-y-4">
               <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-md space-y-4">
-                <div className="flex items-center justify-between border-b pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
                   <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <Camera className="w-4 h-4 text-red-600" /> Webcam / Camera QR Scanner
+                    <Camera className="w-4 h-4 text-red-600" /> Pemindai QR Code Kamera
                   </h3>
                   <button
                     onClick={() => setIsScannerActive(!isScannerActive)}
@@ -699,6 +723,74 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                     {isScannerActive ? <X className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
                     {isScannerActive ? 'Matikan Kamera' : 'Nyalakan Kamera Scanner'}
                   </button>
+                </div>
+
+                {/* Camera Selector (Depan / Belakang) Controls */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                      <SwitchCamera className="w-4 h-4 text-red-600" /> Pilih Kamera:
+                    </span>
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-red-100 text-red-700 uppercase">
+                      {selectedCameraId
+                        ? 'Kamera Spesifik'
+                        : cameraFacingMode === 'environment'
+                        ? 'Kamera Belakang'
+                        : 'Kamera Depan'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCameraId('');
+                        setCameraFacingMode('environment');
+                      }}
+                      className={`py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all border text-xs ${
+                        !selectedCameraId && cameraFacingMode === 'environment'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Smartphone className="w-3.5 h-3.5 text-amber-400" /> Kamera Belakang (Rear)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCameraId('');
+                        setCameraFacingMode('user');
+                      }}
+                      className={`py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all border text-xs ${
+                        !selectedCameraId && cameraFacingMode === 'user'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-400" /> Kamera Depan (Front)
+                    </button>
+                  </div>
+
+                  {availableCameras.length > 0 && (
+                    <div className="pt-1.5 border-t border-slate-200">
+                      <label className="block text-[11px] text-slate-600 font-semibold mb-1">
+                        Pilih perangkat kamera terdeteksi ({availableCameras.length}):
+                      </label>
+                      <select
+                        value={selectedCameraId}
+                        onChange={(e) => setSelectedCameraId(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      >
+                        <option value="">-- Pilihan Kamera Depan / Belakang Otomatis --</option>
+                        {availableCameras.map((cam, idx) => (
+                          <option key={cam.id || idx} value={cam.id}>
+                            {cam.label || `Kamera ${idx + 1} (${cam.id.substring(0, 8)})`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {isScannerActive ? (
@@ -915,15 +1007,28 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                 >
                   {selectedStudentIdsForCards.length === filteredStudentsForCards.length && filteredStudentsForCards.length > 0
                     ? 'Batal Pilih Semua'
-                    : `Pilih Semua (${filteredStudentsForCards.length})`}
+                    : `Pilih Semua Tampil (${filteredStudentsForCards.length})`}
                 </button>
+
                 <button
-                  onClick={() => window.print()}
-                  disabled={selectedStudentIdsForCards.length === 0}
-                  className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                  onClick={() => {
+                    setSelectedStudentIdsForCards([]);
+                    setTimeout(() => window.print(), 150);
+                  }}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 border border-slate-700"
+                  title="Cetak seluruh kartu murid yang saat ini ditampilkan sesuai filter di layar"
                 >
-                  <Printer className="w-4 h-4" /> Cetak Batch Kartu Terpilih ({selectedStudentIdsForCards.length})
+                  <Printer className="w-3.5 h-3.5 text-amber-400" /> Cetak Semua Kartu Tampil ({filteredStudentsForCards.length})
                 </button>
+
+                {selectedStudentIdsForCards.length > 0 && (
+                  <button
+                    onClick={() => window.print()}
+                    className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                  >
+                    <Printer className="w-4 h-4" /> Cetak Kartu Terpilih ({selectedStudentIdsForCards.length})
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1138,12 +1243,16 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
           {/* BATCH PRINT CARD LAYOUT (Print stylesheet targets this section) */}
           <div className="hidden print:block print-cards-container space-y-6">
-            <div className="text-center pb-3 border-b border-slate-900 mb-4">
+            <div className="text-center pb-3 border-b-2 border-slate-900 mb-4">
               <h1 className="text-xl font-extrabold uppercase tracking-tight text-slate-900">
                 KARTU TANDA MURID OFFICIAL - SEKOLAH RAKYAT
               </h1>
-              <p className="text-xs text-slate-600 font-semibold">
-                Kartu Absensi Sholat & Keasramaan Berbasis QR Code Scanner
+              <p className="text-xs text-slate-700 font-bold">
+                Kartu Absensi Sholat & Keasramaan Berbasis QR Code Scanner ({
+                  (selectedStudentIdsForCards.length > 0
+                    ? students.filter((s) => selectedStudentIdsForCards.includes(s.id))
+                    : filteredStudentsForCards).length
+                } Kartu)
               </p>
             </div>
 
@@ -1159,7 +1268,11 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                 >
                   <div className="flex items-center justify-between border-b border-slate-300 pb-2">
                     <div className="flex items-center gap-2">
-                      <GraduationCap className="w-6 h-6 text-red-700" />
+                      {config.logoKiriUrl ? (
+                        <img src={config.logoKiriUrl} alt="Logo" className="w-6 h-6 object-contain" />
+                      ) : (
+                        <GraduationCap className="w-6 h-6 text-red-700" />
+                      )}
                       <div>
                         <h4 className="font-extrabold text-[10px] uppercase text-slate-900 leading-tight">
                           SEKOLAH RAKYAT TERINTEGRASI
@@ -1167,7 +1280,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                         <p className="text-[8px] font-bold text-red-700 uppercase">KEMENTERIAN SOSIAL RI</p>
                       </div>
                     </div>
-                    <span className="text-[8px] font-extrabold px-1.5 py-0.5 border border-slate-900 rounded">
+                    <span className="text-[8px] font-extrabold px-1.5 py-0.5 border border-slate-900 rounded uppercase">
                       OFFICIAL CARD
                     </span>
                   </div>
@@ -1180,7 +1293,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                       <span className="text-[8px] font-mono font-black text-slate-900 block mt-0.5">{s.id}</span>
                     </div>
 
-                    <div className="space-y-1 text-slate-900">
+                    <div className="space-y-1 text-slate-900 flex-1">
                       <div>
                         <span className="text-[8px] text-slate-500 block font-bold">NAMA MURID:</span>
                         <h3 className="font-extrabold text-sm leading-tight uppercase">{s.name}</h3>
@@ -1195,12 +1308,16 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                           <span className="font-bold">{s.dorm}</span>
                         </div>
                       </div>
+                      <div>
+                        <span className="text-[8px] text-slate-500 block font-bold">WALI ASUH:</span>
+                        <span className="font-bold text-[9px] text-slate-800">{s.caretaker || '-'}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-300 flex items-center justify-between text-[8px] text-slate-500">
+                  <div className="pt-2 border-t border-slate-300 flex items-center justify-between text-[8px] text-slate-600 font-medium">
                     <span>Gedung Asrama Terpadu Palembang</span>
-                    <span>NISN: {s.id}</span>
+                    <span className="font-mono font-bold">NISN: {s.id}</span>
                   </div>
                 </div>
               ))}

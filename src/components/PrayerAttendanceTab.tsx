@@ -1748,8 +1748,8 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
                 {/* Modal Student Table List */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                    <table className="w-full text-left border-collapse text-xs">
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                    <table className="w-full text-left border-collapse text-xs min-w-[600px]">
                       <thead>
                         <tr className="bg-slate-100 text-slate-700 font-extrabold border-b border-slate-200">
                           <th className="p-3 w-10 text-center">

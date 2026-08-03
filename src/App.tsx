@@ -170,12 +170,26 @@ export default function App() {
   // 1. Student CRUD
   const handleSaveStudent = useCallback(
     (student: Student, isEdit: boolean) => {
+      const cleanedStudent: Student = {
+        ...student,
+        id: String(student.id).trim(),
+        name: String(student.name).trim(),
+        rfidTag: student.rfidTag ? String(student.rfidTag).trim() : undefined,
+        shirtSize: student.shirtSize ? String(student.shirtSize).trim() : undefined,
+        pantsSize: student.pantsSize ? String(student.pantsSize).trim() : undefined
+      };
+
       setStudents((prev) => {
         let updated: Student[];
         if (isEdit) {
-          updated = prev.map((s) => (String(s.id) === String(student.id) ? student : s));
+          updated = prev.map((s) => (String(s.id).trim() === cleanedStudent.id ? cleanedStudent : s));
         } else {
-          updated = [student, ...prev];
+          const exists = prev.some((s) => String(s.id).trim() === cleanedStudent.id);
+          if (exists) {
+            updated = prev.map((s) => (String(s.id).trim() === cleanedStudent.id ? cleanedStudent : s));
+          } else {
+            updated = [cleanedStudent, ...prev];
+          }
         }
         saveStudents(updated);
         return updated;
@@ -187,7 +201,7 @@ export default function App() {
           method: 'POST',
           body: JSON.stringify({
             action: isEdit ? 'updateStudent' : 'addStudent',
-            data: student
+            data: cleanedStudent
           })
         }).catch((err) => console.error(err));
       }
@@ -197,11 +211,12 @@ export default function App() {
 
   const handleDeleteStudent = useCallback(
     (id: string) => {
-      const targetStudent = students.find((s) => String(s.id).trim() === String(id).trim());
+      const trimmedId = String(id).trim();
+      const targetStudent = students.find((s) => String(s.id).trim() === trimmedId);
       const targetName = targetStudent ? targetStudent.name : '';
 
       setStudents((prev) => {
-        const updated = prev.filter((s) => String(s.id).trim() !== String(id).trim());
+        const updated = prev.filter((s) => String(s.id).trim() !== trimmedId);
         saveStudents(updated);
         return updated;
       });
@@ -209,7 +224,7 @@ export default function App() {
       setViolations((prev) => {
         const updated = prev.filter(
           (v) =>
-            String(v.studentId).trim() !== String(id).trim() &&
+            String(v.studentId).trim() !== trimmedId &&
             (!targetName || v.studentName !== targetName)
         );
         saveViolations(updated);
@@ -219,7 +234,7 @@ export default function App() {
       setCounseling((prev) => {
         const updated = prev.filter(
           (c) =>
-            String(c.studentId).trim() !== String(id).trim() &&
+            String(c.studentId).trim() !== trimmedId &&
             (!targetName || c.studentName !== targetName)
         );
         saveCounseling(updated);
@@ -229,7 +244,7 @@ export default function App() {
       setLeaves((prev) => {
         const updated = prev.filter(
           (l) =>
-            String(l.studentId).trim() !== String(id).trim() &&
+            String(l.studentId).trim() !== trimmedId &&
             (!targetName || l.studentName !== targetName)
         );
         saveLeaves(updated);
@@ -239,7 +254,7 @@ export default function App() {
       setDailyJournals((prev) => {
         const updated = prev.filter(
           (j) =>
-            String(j.studentId).trim() !== String(id).trim() &&
+            String(j.studentId).trim() !== trimmedId &&
             (!targetName || j.studentName !== targetName)
         );
         saveDailyJournals(updated);
@@ -249,15 +264,22 @@ export default function App() {
       setMedicalRecords((prev) => {
         const updated = prev.filter(
           (m) =>
-            String(m.studentId).trim() !== String(id).trim() &&
+            String(m.studentId).trim() !== trimmedId &&
             (!targetName || m.studentName !== targetName)
         );
         saveMedicalRecords(updated);
         return updated;
       });
 
+      setPrayerAttendance((prev) => {
+        const updated = prev.filter((p) => String(p.studentId).trim() !== trimmedId);
+        savePrayerAttendance(updated);
+        return updated;
+      });
+
       setReports((prev) => {
         const updated = { ...prev };
+        delete updated[trimmedId];
         delete updated[id];
         saveReports(updated);
         return updated;
@@ -268,7 +290,7 @@ export default function App() {
           method: 'POST',
           body: JSON.stringify({
             action: 'deleteStudent',
-            data: { id }
+            data: { id: trimmedId }
           })
         }).catch((err) => console.error(err));
       }
@@ -625,16 +647,41 @@ export default function App() {
           let activeStudentsList = students;
 
           if (resJson.students && resJson.students.length > 0) {
-            const fetchedStudents: Student[] = resJson.students.map((s: any) => ({
-              id: s['NISN/ID'] || s['id'] || s.id || '',
-              name: s['Nama Lengkap'] || s['Nama Siswa'] || s['name'] || s.name || '',
-              class: s['Jenjang'] || s['Jenjang Pendidikan'] || s['Kelas'] || s['class'] || 'SD',
-              dorm: s['Asrama'] || s['Lokasi Asrama'] || s['Gedung Asrama'] || s['dorm'] || 'Asrama Terpadu',
-              caretaker: s['Wali Asuh'] || s['caretaker'] || s.caretaker || ''
-            }));
-            activeStudentsList = fetchedStudents;
-            setStudents(fetchedStudents);
-            saveStudents(fetchedStudents);
+            const fetchedStudents: Student[] = resJson.students
+              .map((s: any) => {
+                const id = String(s['NISN/ID'] || s['id'] || s.id || '').trim();
+                const name = String(s['Nama Lengkap'] || s['Nama Siswa'] || s['name'] || s.name || '').trim();
+                const rfid = s['RFID Tag'] || s['rfidTag'] || s.rfidTag || '';
+                const hVal = s['Tinggi (cm)'] !== undefined && s['Tinggi (cm)'] !== '' ? s['Tinggi (cm)'] : (s['height'] !== undefined ? s['height'] : s.height);
+                const wVal = s['Berat (kg)'] !== undefined && s['Berat (kg)'] !== '' ? s['Berat (kg)'] : (s['weight'] !== undefined ? s['weight'] : s.weight);
+                const shirt = s['Ukuran Baju'] || s['shirtSize'] || s.shirtSize || '';
+                const pants = s['Ukuran Celana'] || s['pantsSize'] || s.pantsSize || '';
+
+                return {
+                  id,
+                  name,
+                  class: s['Jenjang'] || s['Jenjang Pendidikan'] || s['Kelas'] || s['class'] || 'SD',
+                  dorm: s['Asrama'] || s['Lokasi Asrama'] || s['Gedung Asrama'] || s['dorm'] || 'Asrama Terpadu',
+                  caretaker: s['Wali Asuh'] || s['caretaker'] || s.caretaker || '',
+                  rfidTag: rfid ? String(rfid).trim() : undefined,
+                  height: hVal !== undefined && hVal !== '' && !isNaN(Number(hVal)) ? Number(hVal) : undefined,
+                  weight: wVal !== undefined && wVal !== '' && !isNaN(Number(wVal)) ? Number(wVal) : undefined,
+                  shirtSize: shirt ? String(shirt).trim() : undefined,
+                  pantsSize: pants ? String(pants).trim() : undefined
+                };
+              })
+              .filter((st: Student) => Boolean(st.id && st.name));
+
+            // Prevent shadow duplicates: keep only unique student IDs
+            const uniqueMap = new Map<string, Student>();
+            fetchedStudents.forEach((st) => {
+              uniqueMap.set(st.id, st);
+            });
+            const deduplicatedStudents = Array.from(uniqueMap.values());
+
+            activeStudentsList = deduplicatedStudents;
+            setStudents(deduplicatedStudents);
+            saveStudents(deduplicatedStudents);
           }
 
           const validStudentIds = new Set(activeStudentsList.map((s) => String(s.id).trim()));

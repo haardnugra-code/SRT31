@@ -255,7 +255,17 @@ export function loadStudents(): Student[] {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const uniqueMap = new Map<string, Student>();
+        parsed.forEach((s: Student) => {
+          if (s && s.id && s.name) {
+            const cleanedId = String(s.id).trim();
+            uniqueMap.set(cleanedId, { ...s, id: cleanedId, name: String(s.name).trim() });
+          }
+        });
+        const deduplicated = Array.from(uniqueMap.values());
+        if (deduplicated.length > 0) return deduplicated;
+      }
     } catch (e) {
       console.error(e);
     }

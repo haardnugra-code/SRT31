@@ -6,10 +6,11 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * 1. Buka Google Sheet baru di Google Drive Anda.
  * 2. Klik menu "Ekstensi" -> "Apps Script".
  * 3. Hapus seluruh isi kode default, lalu tempelkan (paste) seluruh kode di bawah ini.
- * 4. Jalankan fungsi "setupSheet" sekali (Klik tombol 'Jalankan' / 'Run') untuk membuat semua Tab & Header Sheet secara otomatis.
- * 5. Klik tombol "Terapkan" / "Deploy" -> "Terapkan sebagai Aplikasi Web" / "New deployment".
- * 6. Pilih Akses (Who has access): "Siapa Saja" / "Anyone" (Penting agar web aplikasi dapat terhubung).
- * 7. Salin URL Web App yang dihasilkan, lalu masukkan ke kolom 'Google Apps Script Web App URL' di Pengaturan Aplikasi.
+ * 4. Jalankan fungsi "setupSheet" sekali (Klik tombol 'Jalankan' / 'Run') untuk membuat semua Tab, Header Sheet & Folder Backup Google Drive secara otomatis.
+ * 5. Jalankan fungsi "createDailyBackupTrigger" sekali jika ingin backup otomatis ke Google Drive setiap malam pukul 23:00.
+ * 6. Klik tombol "Terapkan" / "Deploy" -> "Terapkan sebagai Aplikasi Web" / "New deployment".
+ * 7. Pilih Akses (Who has access): "Siapa Saja" / "Anyone" (Penting agar web aplikasi dapat terhubung).
+ * 8. Salin URL Web App yang dihasilkan, lalu masukkan ke kolom 'Google Apps Script Web App URL' di Pengaturan Aplikasi.
  */
 
 function doGet(e) {
@@ -21,7 +22,12 @@ function doGet(e) {
   
   if (action === 'setupSheet') {
     setupSheet();
-    return responseJSON({ status: 'success', message: 'Seluruh sheet & header berhasil dibuat!' });
+    return responseJSON({ status: 'success', message: 'Seluruh sheet, header & folder Google Drive berhasil dibuat!' });
+  }
+
+  if (action === 'backupDrive') {
+    var backupRes = autoBackupToDrive();
+    return responseJSON(backupRes);
   }
   
   if (action === 'fetchData') {
@@ -46,15 +52,25 @@ function doPost(e) {
       setupSheet();
       return responseJSON({ status: 'success', message: 'Setup sheet berhasil.' });
     }
+
+    if (action === 'backupDrive') {
+      var backupRes = autoBackupToDrive();
+      return responseJSON(backupRes);
+    }
     
-    // 1. Students CRUD
+    // 1. Students CRUD (Termasuk RFID, Height, Weight, Shirt, Pants)
     if (action === 'addStudent' || action === 'updateStudent') {
       saveOrUpdateRow('Students', 0, data.id, [
         data.id,
         data.name,
         data.class || 'SD',
         data.dorm || 'Asrama Terpadu',
-        data.caretaker || ''
+        data.caretaker || '',
+        data.rfidTag || '',
+        data.height || '',
+        data.weight || '',
+        data.shirtSize || '',
+        data.pantsSize || ''
       ]);
       return responseJSON({ status: 'success', message: 'Data siswa disimpan' });
     }
@@ -284,7 +300,7 @@ function setupSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   
   var schema = {
-    'Students': ['NISN/ID', 'Nama Lengkap', 'Jenjang', 'Asrama', 'Wali Asuh'],
+    'Students': ['NISN/ID', 'Nama Lengkap', 'Jenjang', 'Asrama', 'Wali Asuh', 'RFID Tag', 'Tinggi (cm)', 'Berat (kg)', 'Ukuran Baju', 'Ukuran Celana'],
     'Violations': ['ID Kasus', 'Tanggal', 'NISN/ID', 'Nama Siswa', 'Tingkat', 'Bentuk Pelanggaran', 'Rekomendasi Sanksi', 'Catatan Kronologi', 'Pelapor', 'URL Berkas Bukti'],
     'Counseling': ['ID Sesi', 'Tanggal', 'NISN/ID', 'Nama Siswa', 'Permasalahan', 'Hasil Sesi Konseling', 'Rencana Tindak Lanjut', 'Konselor/Wali', 'Status'],
     'Leaves': ['ID Surat', 'NISN/ID', 'Nama Siswa', 'Kategori Izin', 'Alasan', 'Tgl Berangkat', 'Tgl Kembali', 'Wali Asuh Pendamping', 'Status'],
@@ -305,5 +321,60 @@ function setupSheet() {
     sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#1e293b").setFontColor("#ffffff");
     sheet.setFrozenRows(1);
   }
+
+  // Buat folder backup di Google Drive otomatis
+  getOrCreateDriveFolder("BACKUP_SEKOLAH_RAKYAT_SR31");
+}
+
+/**
+ * FUNGSI BACKUP OTOMATIS KE GOOGLE DRIVE
+ */
+function autoBackupToDrive() {
+  try {
+    var folder = getOrCreateDriveFolder("BACKUP_SEKOLAH_RAKYAT_SR31");
+    var allData = getAllData();
+    var now = new Date();
+    var timeStamp = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd_HH-mm-ss");
+    var fileName = "Backup_SekolahRakyat_" + timeStamp + ".json";
+    
+    var file = folder.createFile(fileName, JSON.stringify(allData, null, 2), MimeType.PLAIN_TEXT);
+    return {
+      status: 'success',
+      message: 'Backup otomatis ke Google Drive berhasil disimpan!',
+      fileName: fileName,
+      fileUrl: file.getUrl(),
+      folderUrl: folder.getUrl()
+    };
+  } catch (err) {
+    return { status: 'error', message: 'Gagal backup Drive: ' + err.toString() };
+  }
+}
+
+function getOrCreateDriveFolder(folderName) {
+  var folders = DriveApp.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  } else {
+    return DriveApp.createFolder(folderName);
+  }
+}
+
+/**
+ * PEMICU TRIGGER OTOMATIS HARIAN (RUN AT 23:00 NIGHTLY)
+ */
+function createDailyBackupTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'autoBackupToDrive') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger('autoBackupToDrive')
+    .timeBased()
+    .everyDays(1)
+    .atHour(23)
+    .create();
+  Logger.log("Trigger backup otomatis ke Google Drive harian berhasil diaktifkan pada jam 23:00.");
 }
 `;
+

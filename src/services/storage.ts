@@ -1,6 +1,6 @@
 import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance } from '../types';
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJCN9pcsTSEq-tBeFqKY5cdTL-upT_PUPslMUYx1Qc21FHtOJgyVoNKlLbkbL7DWpe/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqPLLlbq7MvWG55u-_s3sg9SFXzKw7-Q5aX5XMp-qE0iFLrg9Qjr0pg6LMgEc9JRWB/exec";
 
 export const DEFAULT_DISCIPLINE_LEVELS: DisciplineLevelConfig[] = [
   { level: 1, name: 'Tingkat 1 (Pelanggaran Ringan)', pointsDeduction: 5, defaultSanction: 'Teguran lisan & Piket asrama' },
@@ -39,25 +39,25 @@ export const DEFAULT_CONFIG: AppConfig = {
 };
 
 export const INITIAL_STUDENTS: Student[] = [
-  { id: "SR0001", name: "A Rakka Attala", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0002", name: "Abdul Wahid", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0003", name: "Ade Rizki Cahya", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0004", name: "Al Fatih Al Farizi", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0005", name: "M Fahri", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0006", name: "M Farrel", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0007", name: "M Firmansyah", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0008", name: "M. Alvin", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0009", name: "M. Fatir Alfareza", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0010", name: "M. Syahrul Romadon", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0011", name: "M.Aditya", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0012", name: "Muhamad Fauzan", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0013", name: "Muhammad Reza", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0014", name: "Nur Reva Anugrah Putri", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0015", name: "Nur Rivi Anugrah Putri", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0016", name: "Reski Al Farizi", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0017", name: "Rizki Abdulah", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0018", name: "Sella Marselina", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0019", name: "Yeni Inda Sari", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
+  { id: "SR0001", name: "A Rakka Attala", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 142, weight: 36, shirtSize: "M", pantsSize: "28" },
+  { id: "SR0002", name: "Abdul Wahid", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 138, weight: 33, shirtSize: "S", pantsSize: "27" },
+  { id: "SR0003", name: "Ade Rizki Cahya", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 145, weight: 38, shirtSize: "M", pantsSize: "29" },
+  { id: "SR0004", name: "Al Fatih Al Farizi", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 140, weight: 35, shirtSize: "S", pantsSize: "28" },
+  { id: "SR0005", name: "M Fahri", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 146, weight: 40, shirtSize: "M", pantsSize: "29" },
+  { id: "SR0006", name: "M Farrel", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 143, weight: 37, shirtSize: "M", pantsSize: "28" },
+  { id: "SR0007", name: "M Firmansyah", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 148, weight: 41, shirtSize: "L", pantsSize: "30" },
+  { id: "SR0008", name: "M. Alvin", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 139, weight: 34, shirtSize: "S", pantsSize: "27" },
+  { id: "SR0009", name: "M. Fatir Alfareza", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 144, weight: 37, shirtSize: "M", pantsSize: "28" },
+  { id: "SR0010", name: "M. Syahrul Romadon", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 150, weight: 42, shirtSize: "L", pantsSize: "30" },
+  { id: "SR0011", name: "M.Aditya", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 141, weight: 35, shirtSize: "S", pantsSize: "28" },
+  { id: "SR0012", name: "Muhamad Fauzan", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 147, weight: 39, shirtSize: "M", pantsSize: "29" },
+  { id: "SR0013", name: "Muhammad Reza", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 145, weight: 38, shirtSize: "M", pantsSize: "29" },
+  { id: "SR0014", name: "Nur Reva Anugrah Putri", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 137, weight: 32, shirtSize: "S", pantsSize: "S" },
+  { id: "SR0015", name: "Nur Rivi Anugrah Putri", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 136, weight: 31, shirtSize: "S", pantsSize: "S" },
+  { id: "SR0016", name: "Reski Al Farizi", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 143, weight: 36, shirtSize: "M", pantsSize: "28" },
+  { id: "SR0017", name: "Rizki Abdulah", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 149, weight: 40, shirtSize: "M", pantsSize: "29" },
+  { id: "SR0018", name: "Sella Marselina", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 140, weight: 34, shirtSize: "S", pantsSize: "S" },
+  { id: "SR0019", name: "Yeni Inda Sari", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 142, weight: 35, shirtSize: "M", pantsSize: "M" },
   { id: "SR0020", name: "SHINTYAH ANGGRAENI", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
   { id: "SR0021", name: "MUHAMMAD REZKY RAMADHAN", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
   { id: "SR0022", name: "Adriansya Khoirul Khafi", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
@@ -232,7 +232,7 @@ export function loadAppConfig(): AppConfig {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz')) {
+      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq')) {
         parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
       }
       return { ...DEFAULT_CONFIG, ...parsed };

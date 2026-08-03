@@ -161,6 +161,23 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   };
 
+  const handleTriggerDriveBackup = async () => {
+    if (!googleScriptUrl.trim()) {
+      onShowToast('Koneksi Gagal', 'Masukkan URL Google Apps Script Web App terlebih dahulu.', 'error');
+      return;
+    }
+    onShowToast('Memproses Backup Google Drive...', 'Mengirim perintah backup ke Google Drive...', 'warning');
+    try {
+      await fetch(`${googleScriptUrl.trim()}?action=backupDrive`, {
+        method: 'GET',
+        mode: 'no-cors'
+      });
+      onShowToast('Backup Drive Terkirim', 'Perintah backup Google Drive berhasil dikirim. File JSON tersimpan di folder BACKUP_SEKOLAH_RAKYAT_SR31 di Drive Anda.', 'success');
+    } catch (e) {
+      onShowToast('Gagal Backup Drive', 'Gagal menghubungi Google Apps Script. Periksa koneksi atau URL script Anda.', 'error');
+    }
+  };
+
   const handleUnlockSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (unlockPin === '817731') {
@@ -709,6 +726,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   title="Jalankan fungsi setupSheet untuk membuat/mereset tab & header di Google Sheet Anda"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Inisialisasi Sheet (setupSheet)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTriggerDriveBackup}
+                  className="text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95"
+                  title="Simpan file JSON backup instan ke folder Google Drive (BACKUP_SEKOLAH_RAKYAT_SR31)"
+                >
+                  <Database className="w-3.5 h-3.5 text-amber-600" /> Backup ke Google Drive
                 </button>
               </div>
             </div>

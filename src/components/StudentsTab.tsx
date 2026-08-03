@@ -64,6 +64,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const [formCaretaker, setFormCaretaker] = useState(
     config.waliAsuhList[0]?.split('|')[0] || 'M. ARDIAN NUGRAHA, S.H'
   );
+  const [formHeight, setFormHeight] = useState<string>('');
+  const [formWeight, setFormWeight] = useState<string>('');
+  const [formShirtSize, setFormShirtSize] = useState<string>('');
+  const [formPantsSize, setFormPantsSize] = useState<string>('');
 
   const cleanWaliAsuh = config.waliAsuhList.map((item) => item.split('|')[0].trim());
 
@@ -89,6 +93,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     setFormClass('SD');
     setFormDorm(config.dormList[0] || 'Asrama Terpadu');
     setFormCaretaker(cleanWaliAsuh[0] || 'M. ARDIAN NUGRAHA, S.H');
+    setFormHeight('');
+    setFormWeight('');
+    setFormShirtSize('');
+    setFormPantsSize('');
     setIsModalOpen(true);
   };
 
@@ -100,6 +108,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     setFormClass(student.class);
     setFormDorm(student.dorm);
     setFormCaretaker(student.caretaker);
+    setFormHeight(student.height !== undefined ? String(student.height) : '');
+    setFormWeight(student.weight !== undefined ? String(student.weight) : '');
+    setFormShirtSize(student.shirtSize || '');
+    setFormPantsSize(student.pantsSize || '');
     setIsModalOpen(true);
   };
 
@@ -114,6 +126,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       return;
     }
 
+    const heightVal = formHeight !== '' ? Number(formHeight) : undefined;
+    const weightVal = formWeight !== '' ? Number(formWeight) : undefined;
+    const shirtVal = formShirtSize.trim() || undefined;
+    const pantsVal = formPantsSize.trim() || undefined;
+
     if (editingStudentId) {
       const updatedStudent: Student = {
         id: editingStudentId,
@@ -121,7 +138,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         rfidTag: rfidTag || undefined,
         class: formClass,
         dorm: formDorm,
-        caretaker: formCaretaker
+        caretaker: formCaretaker,
+        height: heightVal,
+        weight: weightVal,
+        shirtSize: shirtVal,
+        pantsSize: pantsVal
       };
       onSaveStudent(updatedStudent, true);
       onShowToast('Berhasil', `Data ${name} berhasil diperbarui.`, 'success');
@@ -137,6 +158,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         class: formClass,
         dorm: formDorm,
         caretaker: formCaretaker,
+        height: heightVal,
+        weight: weightVal,
+        shirtSize: shirtVal,
+        pantsSize: pantsVal,
         violationCount: 0
       };
       onSaveStudent(newStudent, false);
@@ -346,6 +371,26 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   </div>
                 </div>
 
+                {/* Physical Measurements & Uniform Sizes */}
+                <div className="bg-slate-50 border border-slate-150 rounded-lg p-2.5 text-[11px] grid grid-cols-2 gap-2 text-slate-700">
+                  <div className="space-y-0.5">
+                    <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">
+                      Tinggi & Berat
+                    </span>
+                    <span className="font-extrabold text-slate-800 block truncate">
+                      {s.height ? `${s.height} cm` : '-'} / {s.weight ? `${s.weight} kg` : '-'}
+                    </span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">
+                      Seragam (Baju/Celana)
+                    </span>
+                    <span className="font-extrabold text-slate-800 block truncate">
+                      {s.shirtSize ? `Baju ${s.shirtSize}` : 'Baju -'} • {s.pantsSize ? `Cln ${s.pantsSize}` : 'Cln -'}
+                    </span>
+                  </div>
+                </div>
+
                 {/* History Button */}
                 <button
                   onClick={() => {
@@ -384,6 +429,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   <p className="text-xs text-slate-400">
                     NISN: <span className="font-mono text-slate-300">{selectedStudentForHistory.id}</span> • Kelas {selectedStudentForHistory.class} • Gedung {selectedStudentForHistory.dorm} • Wali Asuh: {selectedStudentForHistory.caretaker}
                   </p>
+                  {(selectedStudentForHistory.height || selectedStudentForHistory.weight || selectedStudentForHistory.shirtSize || selectedStudentForHistory.pantsSize) && (
+                    <p className="text-[11px] text-emerald-400 font-semibold pt-0.5">
+                      📏 TB: {selectedStudentForHistory.height ? `${selectedStudentForHistory.height} cm` : '-'} • BB: {selectedStudentForHistory.weight ? `${selectedStudentForHistory.weight} kg` : '-'} • Ukuran Baju: {selectedStudentForHistory.shirtSize || '-'} • Celana: {selectedStudentForHistory.pantsSize || '-'}
+                    </p>
+                  )}
                 </div>
               </div>
               <button
@@ -739,6 +789,67 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* Section Data Fisik & Ukuran Seragam */}
+                <div className="border-t border-slate-200 pt-4 space-y-3">
+                  <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    📏 Physical Measurements & Ukuran Seragam
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Tinggi (cm)
+                      </label>
+                      <input
+                        type="number"
+                        min="50"
+                        max="220"
+                        value={formHeight}
+                        onChange={(e) => setFormHeight(e.target.value)}
+                        className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                        placeholder="e.g. 145"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Berat (kg)
+                      </label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="200"
+                        value={formWeight}
+                        onChange={(e) => setFormWeight(e.target.value)}
+                        className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                        placeholder="e.g. 38"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Ukuran Baju
+                      </label>
+                      <input
+                        type="text"
+                        value={formShirtSize}
+                        onChange={(e) => setFormShirtSize(e.target.value)}
+                        className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20 uppercase"
+                        placeholder="e.g. S, M, L, XL"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Ukuran Celana
+                      </label>
+                      <input
+                        type="text"
+                        value={formPantsSize}
+                        onChange={(e) => setFormPantsSize(e.target.value)}
+                        className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20 uppercase"
+                        placeholder="e.g. 28, 29, 30, M"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">

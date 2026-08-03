@@ -8,6 +8,10 @@ export interface Student {
   dorm: string;
   caretaker: string;
   violationCount?: number;
+  height?: number; // Tinggi badan (cm)
+  weight?: number; // Berat badan (kg)
+  shirtSize?: string; // Ukuran Baju (e.g. S, M, L, XL, XXL)
+  pantsSize?: string; // Ukuran Celana (e.g. 28, 29, 30, M, L, XL)
 }
 
 export interface ViolationTemplate {

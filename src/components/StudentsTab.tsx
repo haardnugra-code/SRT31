@@ -18,7 +18,7 @@ import {
 import { Student, ClassLevel, AppConfig, Violation, Counseling } from '../types';
 import { calculateStudentDisciplineScore } from '../services/storage';
 import { formatDateIndonesian } from '../utils/dateFormatter';
-import { generateViolationNoticePDF } from '../services/pdfGenerator';
+import { generateViolationNoticePDF, generateStudentCardPDF, generateAllStudentCardsPDF } from '../services/pdfGenerator';
 
 interface StudentsTabProps {
   students: Student[];
@@ -246,12 +246,26 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             Total {students.length} siswa terdaftar yang sedang menempuh masa pembinaan.
           </p>
         </div>
-        <button
-          onClick={handleOpenAddModal}
-          className="bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-lg hover:bg-slate-800 shadow transition active:scale-95 flex items-center gap-1.5 self-start"
-        >
-          <Plus className="w-4 h-4" /> Registrasi Siswa Baru
-        </button>
+        <div className="flex items-center gap-2 flex-wrap self-start">
+          {students.length > 0 && (
+            <button
+              onClick={() => {
+                generateAllStudentCardsPDF(filteredStudents.length > 0 ? filteredStudents : students, config);
+                onShowToast('Mencetak Kartu Siswa', `Mencetak ${filteredStudents.length > 0 ? filteredStudents.length : students.length} Kartu Tanda Siswa RFID...`, 'success');
+              }}
+              className="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold px-3.5 py-3 rounded-lg shadow transition active:scale-95 flex items-center gap-1.5"
+              title="Cetak Semua Kartu Tanda Siswa / RFID CR80 Format"
+            >
+              <Printer className="w-4 h-4 text-indigo-200" /> Cetak Massal Kartu Siswa
+            </button>
+          )}
+          <button
+            onClick={handleOpenAddModal}
+            className="bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-lg hover:bg-slate-800 shadow transition active:scale-95 flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" /> Registrasi Siswa Baru
+          </button>
+        </div>
       </div>
 
       {/* Filter & Search Bar */}
@@ -307,6 +321,16 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-4 relative overflow-hidden flex flex-col justify-between hover:border-slate-300 transition"
               >
                 <div className="absolute right-2 top-2 flex gap-1 z-20">
+                  <button
+                    onClick={() => {
+                      generateStudentCardPDF(s, config);
+                      onShowToast('Mencetak Kartu', `Membuat Kartu Tanda Siswa ${s.name}...`, 'success');
+                    }}
+                    className="w-7 h-7 flex items-center justify-center rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition"
+                    title="Cetak Kartu Tanda Siswa RFID"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                  </button>
                   <button
                     onClick={() => handleOpenEditModal(s)}
                     className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition"
@@ -391,16 +415,28 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   </div>
                 </div>
 
-                {/* History Button */}
-                <button
-                  onClick={() => {
-                    setSelectedStudentForHistory(s);
-                    setHistoryTab('violations');
-                  }}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Riwayat Kedisiplinan & Pelanggaran
-                </button>
+                {/* Card Action Buttons */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      generateStudentCardPDF(s, config);
+                      onShowToast('Mencetak Kartu', `Membuat Kartu Tanda Siswa ${s.name}...`, 'success');
+                    }}
+                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold py-2 px-3 rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5"
+                    title="Cetak Kartu Tanda Siswa RFID"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-indigo-600" /> Cetak Kartu
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedStudentForHistory(s);
+                      setHistoryTab('violations');
+                    }}
+                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Riwayat Kedisiplinan
+                  </button>
+                </div>
               </div>
             );
           })
@@ -500,7 +536,17 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                  <button
+                    onClick={() => {
+                      generateStudentCardPDF(selectedStudentForHistory, config);
+                      onShowToast('Mencetak Kartu', `Membuat Kartu Tanda Siswa ${selectedStudentForHistory.name}...`, 'success');
+                    }}
+                    className="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm flex items-center gap-1"
+                    title="Cetak Kartu Tanda Siswa RFID"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-indigo-200" /> Cetak Kartu Siswa
+                  </button>
                   {onOpenViolationForStudent && (
                     <button
                       onClick={() => {

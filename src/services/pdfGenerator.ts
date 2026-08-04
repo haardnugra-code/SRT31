@@ -1503,4 +1503,204 @@ export async function printSickLeavePDF(
   doc.save(`Surat_Izin_Sakit_${record.studentName.replace(/\s+/g, '_')}_${record.date}.pdf`);
 }
 
+/**
+ * Generates an official CR80 ID Card PDF (85.6 mm x 54 mm) for a student,
+ * complete with school header, student info, RFID UID badge, and barcode/QR style footer.
+ */
+export async function generateStudentCardPDF(student: Student, config: AppConfig): Promise<void> {
+  // CR80 ID Card dimensions in mm
+  const cardWidth = 85.6;
+  const cardHeight = 54.0;
+
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [cardWidth, cardHeight]
+  });
+
+  await drawStudentCardPage(doc, student, config, 0, 0);
+
+  doc.save(`Kartu_Siswa_${student.name.replace(/\s+/g, '_')}_${student.id}.pdf`);
+}
+
+/**
+ * Generates a multi-page PDF or printable grid sheet containing student cards for all students.
+ */
+export async function generateAllStudentCardsPDF(students: Student[], config: AppConfig): Promise<void> {
+  if (!students || students.length === 0) return;
+
+  const cardWidth = 85.6;
+  const cardHeight = 54.0;
+
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [cardWidth, cardHeight]
+  });
+
+  for (let i = 0; i < students.length; i++) {
+    if (i > 0) {
+      doc.addPage([cardWidth, cardHeight], 'landscape');
+    }
+    await drawStudentCardPage(doc, students[i], config, 0, 0);
+  }
+
+  doc.save(`Daftar_Kartu_Siswa_Asrama_${students.length}_Siswa.pdf`);
+}
+
+async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConfig, offsetX: number, offsetY: number): Promise<void> {
+  const w = 85.6;
+  const h = 54.0;
+
+  // Background Canvas
+  doc.setFillColor(255, 255, 255);
+  doc.rect(offsetX, offsetY, w, h, 'F');
+
+  // Decorative Outer Border
+  doc.setDrawColor(30, 58, 138); // Deep Blue
+  doc.setLineWidth(0.6);
+  doc.rect(offsetX + 1, offsetY + 1, w - 2, h - 2, 'S');
+
+  // Top Banner Header
+  doc.setFillColor(30, 58, 138); // Deep Blue
+  doc.rect(offsetX + 1, offsetY + 1, w - 2, 12, 'F');
+
+  // Gold Accent Strip
+  doc.setFillColor(217, 119, 6); // Gold
+  doc.rect(offsetX + 1, offsetY + 13, w - 2, 0.8, 'F');
+
+  // Load logo
+  try {
+    const logoData = await loadLogoImage(config.logoKiriUrl || '', 'left');
+    if (logoData) {
+      doc.addImage(logoData, 'PNG', offsetX + 2.5, offsetY + 2, 9, 9);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  // Header Title
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(7.5);
+  const rawKop = config.kopKiri ? config.kopKiri.split('\n')[0] : 'KARTU TANDA SISWA ASRAMA';
+  const appTitle = (rawKop || 'KARTU TANDA SISWA ASRAMA').toUpperCase();
+  doc.text(appTitle, offsetX + 13, offsetY + 5.5);
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(224, 231, 255);
+  const instName = config.kopKiri && config.kopKiri.split('\n')[1] ? config.kopKiri.split('\n')[1] : 'PONDOK PESANTREN / ASRAMA TERPADU';
+  doc.text(instName, offsetX + 13, offsetY + 9.5);
+
+  // Photo / Avatar Box (Left side)
+  const photoX = offsetX + 3.5;
+  const photoY = offsetY + 16.5;
+  const photoW = 18;
+  const photoH = 22;
+
+  doc.setFillColor(241, 245, 249);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(photoX, photoY, photoW, photoH, 1.5, 1.5, 'FD');
+
+  // Initial Avatar inside Photo Box
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(30, 58, 138);
+  const initialLetter = student.name ? student.name.charAt(0).toUpperCase() : 'S';
+  doc.text(initialLetter, photoX + photoW / 2, photoY + photoH / 2 + 2, { align: 'center' });
+
+  doc.setFontSize(4);
+  doc.setTextColor(100, 116, 139);
+  doc.text('PAS FOTO', photoX + photoW / 2, photoY + photoH - 2, { align: 'center' });
+
+  // Student Details Section (Right side)
+  const detailsX = photoX + photoW + 3.5;
+  let lineY = offsetY + 18.5;
+
+  // Student Name
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42); // slate-900
+  const truncatedName = doc.splitTextToSize(student.name || 'Nama Siswa', w - detailsX - 3);
+  doc.text(truncatedName[0], detailsX, lineY);
+  lineY += 4.2;
+
+  // NISN / Student ID
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(71, 85, 105);
+  doc.text('NISN / ID:', detailsX, lineY);
+  doc.setFont('Helvetica', 'bold');
+  doc.setTextColor(30, 58, 138);
+  doc.text(student.id || '-', detailsX + 11, lineY);
+  lineY += 3.8;
+
+  // Class & Dorm
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Kelas/Jenjang:', detailsX, lineY);
+  doc.setFont('Helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${student.class} (${student.dorm || 'Asrama'})`, detailsX + 15, lineY);
+  lineY += 3.8;
+
+  // Wali Asuh
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Wali Asuh:', detailsX, lineY);
+  doc.setFont('Helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  const caretakerText = student.caretaker ? (student.caretaker.length > 20 ? student.caretaker.substring(0, 20) + '...' : student.caretaker) : 'M. ARDIAN NUGRAHA';
+  doc.text(caretakerText, detailsX + 11, lineY);
+  lineY += 4.2;
+
+  // RFID Tag Badge
+  doc.setFillColor(236, 253, 245); // emerald-50
+  doc.setDrawColor(167, 243, 208); // emerald-200
+  doc.setLineWidth(0.2);
+  doc.roundedRect(detailsX, lineY - 2.5, 38, 5, 1, 1, 'FD');
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(5);
+  doc.setTextColor(4, 120, 87); // emerald-700
+  const rfidDisplay = student.rfidTag ? `RFID UID: ${student.rfidTag}` : 'SMART RFID CARD ENABLED';
+  doc.text(rfidDisplay, detailsX + 2, lineY + 0.8);
+
+  // Bottom Footer Bar
+  const footerY = offsetY + h - 10;
+  doc.setFillColor(248, 250, 252);
+  doc.rect(offsetX + 1, footerY, w - 2, 9, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.line(offsetX + 1, footerY, offsetX + w - 1, footerY);
+
+  // Simulated Barcode lines for RFID ID
+  const bcX = offsetX + 3.5;
+  const bcY = footerY + 1.5;
+  doc.setFillColor(30, 41, 59);
+  const barPattern = [1, 0.5, 1.5, 0.5, 1, 2, 0.5, 1, 0.5, 2, 1, 0.5, 1.5, 0.5, 1, 0.5, 2, 1, 0.5, 1.5, 0.5];
+  let curX = bcX;
+  for (const bw of barPattern) {
+    doc.rect(curX, bcY, bw * 0.6, 4.5, 'F');
+    curX += bw * 0.6 + 0.4;
+  }
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(4.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`*${student.id}*`, bcX + 1, bcY + 6.5);
+
+  // Card Validity / Security Note
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(4.5);
+  doc.setTextColor(30, 58, 138);
+  doc.text('KARTU RESMI ASRAMA', offsetX + w - 3.5, footerY + 3.5, { align: 'right' });
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(4);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Harap dibawa setiap kegiatan & presisi RFID', offsetX + w - 3.5, footerY + 6.5, { align: 'right' });
+}
+
+
 

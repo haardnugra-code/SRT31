@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCode from 'qrcode';
 import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord } from '../types';
 import { formatDateIndonesian, formatDateShort } from '../utils/dateFormatter';
 import { calculateStudentDisciplineScore } from './storage';
@@ -1651,27 +1652,48 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   const instName = config.kopKiri && config.kopKiri.split('\n')[1] ? config.kopKiri.split('\n')[1] : 'PONDOK PESANTREN / ASRAMA TERPADU';
   doc.text(instName, offsetX + 13, offsetY + 9.5);
 
-  // Photo / Avatar Box (Left side)
+  // Photo / QR Box (Left side)
   const photoX = offsetX + 3.5;
   const photoY = offsetY + 16.5;
   const photoW = 18;
   const photoH = 22;
 
-  doc.setFillColor(241, 245, 249);
+  doc.setFillColor(255, 255, 255);
   doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.3);
   doc.roundedRect(photoX, photoY, photoW, photoH, 1.5, 1.5, 'FD');
 
-  // Initial Avatar inside Photo Box
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor(30, 58, 138);
-  const initialLetter = student.name ? student.name.charAt(0).toUpperCase() : 'S';
-  doc.text(initialLetter, photoX + photoW / 2, photoY + photoH / 2 + 2, { align: 'center' });
+  // Render Real QR Code inside Photo Box
+  let hasQrCode = false;
+  try {
+    const studentQrId = String(student.id || '').trim();
+    if (studentQrId) {
+      const qrDataUrl = await QRCode.toDataURL(studentQrId, {
+        margin: 1,
+        errorCorrectionLevel: 'M',
+        color: { dark: '#020617', light: '#ffffff' }
+      });
+      if (qrDataUrl) {
+        doc.addImage(qrDataUrl, 'PNG', photoX + 0.5, photoY + 0.5, photoW - 1, photoW - 1);
+        hasQrCode = true;
+      }
+    }
+  } catch (err) {
+    console.error('Gagal generate QR Code PDF:', err);
+  }
 
+  if (!hasQrCode) {
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(30, 58, 138);
+    const initialLetter = student.name ? student.name.charAt(0).toUpperCase() : 'S';
+    doc.text(initialLetter, photoX + photoW / 2, photoY + photoH / 2 + 2, { align: 'center' });
+  }
+
+  doc.setFont('Helvetica', 'bold');
   doc.setFontSize(4);
-  doc.setTextColor(100, 116, 139);
-  doc.text('PAS FOTO', photoX + photoW / 2, photoY + photoH - 2, { align: 'center' });
+  doc.setTextColor(30, 58, 138);
+  doc.text('QR ABSENSI', photoX + photoW / 2, photoY + photoH - 1.2, { align: 'center' });
 
   // Student Details Section (Right side)
   const detailsX = photoX + photoW + 3.5;

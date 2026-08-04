@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { generateAllStudentCardsPDF, generateStudentCardSheetA4PDF } from '../services/pdfGenerator';
 
 interface PrayerAttendanceTabProps {
   students: Student[];
@@ -61,6 +62,7 @@ interface PrayerAttendanceTabProps {
   leaves: Leave[];
   medicalRecords: MedicalRecord[];
   config: AppConfig;
+  onShowToast?: (title: string, message: string, type: 'success' | 'warning' | 'error' | 'info') => void;
 }
 
 interface StudentQRCodeProps {
@@ -357,7 +359,8 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   onSavePrayerAttendance,
   leaves,
   medicalRecords,
-  config
+  config,
+  onShowToast
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'scanner' | 'cards' | 'recap'>('scanner');
 
@@ -2435,24 +2438,56 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                 </button>
 
                 <button
-                  onClick={() => {
-                    setSelectedStudentIdsForCards([]);
-                    setTimeout(() => window.print(), 150);
+                  onClick={async () => {
+                    const targetList = selectedStudentIdsForCards.length > 0
+                      ? students.filter((s) => selectedStudentIdsForCards.includes(s.id))
+                      : filteredStudentsForCards;
+                    if (targetList.length === 0) {
+                      onShowToast?.('Pilih Murid', 'Pilih minimal 1 murid untuk dicetak!', 'warning');
+                      return;
+                    }
+                    onShowToast?.('Mencetak PDF CR80', `Membuat PDF ${targetList.length} Kartu QR Absensi...`, 'info');
+                    await generateAllStudentCardsPDF(targetList, config);
+                    onShowToast?.('Mencetak PDF Selesai', `Berhasil mengekspor ${targetList.length} Kartu QR Absensi (CR80: 85.6 x 54 mm).`, 'success');
                   }}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 border border-slate-700"
-                  title="Cetak seluruh kartu murid yang saat ini ditampilkan sesuai filter di layar"
+                  className="bg-indigo-700 hover:bg-indigo-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                  title="Cetak PDF Kartu QR Absensi Terpilih Ukuran CR80 (85.6 x 54 mm per halaman)"
                 >
-                  <Printer className="w-3.5 h-3.5 text-amber-400" /> Cetak Semua Tampil ({filteredStudentsForCards.length})
+                  <Printer className="w-4 h-4 text-indigo-200" />
+                  {selectedStudentIdsForCards.length > 0
+                    ? `Cetak Terpilih PDF (${selectedStudentIdsForCards.length})`
+                    : `Cetak Semua PDF (${filteredStudentsForCards.length})`}
                 </button>
 
-                {selectedStudentIdsForCards.length > 0 && (
-                  <button
-                    onClick={() => window.print()}
-                    className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
-                  >
-                    <Printer className="w-4 h-4" /> Cetak Terpilih ({selectedStudentIdsForCards.length})
-                  </button>
-                )}
+                <button
+                  onClick={async () => {
+                    const targetList = selectedStudentIdsForCards.length > 0
+                      ? students.filter((s) => selectedStudentIdsForCards.includes(s.id))
+                      : filteredStudentsForCards;
+                    if (targetList.length === 0) {
+                      onShowToast?.('Pilih Murid', 'Pilih minimal 1 murid untuk dicetak!', 'warning');
+                      return;
+                    }
+                    onShowToast?.('Mencetak Grid A4', `Membuat PDF Grid A4 ${targetList.length} Kartu QR Absensi...`, 'info');
+                    await generateStudentCardSheetA4PDF(targetList, config);
+                    onShowToast?.('Mencetak PDF Selesai', `Berhasil mengekspor ${targetList.length} Kartu QR Absensi ke lembar A4 (10 Kartu/Halaman).`, 'success');
+                  }}
+                  className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                  title="Cetak Grid A4 (10 Kartu QR ID per Lembar Kertas dengan Garis Potong)"
+                >
+                  <Printer className="w-4 h-4 text-emerald-200" />
+                  {selectedStudentIdsForCards.length > 0
+                    ? `Cetak Grid A4 PDF (${selectedStudentIdsForCards.length})`
+                    : `Cetak Grid A4 PDF (${filteredStudentsForCards.length})`}
+                </button>
+
+                <button
+                  onClick={() => window.print()}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 border border-slate-700"
+                  title="Cetak tampilan HTML langsung via dialog printer browser"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400" /> Print Browser
+                </button>
               </div>
             </div>
 

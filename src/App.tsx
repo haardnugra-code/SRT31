@@ -990,6 +990,7 @@ export default function App() {
                 leaves={leaves}
                 medicalRecords={medicalRecords}
                 config={config}
+                onShowToast={showToast}
               />
             )}
 

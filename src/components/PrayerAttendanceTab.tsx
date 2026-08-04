@@ -156,119 +156,136 @@ const StudentCardFront: React.FC<StudentCardFrontProps> = ({
         isPrint
           ? `cr80-card-print p-[2.5mm] ${
               isDark
-                ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 text-white border border-red-500/40'
+                ? 'bg-slate-900 text-white border border-sky-400/50'
                 : 'bg-white text-slate-900 border-2 border-slate-900'
             } ${showCropMarks ? 'ring-1 ring-slate-400' : ''}`
           : `w-full aspect-[85.6/54] p-3 ${
               isDark
-                ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 text-white border border-red-500/40 rounded-2xl shadow-lg'
+                ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 text-white border border-sky-400/40 rounded-2xl shadow-xl backdrop-blur-md'
                 : 'bg-white text-slate-900 border-2 border-slate-900 rounded-2xl shadow-md'
             }`
       }`}
       style={isPrint ? { pageBreakInside: 'avoid', breakInside: 'avoid' } : undefined}
     >
-      {/* Card Header */}
-      <div className={`flex items-center justify-between pb-1 mb-1 border-b ${isDark ? 'border-white/20' : 'border-slate-900'}`}>
+      {/* Background Glass Accent Blobs */}
+      {isDark && (
+        <>
+          <div className="absolute -top-10 -left-10 w-28 h-28 bg-blue-600/20 rounded-full blur-xl pointer-events-none" />
+          <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-cyan-500/20 rounded-full blur-xl pointer-events-none" />
+        </>
+      )}
+
+      {/* Card Header Glass Banner */}
+      <div
+        className={`flex items-center justify-between pb-1.5 mb-1 border-b relative z-10 ${
+          isDark
+            ? 'border-sky-400/30 bg-slate-900/60 backdrop-blur-xs p-1.5 rounded-xl'
+            : 'border-slate-900'
+        }`}
+      >
         <div className="flex items-center gap-1.5 min-w-0">
           {config.logoKiriUrl ? (
             <img
               src={config.logoKiriUrl}
               alt="Logo"
-              className={`w-5 h-5 object-contain flex-shrink-0 ${isDark ? 'bg-white/10 rounded-full p-0.5' : ''}`}
+              className={`w-5 h-5 object-contain flex-shrink-0 ${isDark ? 'bg-white/10 rounded-full p-0.5 border border-white/20' : ''}`}
             />
           ) : (
-            <GraduationCap className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-red-400' : 'text-red-700'}`} />
+            <GraduationCap className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-sky-400' : 'text-sky-700'}`} />
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 leading-tight">
             <h4
-              className={`font-extrabold text-[8.5px] uppercase tracking-wider leading-tight truncate ${
-                isDark ? 'text-slate-100' : 'text-slate-900'
+              className={`font-black text-[7.5px] uppercase tracking-wider truncate ${
+                isDark ? 'text-white' : 'text-slate-900'
               }`}
             >
-              SEKOLAH RAKYAT TERINTEGRASI
-            </h4>
-            <p className={`text-[7px] font-extrabold uppercase truncate ${isDark ? 'text-red-300' : 'text-red-700'}`}>
               KEMENTERIAN SOSIAL RI
+            </h4>
+            <p className={`text-[6px] font-bold uppercase truncate ${isDark ? 'text-sky-200' : 'text-sky-800'}`}>
+              PUSAT PENDIDIKAN & PELATIHAN PROFESI
+            </p>
+            <p className={`text-[6.5px] font-extrabold uppercase truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+              SEKOLAH RAKYAT TERINTEGRASI 31
             </p>
           </div>
         </div>
         <span
-          className={`text-[6.5px] font-extrabold px-1.5 py-0.5 rounded uppercase flex-shrink-0 ${
-            isDark ? 'bg-red-600 text-white shadow-xs' : 'border border-slate-900 bg-slate-100 text-slate-900'
+          className={`text-[6px] font-extrabold px-1.5 py-0.5 rounded uppercase flex-shrink-0 ${
+            isDark ? 'bg-sky-500/20 text-sky-300 border border-sky-400/40' : 'border border-slate-900 bg-slate-100 text-slate-900'
           }`}
         >
-          OFFICIAL CARD
+          GLASS ID
         </span>
       </div>
 
       {/* Card Body */}
-      <div className="flex items-center gap-2.5 my-auto">
+      <div className="flex items-center gap-2.5 my-auto relative z-10">
         <div
           className={`p-1 rounded-xl text-center flex-shrink-0 bg-white ${
-            isDark ? 'shadow-md border border-white/30' : 'border border-slate-900'
+            isDark ? 'shadow-md border border-sky-400/40' : 'border border-slate-900'
           }`}
         >
           <StudentQRCode
             student={student}
             payloadFormat={qrPayloadFormat}
             existingUrl={qrUrl}
-            className="w-14 h-14 object-contain"
+            className="w-13 h-13 object-contain"
             size={400}
           />
-          <span className="text-[7px] font-mono font-black text-slate-900 block mt-0.5 leading-none">{student.id}</span>
+          <span className="text-[6.5px] font-mono font-black text-slate-900 block mt-0.5 leading-none">{student.id}</span>
         </div>
 
         <div className="space-y-0.5 flex-1 min-w-0">
           <div>
             <span
-              className={`text-[6.5px] block font-bold leading-none uppercase ${
+              className={`text-[6px] block font-bold leading-none uppercase ${
                 isDark ? 'text-slate-400' : 'text-slate-500'
               }`}
             >
               NAMA MURID:
             </span>
             <h3
-              className={`font-extrabold text-[11px] leading-tight uppercase truncate ${
+              className={`font-extrabold text-[10.5px] leading-tight uppercase truncate ${
                 isDark ? 'text-white' : 'text-slate-900'
               }`}
             >
               {student.name}
             </h3>
           </div>
-          <div className="grid grid-cols-2 gap-1 text-[8.5px]">
+          <div className="grid grid-cols-2 gap-1 text-[8px]">
             <div>
               <span
-                className={`text-[6.5px] block font-bold leading-none uppercase ${
+                className={`text-[6px] block font-bold leading-none uppercase ${
                   isDark ? 'text-slate-400' : 'text-slate-500'
                 }`}
               >
                 KELAS:
               </span>
-              <span className={`font-extrabold ${isDark ? 'text-red-300' : 'text-red-700'}`}>{student.class}</span>
+              <span className={`font-extrabold ${isDark ? 'text-sky-300' : 'text-sky-700'}`}>{student.class}</span>
             </div>
             <div>
               <span
-                className={`text-[6.5px] block font-bold leading-none uppercase ${
+                className={`text-[6px] block font-bold leading-none uppercase ${
                   isDark ? 'text-slate-400' : 'text-slate-500'
                 }`}
               >
                 ASRAMA:
               </span>
               <span className={`font-bold truncate block ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                {student.dorm}
+                {student.dorm || 'Asrama'}
               </span>
             </div>
           </div>
           <div>
             <span
-              className={`text-[6.5px] block font-bold leading-none uppercase ${
+              className={`text-[6px] block font-bold leading-none uppercase ${
                 isDark ? 'text-slate-400' : 'text-slate-500'
               }`}
             >
               WALI ASUH:
             </span>
             <span
-              className={`font-medium text-[7.5px] truncate block ${
+              className={`font-medium text-[7px] truncate block ${
                 isDark ? 'text-slate-300' : 'text-slate-800 font-bold'
               }`}
             >
@@ -280,12 +297,12 @@ const StudentCardFront: React.FC<StudentCardFrontProps> = ({
 
       {/* Card Footer */}
       <div
-        className={`pt-1 border-t flex items-center justify-between text-[7px] font-medium ${
-          isDark ? 'border-white/15 text-slate-300' : 'border-slate-300 text-slate-600 font-bold'
+        className={`pt-1 border-t flex items-center justify-between text-[6.5px] font-medium relative z-10 ${
+          isDark ? 'border-sky-400/20 text-slate-300' : 'border-slate-300 text-slate-600 font-bold'
         }`}
       >
-        <span className="truncate">Asrama Terpadu Palembang</span>
-        <span className={`font-mono flex-shrink-0 ${isDark ? 'text-red-300 font-bold' : ''}`}>NISN: {student.id}</span>
+        <span className="truncate">Sekolah Rakyat Terintegrasi 31 Palembang</span>
+        <span className={`font-mono flex-shrink-0 ${isDark ? 'text-sky-300 font-bold' : ''}`}>ID: {student.id}</span>
       </div>
     </div>
   );

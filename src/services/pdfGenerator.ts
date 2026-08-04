@@ -1611,56 +1611,71 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   const w = 85.6;
   const h = 54.0;
 
-  // Background Canvas - Dark Obsidian/Slate (Dark Luxury)
+  // 1. Base Glass Canvas - Deep Slate/Navy Background
   doc.setFillColor(15, 23, 42); // slate-900
   doc.rect(offsetX, offsetY, w, h, 'F');
 
-  // Outer Trim Border - Champagne Gold Accent
-  doc.setDrawColor(217, 119, 6); // Gold / Amber-600
-  doc.setLineWidth(0.6);
-  doc.rect(offsetX + 1, offsetY + 1, w - 2, h - 2, 'S');
+  // Ambient Glass Gradient Spheres (Background Glow)
+  doc.setFillColor(30, 58, 138); // Deep Blue Glow top-left
+  doc.circle(offsetX + 15, offsetY + 10, 22, 'F');
+  doc.setFillColor(14, 116, 144); // Cyan/Teal Glow bottom-right
+  doc.circle(offsetX + w - 15, offsetY + h - 10, 20, 'F');
 
-  // Top Banner Header - Carbon Dark Slate
-  doc.setFillColor(30, 41, 59); // slate-800
-  doc.rect(offsetX + 1, offsetY + 1, w - 2, 12, 'F');
+  // Overlay Dark Tint Canvas
+  doc.setFillColor(15, 23, 42);
+  doc.rect(offsetX, offsetY, w, h, 'F');
 
-  // Metallic Gold Divider Line
-  doc.setFillColor(234, 179, 8); // Amber-500 Gold
-  doc.rect(offsetX + 1, offsetY + 13, w - 2, 0.8, 'F');
+  // 2. Glassmorphic Outer Card Container Frame (Translucent Rounded Card)
+  doc.setFillColor(30, 41, 59); // slate-800 translucent feel
+  doc.setDrawColor(56, 189, 248); // Sky-400 Glass Stroke
+  doc.setLineWidth(0.4);
+  doc.roundedRect(offsetX + 1, offsetY + 1, w - 2, h - 2, 2, 2, 'FD');
+
+  // 3. Glass Header Banner
+  doc.setFillColor(15, 23, 42); // slate-900 header
+  doc.setDrawColor(56, 189, 248);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(offsetX + 1.5, offsetY + 1.5, w - 3, 12, 1.5, 1.5, 'F');
+
+  // Cyan Glass Accent Divider Line
+  doc.setFillColor(56, 189, 248); // Sky-400
+  doc.rect(offsetX + 1.5, offsetY + 13.5, w - 3, 0.6, 'F');
 
   // Load logo
   try {
     const logoData = await loadLogoImage(config.logoKiriUrl || '', 'left');
     if (logoData) {
-      doc.addImage(logoData, 'PNG', offsetX + 2.5, offsetY + 2, 9, 9);
+      doc.addImage(logoData, 'PNG', offsetX + 2.8, offsetY + 2.2, 9.5, 9.5);
     }
   } catch (e) {
     console.error(e);
   }
 
-  // Header Title - Gold / White
-  doc.setTextColor(254, 240, 138); // Amber-200 Gold
+  // Header Title - KEMENTERIAN SOSIAL & SEKOLAH RAKYAT
+  doc.setTextColor(255, 255, 255);
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(7.5);
-  const rawKop = config.kopKiri ? config.kopKiri.split('\n')[0] : 'KARTU TANDA SISWA ASRAMA';
-  const appTitle = (rawKop || 'KARTU TANDA SISWA ASRAMA').toUpperCase();
-  doc.text(appTitle, offsetX + 13, offsetY + 5.5);
+  doc.setFontSize(6.5);
+  doc.text('KEMENTERIAN SOSIAL', offsetX + 13.5, offsetY + 4.8);
 
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(5.5);
-  doc.setTextColor(226, 232, 240); // slate-200
-  const instName = config.kopKiri && config.kopKiri.split('\n')[1] ? config.kopKiri.split('\n')[1] : 'PONDOK PESANTREN / ASRAMA TERPADU';
-  doc.text(instName, offsetX + 13, offsetY + 9.5);
+  doc.setFontSize(4.5);
+  doc.setTextColor(186, 230, 253); // sky-200
+  doc.text('PUSAT PENDIDIKAN, PELATIHAN DAN PENGEMBANGAN PROFESI', offsetX + 13.5, offsetY + 8.2);
 
-  // Photo / QR Box (Left side) - Clean White Box for Max QR Scanning Accuracy
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(5.5);
+  doc.setTextColor(254, 240, 138); // Amber-200
+  doc.text('SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG', offsetX + 13.5, offsetY + 11.5);
+
+  // 4. Photo / QR Glass Box (Left side) - Clean White Box for Max QR Scanning Accuracy
   const photoX = offsetX + 3.5;
   const photoY = offsetY + 16.5;
   const photoW = 18;
   const photoH = 22;
 
   doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(217, 119, 6); // Gold Border
-  doc.setLineWidth(0.4);
+  doc.setDrawColor(56, 189, 248); // Cyan border
+  doc.setLineWidth(0.3);
   doc.roundedRect(photoX, photoY, photoW, photoH, 1.5, 1.5, 'FD');
 
   // Render Real QR Code inside Photo Box
@@ -1692,14 +1707,14 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(4);
-  doc.setTextColor(180, 83, 9); // Amber-700
+  doc.setTextColor(3, 105, 161); // sky-700
   doc.text('QR ABSENSI', photoX + photoW / 2, photoY + photoH - 1.2, { align: 'center' });
 
-  // Student Details Section (Right side)
+  // 5. Student Details Section (Glass Layout)
   const detailsX = photoX + photoW + 3.5;
   let lineY = offsetY + 18.5;
 
-  // Student Name - High Contrast Platinum White
+  // Student Name - High Contrast White
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(255, 255, 255);
@@ -1707,13 +1722,13 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   doc.text(truncatedName[0], detailsX, lineY);
   lineY += 4.2;
 
-  // NISN / Student ID - Gold Highlight
+  // NISN / Student ID - Sky Blue Highlight
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(6);
+  doc.setFontSize(5.5);
   doc.setTextColor(148, 163, 184); // slate-400
   doc.text('NISN / ID:', detailsX, lineY);
   doc.setFont('Helvetica', 'bold');
-  doc.setTextColor(250, 204, 21); // Amber-400 Gold
+  doc.setTextColor(56, 189, 248); // sky-400
   doc.text(student.id || '-', detailsX + 11, lineY);
   lineY += 3.8;
 
@@ -1722,7 +1737,7 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   doc.setTextColor(148, 163, 184);
   doc.text('Kelas/Jenjang:', detailsX, lineY);
   doc.setFont('Helvetica', 'bold');
-  doc.setTextColor(226, 232, 240); // slate-200
+  doc.setTextColor(241, 245, 249); // slate-100
   doc.text(`${student.class} (${student.dorm || 'Asrama'})`, detailsX + 15, lineY);
   lineY += 3.8;
 
@@ -1731,16 +1746,16 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   doc.setTextColor(148, 163, 184);
   doc.text('Wali Asuh:', detailsX, lineY);
   doc.setFont('Helvetica', 'bold');
-  doc.setTextColor(226, 232, 240);
+  doc.setTextColor(241, 245, 249);
   const rawCaretaker = student.caretaker ? String(student.caretaker).trim() : '';
   const caretakerText = rawCaretaker ? (rawCaretaker.length > 22 ? rawCaretaker.substring(0, 22) + '...' : rawCaretaker) : '-';
   doc.text(caretakerText, detailsX + 11, lineY);
   lineY += 4.2;
 
-  // RFID Tag Badge - Dark Emerald & Gold Luxury
+  // RFID Tag Badge - Frosted Emerald/Cyan Glass Pill
   doc.setFillColor(6, 78, 59); // emerald-900
-  doc.setDrawColor(217, 119, 6); // Gold border
-  doc.setLineWidth(0.3);
+  doc.setDrawColor(52, 211, 153); // emerald-400 glass border
+  doc.setLineWidth(0.25);
   doc.roundedRect(detailsX, lineY - 2.5, 38, 5, 1, 1, 'FD');
 
   doc.setFont('Helvetica', 'bold');
@@ -1749,38 +1764,38 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   const rfidDisplay = student.rfidTag ? `RFID UID: ${student.rfidTag}` : 'SMART RFID CARD ENABLED';
   doc.text(rfidDisplay, detailsX + 2, lineY + 0.8);
 
-  // Bottom Footer Bar - Obsidian Carbon Black
+  // 6. Glass Footer Bar
   const footerY = offsetY + h - 10;
-  doc.setFillColor(2, 6, 23); // slate-950
-  doc.rect(offsetX + 1, footerY, w - 2, 9, 'F');
-  doc.setDrawColor(217, 119, 6);
-  doc.line(offsetX + 1, footerY, offsetX + w - 1, footerY);
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(offsetX + 1.5, footerY, w - 3, 8.5, 'F');
+  doc.setDrawColor(56, 189, 248);
+  doc.line(offsetX + 1.5, footerY, offsetX + w - 1.5, footerY);
 
-  // Simulated Barcode lines in Gold/Light Gray on Dark background
+  // Simulated Barcode lines in Light Slate on Dark Glass
   const bcX = offsetX + 3.5;
   const bcY = footerY + 1.5;
-  doc.setFillColor(226, 232, 240); // light bars on dark bg
+  doc.setFillColor(226, 232, 240);
   const barPattern = [1, 0.5, 1.5, 0.5, 1, 2, 0.5, 1, 0.5, 2, 1, 0.5, 1.5, 0.5, 1, 0.5, 2, 1, 0.5, 1.5, 0.5];
   let curX = bcX;
   for (const bw of barPattern) {
-    doc.rect(curX, bcY, bw * 0.6, 4.5, 'F');
+    doc.rect(curX, bcY, bw * 0.6, 4.2, 'F');
     curX += bw * 0.6 + 0.4;
   }
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(4.5);
   doc.setTextColor(148, 163, 184);
-  doc.text(`*${student.id}*`, bcX + 1, bcY + 6.5);
+  doc.text(`*${student.id}*`, bcX + 1, bcY + 6.2);
 
-  // Card Validity / Security Note
+  // Card Validity / Official Note
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(4.5);
-  doc.setTextColor(250, 204, 21); // Amber-400 Gold
-  doc.text('KARTU RESMI ASRAMA LUXURY', offsetX + w - 3.5, footerY + 3.5, { align: 'right' });
+  doc.setTextColor(56, 189, 248); // sky-400
+  doc.text('KARTU RESMI SISWA GLASS', offsetX + w - 3.5, footerY + 3.2, { align: 'right' });
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(4);
   doc.setTextColor(148, 163, 184);
-  doc.text('Harap dibawa setiap kegiatan & presisi RFID', offsetX + w - 3.5, footerY + 6.5, { align: 'right' });
+  doc.text('Sekolah Rakyat Terintegrasi 31 Palembang', offsetX + w - 3.5, footerY + 6.2, { align: 'right' });
 }
 
 

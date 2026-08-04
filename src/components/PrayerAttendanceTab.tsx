@@ -156,39 +156,25 @@ const StudentCardFront: React.FC<StudentCardFrontProps> = ({
         isPrint
           ? `cr80-card-print p-[2.5mm] ${
               isDark
-                ? 'bg-slate-900 text-white border border-sky-400/50'
-                : 'bg-white text-slate-900 border-2 border-slate-900'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white text-slate-900 border border-slate-300'
             } ${showCropMarks ? 'ring-1 ring-slate-400' : ''}`
           : `w-full aspect-[85.6/54] p-3 ${
               isDark
-                ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 text-white border border-sky-400/40 rounded-2xl shadow-xl backdrop-blur-md'
-                : 'bg-white text-slate-900 border-2 border-slate-900 rounded-2xl shadow-md'
+                ? 'bg-slate-900 text-white rounded-2xl shadow-xl'
+                : 'bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-md'
             }`
       }`}
       style={isPrint ? { pageBreakInside: 'avoid', breakInside: 'avoid' } : undefined}
     >
-      {/* Background Glass Accent Blobs */}
-      {isDark && (
-        <>
-          <div className="absolute -top-10 -left-10 w-28 h-28 bg-blue-600/20 rounded-full blur-xl pointer-events-none" />
-          <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-cyan-500/20 rounded-full blur-xl pointer-events-none" />
-        </>
-      )}
-
-      {/* Card Header Glass Banner */}
-      <div
-        className={`flex items-center justify-between pb-1.5 mb-1 border-b relative z-10 ${
-          isDark
-            ? 'border-sky-400/30 bg-slate-900/60 backdrop-blur-xs p-1.5 rounded-xl'
-            : 'border-slate-900'
-        }`}
-      >
+      {/* Card Header Simple Banner */}
+      <div className="flex items-center justify-between pb-1 mb-1 relative z-10">
         <div className="flex items-center gap-1.5 min-w-0">
           {config.logoKiriUrl ? (
             <img
               src={config.logoKiriUrl}
               alt="Logo"
-              className={`w-5 h-5 object-contain flex-shrink-0 ${isDark ? 'bg-white/10 rounded-full p-0.5 border border-white/20' : ''}`}
+              className="w-5 h-5 object-contain flex-shrink-0"
             />
           ) : (
             <GraduationCap className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-sky-400' : 'text-sky-700'}`} />
@@ -211,20 +197,16 @@ const StudentCardFront: React.FC<StudentCardFrontProps> = ({
         </div>
         <span
           className={`text-[6px] font-extrabold px-1.5 py-0.5 rounded uppercase flex-shrink-0 ${
-            isDark ? 'bg-sky-500/20 text-sky-300 border border-sky-400/40' : 'border border-slate-900 bg-slate-100 text-slate-900'
+            isDark ? 'bg-sky-900/60 text-sky-300' : 'bg-slate-100 text-slate-900'
           }`}
         >
-          GLASS ID
+          KARTU SISWA
         </span>
       </div>
 
       {/* Card Body */}
       <div className="flex items-center gap-2.5 my-auto relative z-10">
-        <div
-          className={`p-1 rounded-xl text-center flex-shrink-0 bg-white ${
-            isDark ? 'shadow-md border border-sky-400/40' : 'border border-slate-900'
-          }`}
-        >
+        <div className="p-1 rounded-xl text-center flex-shrink-0 bg-white shadow-xs">
           <StudentQRCode
             student={student}
             payloadFormat={qrPayloadFormat}
@@ -297,8 +279,8 @@ const StudentCardFront: React.FC<StudentCardFrontProps> = ({
 
       {/* Card Footer */}
       <div
-        className={`pt-1 border-t flex items-center justify-between text-[6.5px] font-medium relative z-10 ${
-          isDark ? 'border-sky-400/20 text-slate-300' : 'border-slate-300 text-slate-600 font-bold'
+        className={`pt-1 flex items-center justify-between text-[6.5px] font-medium relative z-10 ${
+          isDark ? 'text-slate-400' : 'text-slate-600 font-bold'
         }`}
       >
         <span className="truncate">Sekolah Rakyat Terintegrasi 31 Palembang</span>

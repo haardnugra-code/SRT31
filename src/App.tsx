@@ -32,6 +32,7 @@ import {
   loadLastSyncTime,
   saveLastSyncTime
 } from './services/storage';
+import { reconcileAndSanitizeShadowData, ShadowDataAuditStats } from './utils/dataSanitizer';
 
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -616,6 +617,62 @@ export default function App() {
     saveAppConfig(newConfig);
   }, []);
 
+  // --- Shadow Data Prevention & Database Sheet Reconciliation Handler ---
+  const handleReconcileShadowData = useCallback(
+    async (purgeOrphans: boolean = false): Promise<ShadowDataAuditStats> => {
+      const res = reconcileAndSanitizeShadowData(
+        students,
+        violations,
+        counseling,
+        leaves,
+        dailyJournals,
+        medicalRecords,
+        prayerAttendance,
+        reports,
+        purgeOrphans
+      );
+
+      // Save sanitized states locally
+      setStudents(res.students);
+      saveStudents(res.students);
+
+      setViolations(res.violations);
+      saveViolations(res.violations);
+
+      setCounseling(res.counseling);
+      saveCounseling(res.counseling);
+
+      setLeaves(res.leaves);
+      saveLeaves(res.leaves);
+
+      setDailyJournals(res.dailyJournals);
+      saveDailyJournals(res.dailyJournals);
+
+      setMedicalRecords(res.medicalRecords);
+      saveMedicalRecords(res.medicalRecords);
+
+      setPrayerAttendance(res.prayerAttendance);
+      savePrayerAttendance(res.prayerAttendance);
+
+      setReports(res.reports);
+      saveReports(res.reports);
+
+      // Trigger Cloud Google Apps Script cleanShadowData if URL exists
+      if (config.googleScriptUrl) {
+        fetch(`${config.googleScriptUrl}?action=cleanShadowData`).catch((err) => console.error(err));
+      }
+
+      showToast(
+        'Pencegahan Data Shadow Selesai',
+        `Diselaraskan: ${res.stats.fixedNamesCount} nama murid, ${res.stats.fixedClassDormCount} kelas/asrama. Duplikasi dibersihkan: ${res.stats.duplicateStudentsRemoved + res.stats.duplicateRecordsRemoved}${purgeOrphans ? `, Record yatim dihapus: ${res.stats.orphanedRecordsRemoved}` : ''}.`,
+        'success'
+      );
+
+      return res.stats;
+    },
+    [students, violations, counseling, leaves, dailyJournals, medicalRecords, prayerAttendance, reports, config.googleScriptUrl, showToast]
+  );
+
   // --- Fetch Cloud Data Sync ---
   const syncCloudData = useCallback(
     async (isManual = false) => {
@@ -644,51 +701,66 @@ export default function App() {
             if (activeMsg) setAnnouncement(activeMsg);
           }
 
-          let activeStudentsList = students;
+          let activeStudentsList: Student[] = students;
 
           if (resJson.students && resJson.students.length > 0) {
             const fetchedStudents: Student[] = resJson.students
-              .map((s: any) => {
-                const id = String(s['NISN/ID'] || s['id'] || s.id || '').trim();
-                const name = String(s['Nama Lengkap'] || s['Nama Siswa'] || s['name'] || s.name || '').trim();
-                const rfid = s['RFID Tag'] || s['rfidTag'] || s.rfidTag || '';
-                const hVal = s['Tinggi (cm)'] !== undefined && s['Tinggi (cm)'] !== '' ? s['Tinggi (cm)'] : (s['height'] !== undefined ? s['height'] : s.height);
-                const wVal = s['Berat (kg)'] !== undefined && s['Berat (kg)'] !== '' ? s['Berat (kg)'] : (s['weight'] !== undefined ? s['weight'] : s.weight);
-                const shirt = s['Ukuran Baju'] || s['shirtSize'] || s.shirtSize || '';
-                const pants = s['Ukuran Celana'] || s['pantsSize'] || s.pantsSize || '';
+              .map((s: any, idx: number) => {
+                // Flexible field accessor across column variations
+                const getVal = (...keys: string[]) => {
+                  for (const k of keys) {
+                    if (s[k] !== undefined && s[k] !== null && String(s[k]).trim() !== '') {
+                      return String(s[k]).trim();
+                    }
+                  }
+                  // Case-insensitive match on keys
+                  const lowerKeys = keys.map((k) => k.toLowerCase());
+                  for (const actualKey of Object.keys(s)) {
+                    if (lowerKeys.includes(actualKey.toLowerCase()) && s[actualKey] !== undefined && s[actualKey] !== null && String(s[actualKey]).trim() !== '') {
+                      return String(s[actualKey]).trim();
+                    }
+                  }
+                  return '';
+                };
+
+                let id = getVal('NISN/ID', 'NISN', 'ID', 'id', 'NIS', 'NIPD', 'No. Induk', 'ID Siswa', 'No', 'NO', 'No.');
+                let name = getVal('Nama Lengkap', 'Nama Siswa', 'Nama Murid', 'Nama', 'name', 'Siswa', 'NAMA', 'NAMA LENGKAP', 'Siswa/i');
+
+                // Auto-fallback for missing ID or Name
+                if (!id && name) {
+                  id = `SR-${String(idx + 1).padStart(4, '0')}`;
+                }
+                if (!name && id) {
+                  name = `Siswa (${id})`;
+                }
+
+                const rfid = getVal('RFID Tag', 'rfidTag', 'RFID', 'Tag');
+                const hRaw = getVal('Tinggi (cm)', 'Tinggi', 'height');
+                const wRaw = getVal('Berat (kg)', 'Berat', 'weight');
+                const shirt = getVal('Ukuran Baju', 'shirtSize', 'Baju');
+                const pants = getVal('Ukuran Celana', 'pantsSize', 'Celana');
 
                 return {
                   id,
                   name,
-                  class: s['Jenjang'] || s['Jenjang Pendidikan'] || s['Kelas'] || s['class'] || 'SD',
-                  dorm: s['Asrama'] || s['Lokasi Asrama'] || s['Gedung Asrama'] || s['dorm'] || 'Asrama Terpadu',
-                  caretaker: s['Wali Asuh'] || s['caretaker'] || s.caretaker || '',
-                  rfidTag: rfid ? String(rfid).trim() : undefined,
-                  height: hVal !== undefined && hVal !== '' && !isNaN(Number(hVal)) ? Number(hVal) : undefined,
-                  weight: wVal !== undefined && wVal !== '' && !isNaN(Number(wVal)) ? Number(wVal) : undefined,
-                  shirtSize: shirt ? String(shirt).trim() : undefined,
-                  pantsSize: pants ? String(pants).trim() : undefined
+                  class: getVal('Jenjang', 'Jenjang Pendidikan', 'Kelas', 'class', 'Tingkat') || 'SD',
+                  dorm: getVal('Asrama', 'Lokasi Asrama', 'Gedung Asrama', 'dorm', 'Gedung') || 'Asrama Terpadu',
+                  caretaker: getVal('Wali Asuh', 'Wali', 'caretaker', 'Pendamping') || 'M. ARDIAN NUGRAHA, S.H',
+                  rfidTag: rfid || undefined,
+                  height: hRaw && !isNaN(Number(hRaw)) ? Number(hRaw) : undefined,
+                  weight: wRaw && !isNaN(Number(wRaw)) ? Number(wRaw) : undefined,
+                  shirtSize: shirt || undefined,
+                  pantsSize: pants || undefined
                 };
               })
-              .filter((st: Student) => Boolean(st.id && st.name));
+              .filter((st: Student) => Boolean(st.id || st.name));
 
-            // Prevent shadow duplicates: keep only unique student IDs
-            const uniqueMap = new Map<string, Student>();
-            fetchedStudents.forEach((st) => {
-              uniqueMap.set(st.id, st);
-            });
-            const deduplicatedStudents = Array.from(uniqueMap.values());
-
-            activeStudentsList = deduplicatedStudents;
-            setStudents(deduplicatedStudents);
-            saveStudents(deduplicatedStudents);
+            activeStudentsList = fetchedStudents;
           }
 
-          const validStudentIds = new Set(activeStudentsList.map((s) => String(s.id).trim()));
-          const validStudentNames = new Set(activeStudentsList.map((s) => s.name.trim().toLowerCase()));
-
+          let fetchedViolations: Violation[] = violations;
           if (resJson.violations) {
-            let fetchedViolations: Violation[] = resJson.violations.map((v: any) => ({
+            fetchedViolations = resJson.violations.map((v: any) => ({
               id: v['ID Kasus'] || v['id'] || '',
               date: v['Tanggal'] || v['date'] || '',
               studentId: v['NISN/ID'] || v['studentId'] || '',
@@ -700,22 +772,11 @@ export default function App() {
               reporter: v['Pelapor'] || v['reporter'] || '',
               photo: v['URL Berkas Bukti'] || v['photo'] || ''
             }));
-
-            // Filter out orphaned violations for deleted students
-            if (validStudentIds.size > 0) {
-              fetchedViolations = fetchedViolations.filter((v) => {
-                const hasValidId = v.studentId && validStudentIds.has(String(v.studentId).trim());
-                const hasValidName = v.studentName && validStudentNames.has(v.studentName.trim().toLowerCase());
-                return hasValidId || hasValidName;
-              });
-            }
-
-            setViolations(fetchedViolations);
-            saveViolations(fetchedViolations);
           }
 
+          let fetchedCounseling: Counseling[] = counseling;
           if (resJson.counseling) {
-            let fetchedCounseling: Counseling[] = resJson.counseling.map((c: any) => ({
+            fetchedCounseling = resJson.counseling.map((c: any) => ({
               id: c['ID Sesi'] || c['id'] || '',
               date: c['Tanggal'] || c['date'] || '',
               studentId: c['NISN/ID'] || c['studentId'] || '',
@@ -726,21 +787,11 @@ export default function App() {
               counselor: c['Konselor/Wali'] || c['Konselor'] || c['counselor'] || '',
               status: c['Status'] || c['status'] || 'Open'
             }));
-
-            if (validStudentIds.size > 0) {
-              fetchedCounseling = fetchedCounseling.filter((c) => {
-                const hasValidId = c.studentId && validStudentIds.has(String(c.studentId).trim());
-                const hasValidName = c.studentName && validStudentNames.has(c.studentName.trim().toLowerCase());
-                return hasValidId || hasValidName;
-              });
-            }
-
-            setCounseling(fetchedCounseling);
-            saveCounseling(fetchedCounseling);
           }
 
+          let fetchedLeaves: Leave[] = leaves;
           if (resJson.leaves) {
-            let fetchedLeaves: Leave[] = resJson.leaves.map((l: any) => ({
+            fetchedLeaves = resJson.leaves.map((l: any) => ({
               id: l['ID Surat'] || l['id'] || '',
               studentId: l['NISN/ID'] || l['studentId'] || '',
               studentName: l['Nama Siswa'] || l['studentName'] || '',
@@ -751,21 +802,11 @@ export default function App() {
               caretaker: l['Wali Asuh Pendamping'] || l['Wali Asuh'] || l['caretaker'] || '',
               status: l['Status'] || l['status'] || 'Active'
             }));
-
-            if (validStudentIds.size > 0) {
-              fetchedLeaves = fetchedLeaves.filter((l) => {
-                const hasValidId = l.studentId && validStudentIds.has(String(l.studentId).trim());
-                const hasValidName = l.studentName && validStudentNames.has(l.studentName.trim().toLowerCase());
-                return hasValidId || hasValidName;
-              });
-            }
-
-            setLeaves(fetchedLeaves);
-            saveLeaves(fetchedLeaves);
           }
 
+          let fetchedJournals: DailyJournal[] = dailyJournals;
           if (resJson.dailyJournals) {
-            let fetchedJournals: DailyJournal[] = resJson.dailyJournals.map((j: any) => ({
+            fetchedJournals = resJson.dailyJournals.map((j: any) => ({
               id: j['ID Jurnal'] || j['id'] || '',
               date: j['Tanggal'] || j['date'] || '',
               studentId: j['NISN/ID'] || j['studentId'] || '',
@@ -776,21 +817,11 @@ export default function App() {
               notes: j['Catatan Wali'] || j['notes'] || '',
               tasksSnapshot: j['Detail Snapshot (JSON)'] ? JSON.parse(j['Detail Snapshot (JSON)']) : []
             }));
-
-            if (validStudentIds.size > 0) {
-              fetchedJournals = fetchedJournals.filter((j) => {
-                const hasValidId = j.studentId && validStudentIds.has(String(j.studentId).trim());
-                const hasValidName = j.studentName && validStudentNames.has(j.studentName.trim().toLowerCase());
-                return hasValidId || hasValidName;
-              });
-            }
-
-            setDailyJournals(fetchedJournals);
-            saveDailyJournals(fetchedJournals);
           }
 
+          let fetchedReports: Record<string, ReportCardData> = reports;
           if (resJson.reportCards) {
-            const fetchedReports: Record<string, ReportCardData> = {};
+            fetchedReports = {};
             resJson.reportCards.forEach((r: any) => {
               const studentId = r['NISN/ID'] || r['studentId'] || '';
               if (studentId) {
@@ -803,12 +834,11 @@ export default function App() {
                 };
               }
             });
-            setReports(fetchedReports);
-            saveReports(fetchedReports);
           }
 
+          let fetchedMedical: MedicalRecord[] = medicalRecords;
           if (resJson.medicalRecords) {
-            let fetchedMedical: MedicalRecord[] = resJson.medicalRecords.map((m: any) => ({
+            fetchedMedical = resJson.medicalRecords.map((m: any) => ({
               id: m['ID Rekam Medis'] || m['id'] || '',
               studentId: m['NISN/ID'] || m['studentId'] || '',
               studentName: m['Nama Siswa'] || m['studentName'] || '',
@@ -826,25 +856,51 @@ export default function App() {
               vitalSigns: m['Tanda Vital/Tekanan Darah'] || m['vitalSigns'] || '',
               notes: m['Catatan Medis'] || m['notes'] || ''
             }));
-
-            if (validStudentIds.size > 0) {
-              fetchedMedical = fetchedMedical.filter((m) => {
-                const hasValidId = m.studentId && validStudentIds.has(String(m.studentId).trim());
-                const hasValidName = m.studentName && validStudentNames.has(m.studentName.trim().toLowerCase());
-                return hasValidId || hasValidName;
-              });
-            }
-
-            setMedicalRecords(fetchedMedical);
-            saveMedicalRecords(fetchedMedical);
           }
+
+          // AUTOMATIC SHADOW DATA PREVENTION RECONCILIATION
+          const reconciled = reconcileAndSanitizeShadowData(
+            activeStudentsList,
+            fetchedViolations,
+            fetchedCounseling,
+            fetchedLeaves,
+            fetchedJournals,
+            fetchedMedical,
+            prayerAttendance,
+            fetchedReports,
+            false // preserve records by default
+          );
+
+          setStudents(reconciled.students);
+          saveStudents(reconciled.students);
+
+          setViolations(reconciled.violations);
+          saveViolations(reconciled.violations);
+
+          setCounseling(reconciled.counseling);
+          saveCounseling(reconciled.counseling);
+
+          setLeaves(reconciled.leaves);
+          saveLeaves(reconciled.leaves);
+
+          setDailyJournals(reconciled.dailyJournals);
+          saveDailyJournals(reconciled.dailyJournals);
+
+          setMedicalRecords(reconciled.medicalRecords);
+          saveMedicalRecords(reconciled.medicalRecords);
+
+          setPrayerAttendance(reconciled.prayerAttendance);
+          savePrayerAttendance(reconciled.prayerAttendance);
+
+          setReports(reconciled.reports);
+          saveReports(reconciled.reports);
 
           const nowIso = new Date().toISOString();
           saveLastSyncTime(nowIso);
           setLastSyncTime(nowIso);
 
           if (isManual) {
-            showToast('Sinkronisasi Berhasil', 'Database berhasil diselaraskan dengan cloud.', 'success');
+            showToast('Sinkronisasi & Rekonsiliasi Berhasil', 'Database cloud diselaraskan dan data shadow telah dibersihkan.', 'success');
           }
         } else if (isManual) {
           showToast('Sinkronisasi Tertolak', resJson.message || 'Respon dari script backend gagal.', 'error');
@@ -857,7 +913,7 @@ export default function App() {
         setIsSyncing(false);
       }
     },
-    [config.googleScriptUrl, showToast]
+    [config.googleScriptUrl, showToast, students, violations, counseling, leaves, dailyJournals, medicalRecords, prayerAttendance, reports]
   );
 
   // Sync on initial mount
@@ -1058,6 +1114,9 @@ export default function App() {
                 lastSyncTime={lastSyncTime}
                 onSync={() => syncCloudData(true)}
                 isSyncing={isSyncing}
+                onReconcileShadowData={handleReconcileShadowData}
+                studentsCount={students.length}
+                recordsCount={violations.length + counseling.length + leaves.length + dailyJournals.length + medicalRecords.length + prayerAttendance.length}
               />
             )}
           </div>

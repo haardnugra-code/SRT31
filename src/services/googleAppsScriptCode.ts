@@ -29,6 +29,11 @@ function doGet(e) {
     var backupRes = autoBackupToDrive();
     return responseJSON(backupRes);
   }
+
+  if (action === 'cleanShadowData') {
+    var cleanRes = cleanShadowData();
+    return responseJSON(cleanRes);
+  }
   
   if (action === 'fetchData') {
     return responseJSON(getAllData());
@@ -375,6 +380,78 @@ function createDailyBackupTrigger() {
     .atHour(23)
     .create();
   Logger.log("Trigger backup otomatis ke Google Drive harian berhasil diaktifkan pada jam 23:00.");
+}
+
+/**
+ * FUNGSI REKONSILIASI & PENCEGAHAN DATA SHADOW DI GOOGLE SHEET
+ * Memastikan nama murid di semua tab selaras 100% dengan Tab Master 'Students'
+ */
+function cleanShadowData() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var studentSheet = ss.getSheetByName('Students');
+    if (!studentSheet) return { status: 'error', message: 'Sheet Students tidak ditemukan.' };
+
+    var studentData = studentSheet.getDataRange().getValues();
+    if (studentData.length <= 1) return { status: 'success', message: 'Tidak ada data siswa master untuk divalidasi.' };
+
+    // Build Master Student Map (ID -> Name)
+    var studentMap = {};
+    for (var i = 1; i < studentData.length; i++) {
+      var id = String(studentData[i][0]).trim();
+      var name = String(studentData[i][1]).trim();
+      if (id) {
+        studentMap[id.toLowerCase()] = { id: id, name: name };
+      }
+    }
+
+    var fixedCount = 0;
+    var targetSheets = [
+      { name: 'Violations', idCol: 2, nameCol: 3 },
+      { name: 'Counseling', idCol: 2, nameCol: 3 },
+      { name: 'Leaves', idCol: 1, nameCol: 2 },
+      { name: 'DailyJournals', idCol: 2, nameCol: 3 },
+      { name: 'MedicalRecords', idCol: 1, nameCol: 2 },
+      { name: 'ReportCards', idCol: 0, nameCol: 1 }
+    ];
+
+    for (var s = 0; s < targetSheets.length; s++) {
+      var conf = targetSheets[s];
+      var sh = ss.getSheetByName(conf.name);
+      if (!sh) continue;
+
+      var range = sh.getDataRange();
+      var rows = range.getValues();
+      if (rows.length <= 1) continue;
+
+      var modified = false;
+      for (var r = 1; r < rows.length; r++) {
+        var rowId = String(rows[r][conf.idCol]).trim().toLowerCase();
+        var rowName = String(rows[r][conf.nameCol]).trim();
+
+        if (rowId && studentMap[rowId]) {
+          var masterName = studentMap[rowId].name;
+          if (rowName !== masterName) {
+            rows[r][conf.nameCol] = masterName;
+            fixedCount++;
+            modified = true;
+          }
+        }
+      }
+
+      if (modified) {
+        range.setValues(rows);
+      }
+    }
+
+    return {
+      status: 'success',
+      message: 'Rekonsiliasi Data Shadow Google Sheet Selesai! ' + fixedCount + ' nama murid berhasil diselaraskan dengan Master Students.',
+      fixedCount: fixedCount
+    };
+  } catch (err) {
+    return { status: 'error', message: 'Gagal membersihkan data shadow: ' + err.toString() };
+  }
 }
 `;
 

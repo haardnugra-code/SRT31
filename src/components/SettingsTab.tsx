@@ -32,6 +32,7 @@ import { AppConfig, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationT
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/googleAppsScriptCode';
 import { DEFAULT_DISCIPLINE_LEVELS, DEFAULT_DISCIPLINE_THRESHOLDS, VIOLATION_TEMPLATES } from '../services/storage';
 import { RAPOR_STRUCTURE } from '../services/pdfGenerator';
+import { ShadowDataAuditStats } from '../utils/dataSanitizer';
 
 interface SettingsTabProps {
   config: AppConfig;
@@ -40,6 +41,9 @@ interface SettingsTabProps {
   lastSyncTime?: string | null;
   onSync?: () => void;
   isSyncing?: boolean;
+  onReconcileShadowData?: (purgeOrphans: boolean) => Promise<ShadowDataAuditStats>;
+  studentsCount?: number;
+  recordsCount?: number;
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
@@ -48,7 +52,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   onShowToast,
   lastSyncTime,
   onSync,
-  isSyncing = false
+  isSyncing = false,
+  onReconcileShadowData,
+  studentsCount = 0,
+  recordsCount = 0
 }) => {
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState<boolean>(false);
@@ -107,6 +114,24 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   // Script Modal State
   const [isScriptModalOpen, setIsScriptModalOpen] = useState<boolean>(false);
   const [isCopied, setIsCopied] = useState<boolean>(false);
+
+  // Shadow Data Prevention State
+  const [purgeOrphans, setPurgeOrphans] = useState<boolean>(false);
+  const [isReconciling, setIsReconciling] = useState<boolean>(false);
+  const [lastAuditStats, setLastAuditStats] = useState<ShadowDataAuditStats | null>(null);
+
+  const handleRunReconcileShadow = async () => {
+    if (!onReconcileShadowData) return;
+    setIsReconciling(true);
+    try {
+      const stats = await onReconcileShadowData(purgeOrphans);
+      setLastAuditStats(stats);
+    } catch (e) {
+      onShowToast('Gagal Rekonsiliasi', 'Terjadi kesalahan saat pembersihan data shadow.', 'error');
+    } finally {
+      setIsReconciling(false);
+    }
+  };
 
   // 7-Day Cloud Sync Status & Reminder Calculation
   const daysSinceSync = useMemo(() => {
@@ -735,6 +760,80 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 >
                   <Database className="w-3.5 h-3.5 text-amber-600" /> Backup ke Google Drive
                 </button>
+              </div>
+            </div>
+
+            {/* Anti-Shadow Data & Sheet Reconciliation Card */}
+            <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl p-4 sm:p-5 shadow-lg border border-indigo-800/50 space-y-3.5">
+              <div className="flex items-center justify-between gap-2 border-b border-indigo-800/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs sm:text-sm text-white">
+                      Pencegahan Data Shadow Database Sheet
+                    </h4>
+                    <p className="text-[10px] text-slate-300">
+                      Sinkronisasi dan sanitasi integritas data murid antar tab
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
+                  Engine Aktif
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Sistem secara otomatis menyesuaikan nama, NISN, jenjang, dan asrama di seluruh laporan (Pelanggaran, Konseling, Izin Pulang, Jurnal, Medical, Sholat, & Rapor) agar konsisten dengan <strong className="text-emerald-300">Master Students Database Sheet</strong>.
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 text-center bg-white/5 p-2.5 rounded-xl border border-white/10 text-xs">
+                <div>
+                  <div className="text-slate-400 text-[10px] uppercase font-bold">Master Murid</div>
+                  <div className="text-sm font-extrabold text-emerald-400 mt-0.5">{studentsCount} Siswa</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 text-[10px] uppercase font-bold">Total Record Rekam</div>
+                  <div className="text-sm font-extrabold text-blue-400 mt-0.5">{recordsCount} Baris</div>
+                </div>
+              </div>
+
+              {lastAuditStats && (
+                <div className="bg-emerald-950/60 border border-emerald-500/40 rounded-xl p-3 text-[11px] space-y-1 text-emerald-200">
+                  <div className="font-bold text-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Hasil Audit & Rekonsiliasi Terakhir:
+                  </div>
+                  <ul className="list-disc list-inside text-[10px] text-emerald-300/90 space-y-0.5 pl-1">
+                    <li>Diselaraskan: <strong>{lastAuditStats.fixedNamesCount}</strong> nama murid & <strong>{lastAuditStats.fixedClassDormCount}</strong> kelas/asrama.</li>
+                    <li>Duplikasi Dihapus: <strong>{lastAuditStats.duplicateStudentsRemoved + lastAuditStats.duplicateRecordsRemoved}</strong> baris ganda.</li>
+                    <li>Record Yatim Dihapus: <strong>{lastAuditStats.orphanedRecordsRemoved}</strong> data tanpa master.</li>
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300 hover:text-white transition">
+                  <input
+                    type="checkbox"
+                    checked={purgeOrphans}
+                    onChange={(e) => setPurgeOrphans(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-emerald-500 focus:ring-emerald-400 focus:ring-offset-slate-900"
+                  />
+                  <span>Bersihkan record yatim (murid yang telah dihapus)</span>
+                </label>
+
+                {onReconcileShadowData && (
+                  <button
+                    type="button"
+                    onClick={handleRunReconcileShadow}
+                    disabled={isReconciling}
+                    className="font-bold text-xs px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white flex items-center justify-center gap-2 shadow-md transition active:scale-95 disabled:opacity-50 shrink-0"
+                  >
+                    <ShieldCheck className={`w-4 h-4 ${isReconciling ? 'animate-spin' : ''}`} />
+                    <span>{isReconciling ? 'Merekonsiliasi...' : 'Jalankan Anti-Shadow Data'}</span>
+                  </button>
+                )}
               </div>
             </div>
 

@@ -54,6 +54,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { generateAllStudentCardsPDF, generateStudentCardSheetA4PDF } from '../services/pdfGenerator';
+import { downloadStudentCardPNG, downloadMultipleCardsPNG } from '../services/pngGenerator';
 
 interface PrayerAttendanceTabProps {
   students: Student[];
@@ -2445,6 +2446,30 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                       onShowToast?.('Pilih Murid', 'Pilih minimal 1 murid untuk dicetak!', 'warning');
                       return;
                     }
+                    onShowToast?.('Mengekspor PNG', `Membuat Gambar PNG ${targetList.length} Kartu...`, 'info');
+                    await downloadMultipleCardsPNG(targetList, config, (cur, total) => {
+                      onShowToast?.('Mengekspor PNG', `Proses ${cur}/${total} Kartu...`, 'info');
+                    });
+                    onShowToast?.('Selesai Ekspor PNG', `Berhasil mengunduh ${targetList.length} Gambar Kartu PNG (Resolusi Tinggi 300 DPI).`, 'success');
+                  }}
+                  className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                  title="Unduh Kartu Tanda Murid sebagai Gambar PNG Resolusi Tinggi (1011x638 px)"
+                >
+                  <Download className="w-4 h-4 text-amber-100" />
+                  {selectedStudentIdsForCards.length > 0
+                    ? `Unduh Gambar PNG (${selectedStudentIdsForCards.length})`
+                    : `Unduh Gambar PNG (${filteredStudentsForCards.length})`}
+                </button>
+
+                <button
+                  onClick={async () => {
+                    const targetList = selectedStudentIdsForCards.length > 0
+                      ? students.filter((s) => selectedStudentIdsForCards.includes(s.id))
+                      : filteredStudentsForCards;
+                    if (targetList.length === 0) {
+                      onShowToast?.('Pilih Murid', 'Pilih minimal 1 murid untuk dicetak!', 'warning');
+                      return;
+                    }
                     onShowToast?.('Mencetak PDF CR80', `Membuat PDF ${targetList.length} Kartu QR Absensi...`, 'info');
                     await generateAllStudentCardsPDF(targetList, config);
                     onShowToast?.('Mencetak PDF Selesai', `Berhasil mengekspor ${targetList.length} Kartu QR Absensi (CR80: 85.6 x 54 mm).`, 'success');
@@ -2657,22 +2682,33 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                   />
                 )}
 
-                <div className="flex items-center gap-3 pt-2">
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <button
+                    onClick={async () => {
+                      if (!singleCardPreviewStudent) return;
+                      onShowToast?.('Unduh Kartu PNG', `Mengunduh Kartu ${singleCardPreviewStudent.name}...`, 'info');
+                      await downloadStudentCardPNG(singleCardPreviewStudent, config);
+                      onShowToast?.('Selesai', 'Kartu PNG HD berhasil diunduh.', 'success');
+                    }}
+                    className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs text-center shadow transition-all flex items-center justify-center gap-1"
+                  >
+                    <Download className="w-4 h-4" /> Kartu PNG HD
+                  </button>
                   <a
                     href={qrCodeDataUrls[singleCardPreviewStudent.id]}
                     download={`QR_Code_HD_${singleCardPreviewStudent.id}_${singleCardPreviewStudent.name}.png`}
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs text-center shadow transition-all flex items-center justify-center gap-1.5"
+                    className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs text-center shadow transition-all flex items-center justify-center gap-1"
                   >
-                    <Download className="w-4 h-4" /> Unduh QR HD PNG
+                    <Download className="w-4 h-4" /> QR HD PNG
                   </a>
                   <button
                     onClick={() => {
                       setSelectedStudentIdsForCards([singleCardPreviewStudent.id]);
                       setTimeout(() => window.print(), 200);
                     }}
-                    className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-xs text-center shadow transition-all flex items-center justify-center gap-1.5"
+                    className="bg-indigo-700 hover:bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs text-center shadow transition-all flex items-center justify-center gap-1"
                   >
-                    <Printer className="w-4 h-4" /> Cetak Kartu Ini
+                    <Printer className="w-4 h-4" /> Cetak Kartu
                   </button>
                 </div>
               </div>

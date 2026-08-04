@@ -1545,7 +1545,65 @@ export async function generateAllStudentCardsPDF(students: Student[], config: Ap
     await drawStudentCardPage(doc, students[i], config, 0, 0);
   }
 
-  doc.save(`Daftar_Kartu_Siswa_Asrama_${students.length}_Siswa.pdf`);
+  doc.save(`Daftar_Kartu_Siswa_CR80_${students.length}_Siswa.pdf`);
+}
+
+/**
+ * Generates an A4 sheet layout (10 cards per A4 page: 2 cols x 5 rows) with crop/cut marks for easy printing.
+ */
+export async function generateStudentCardSheetA4PDF(students: Student[], config: AppConfig): Promise<void> {
+  if (!students || students.length === 0) return;
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const cardW = 85.6;
+  const cardH = 54.0;
+  const marginX = 14.2;
+  const marginY = 10.0;
+  const gapX = 10.0;
+  const gapY = 2.5;
+
+  const cols = 2;
+  const rows = 5;
+  const cardsPerPage = cols * rows;
+
+  for (let i = 0; i < students.length; i++) {
+    const cardIndexOnPage = i % cardsPerPage;
+
+    if (i > 0 && cardIndexOnPage === 0) {
+      doc.addPage('a4', 'portrait');
+    }
+
+    const col = cardIndexOnPage % cols;
+    const row = Math.floor(cardIndexOnPage / cols);
+
+    const posX = marginX + col * (cardW + gapX);
+    const posY = marginY + row * (cardH + gapY);
+
+    await drawStudentCardPage(doc, students[i], config, posX, posY);
+
+    // Crop / Cut lines around card for trimming
+    doc.setDrawColor(148, 163, 184); // slate-400
+    doc.setLineWidth(0.15);
+    // top-left corner marks
+    doc.line(posX - 2, posY, posX - 0.5, posY);
+    doc.line(posX, posY - 2, posX, posY - 0.5);
+    // top-right corner marks
+    doc.line(posX + cardW + 0.5, posY, posX + cardW + 2, posY);
+    doc.line(posX + cardW, posY - 2, posX + cardW, posY - 0.5);
+    // bottom-left corner marks
+    doc.line(posX - 2, posY + cardH, posX - 0.5, posY + cardH);
+    doc.line(posX, posY + cardH + 0.5, posX, posY + cardH + 2);
+    // bottom-right corner marks
+    doc.line(posX + cardW + 0.5, posY + cardH, posX + cardW + 2, posY + cardH);
+    doc.line(posX + cardW, posY + cardH + 0.5, posX + cardW, posY + cardH + 2);
+  }
+
+  doc.save(`Lembar_A4_Kartu_Siswa_${students.length}_Siswa.pdf`);
 }
 
 async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConfig, offsetX: number, offsetY: number): Promise<void> {
@@ -1652,7 +1710,8 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   doc.text('Wali Asuh:', detailsX, lineY);
   doc.setFont('Helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  const caretakerText = student.caretaker ? (student.caretaker.length > 20 ? student.caretaker.substring(0, 20) + '...' : student.caretaker) : 'M. ARDIAN NUGRAHA';
+  const rawCaretaker = student.caretaker ? String(student.caretaker).trim() : '';
+  const caretakerText = rawCaretaker ? (rawCaretaker.length > 22 ? rawCaretaker.substring(0, 22) + '...' : rawCaretaker) : '-';
   doc.text(caretakerText, detailsX + 11, lineY);
   lineY += 4.2;
 

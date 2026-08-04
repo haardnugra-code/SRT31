@@ -18,7 +18,7 @@ import {
 import { Student, ClassLevel, AppConfig, Violation, Counseling } from '../types';
 import { calculateStudentDisciplineScore } from '../services/storage';
 import { formatDateIndonesian } from '../utils/dateFormatter';
-import { generateViolationNoticePDF, generateStudentCardPDF, generateAllStudentCardsPDF } from '../services/pdfGenerator';
+import { generateViolationNoticePDF, generateStudentCardPDF, generateAllStudentCardsPDF, generateStudentCardSheetA4PDF } from '../services/pdfGenerator';
 
 interface StudentsTabProps {
   students: Student[];
@@ -248,20 +248,32 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         </div>
         <div className="flex items-center gap-2 flex-wrap self-start">
           {students.length > 0 && (
-            <button
-              onClick={() => {
-                generateAllStudentCardsPDF(filteredStudents.length > 0 ? filteredStudents : students, config);
-                onShowToast('Mencetak Kartu Siswa', `Mencetak ${filteredStudents.length > 0 ? filteredStudents.length : students.length} Kartu Tanda Siswa RFID...`, 'success');
-              }}
-              className="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold px-3.5 py-3 rounded-lg shadow transition active:scale-95 flex items-center gap-1.5"
-              title="Cetak Semua Kartu Tanda Siswa / RFID CR80 Format"
-            >
-              <Printer className="w-4 h-4 text-indigo-200" /> Cetak Massal Kartu Siswa
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  generateAllStudentCardsPDF(filteredStudents.length > 0 ? filteredStudents : students, config);
+                  onShowToast('Mencetak Kartu CR80', `Mencetak ${filteredStudents.length > 0 ? filteredStudents.length : students.length} Kartu CR80 (85.6 x 54 mm)...`, 'success');
+                }}
+                className="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold px-3 py-2.5 rounded-lg shadow transition active:scale-95 flex items-center gap-1.5"
+                title="Cetak Ukuran Standar ID Card CR80 (85.6 x 54 mm per halaman)"
+              >
+                <Printer className="w-4 h-4 text-indigo-200" /> Cetak CR80 (85.6 x 54 mm)
+              </button>
+              <button
+                onClick={() => {
+                  generateStudentCardSheetA4PDF(filteredStudents.length > 0 ? filteredStudents : students, config);
+                  onShowToast('Mencetak Grid A4', `Mencetak ${filteredStudents.length > 0 ? filteredStudents.length : students.length} Kartu ke Lembar A4 (10 Kartu/Halaman)...`, 'success');
+                }}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-2.5 rounded-lg shadow transition active:scale-95 flex items-center gap-1.5"
+                title="Cetak Grid A4 (10 Kartu ID per Lembar Kertas A4 dengan Garis Potong)"
+              >
+                <Printer className="w-4 h-4 text-emerald-200" /> Cetak Grid A4 (10 Kartu/Hal)
+              </button>
+            </>
           )}
           <button
             onClick={handleOpenAddModal}
-            className="bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-lg hover:bg-slate-800 shadow transition active:scale-95 flex items-center gap-1.5"
+            className="bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-lg hover:bg-slate-800 shadow transition active:scale-95 flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" /> Registrasi Siswa Baru
           </button>

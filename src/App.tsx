@@ -745,7 +745,7 @@ export default function App() {
                   name,
                   class: getVal('Jenjang', 'Jenjang Pendidikan', 'Kelas', 'class', 'Tingkat') || 'SD',
                   dorm: getVal('Asrama', 'Lokasi Asrama', 'Gedung Asrama', 'dorm', 'Gedung') || 'Asrama Terpadu',
-                  caretaker: getVal('Wali Asuh', 'Wali', 'caretaker', 'Pendamping') || 'M. ARDIAN NUGRAHA, S.H',
+                  caretaker: getVal('Wali Asuh', 'Wali', 'caretaker', 'Pendamping') || '',
                   rfidTag: rfid || undefined,
                   height: hRaw && !isNaN(Number(hRaw)) ? Number(hRaw) : undefined,
                   weight: wRaw && !isNaN(Number(wRaw)) ? Number(wRaw) : undefined,

@@ -1611,21 +1611,21 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   const w = 85.6;
   const h = 54.0;
 
-  // Background Canvas
-  doc.setFillColor(255, 255, 255);
+  // Background Canvas - Dark Obsidian/Slate (Dark Luxury)
+  doc.setFillColor(15, 23, 42); // slate-900
   doc.rect(offsetX, offsetY, w, h, 'F');
 
-  // Decorative Outer Border
-  doc.setDrawColor(30, 58, 138); // Deep Blue
+  // Outer Trim Border - Champagne Gold Accent
+  doc.setDrawColor(217, 119, 6); // Gold / Amber-600
   doc.setLineWidth(0.6);
   doc.rect(offsetX + 1, offsetY + 1, w - 2, h - 2, 'S');
 
-  // Top Banner Header
-  doc.setFillColor(30, 58, 138); // Deep Blue
+  // Top Banner Header - Carbon Dark Slate
+  doc.setFillColor(30, 41, 59); // slate-800
   doc.rect(offsetX + 1, offsetY + 1, w - 2, 12, 'F');
 
-  // Gold Accent Strip
-  doc.setFillColor(217, 119, 6); // Gold
+  // Metallic Gold Divider Line
+  doc.setFillColor(234, 179, 8); // Amber-500 Gold
   doc.rect(offsetX + 1, offsetY + 13, w - 2, 0.8, 'F');
 
   // Load logo
@@ -1638,8 +1638,8 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
     console.error(e);
   }
 
-  // Header Title
-  doc.setTextColor(255, 255, 255);
+  // Header Title - Gold / White
+  doc.setTextColor(254, 240, 138); // Amber-200 Gold
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(7.5);
   const rawKop = config.kopKiri ? config.kopKiri.split('\n')[0] : 'KARTU TANDA SISWA ASRAMA';
@@ -1648,19 +1648,19 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
 
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(5.5);
-  doc.setTextColor(224, 231, 255);
+  doc.setTextColor(226, 232, 240); // slate-200
   const instName = config.kopKiri && config.kopKiri.split('\n')[1] ? config.kopKiri.split('\n')[1] : 'PONDOK PESANTREN / ASRAMA TERPADU';
   doc.text(instName, offsetX + 13, offsetY + 9.5);
 
-  // Photo / QR Box (Left side)
+  // Photo / QR Box (Left side) - Clean White Box for Max QR Scanning Accuracy
   const photoX = offsetX + 3.5;
   const photoY = offsetY + 16.5;
   const photoW = 18;
   const photoH = 22;
 
   doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.3);
+  doc.setDrawColor(217, 119, 6); // Gold Border
+  doc.setLineWidth(0.4);
   doc.roundedRect(photoX, photoY, photoW, photoH, 1.5, 1.5, 'FD');
 
   // Render Real QR Code inside Photo Box
@@ -1671,7 +1671,7 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
       const qrDataUrl = await QRCode.toDataURL(studentQrId, {
         margin: 1,
         errorCorrectionLevel: 'M',
-        color: { dark: '#020617', light: '#ffffff' }
+        color: { dark: '#0f172a', light: '#ffffff' }
       });
       if (qrDataUrl) {
         doc.addImage(qrDataUrl, 'PNG', photoX + 0.5, photoY + 0.5, photoW - 1, photoW - 1);
@@ -1685,81 +1685,81 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   if (!hasQrCode) {
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(14);
-    doc.setTextColor(30, 58, 138);
+    doc.setTextColor(15, 23, 42);
     const initialLetter = student.name ? student.name.charAt(0).toUpperCase() : 'S';
     doc.text(initialLetter, photoX + photoW / 2, photoY + photoH / 2 + 2, { align: 'center' });
   }
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(4);
-  doc.setTextColor(30, 58, 138);
+  doc.setTextColor(180, 83, 9); // Amber-700
   doc.text('QR ABSENSI', photoX + photoW / 2, photoY + photoH - 1.2, { align: 'center' });
 
   // Student Details Section (Right side)
   const detailsX = photoX + photoW + 3.5;
   let lineY = offsetY + 18.5;
 
-  // Student Name
+  // Student Name - High Contrast Platinum White
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.setTextColor(15, 23, 42); // slate-900
+  doc.setTextColor(255, 255, 255);
   const truncatedName = doc.splitTextToSize(student.name || 'Nama Siswa', w - detailsX - 3);
   doc.text(truncatedName[0], detailsX, lineY);
   lineY += 4.2;
 
-  // NISN / Student ID
+  // NISN / Student ID - Gold Highlight
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(6);
-  doc.setTextColor(71, 85, 105);
+  doc.setTextColor(148, 163, 184); // slate-400
   doc.text('NISN / ID:', detailsX, lineY);
   doc.setFont('Helvetica', 'bold');
-  doc.setTextColor(30, 58, 138);
+  doc.setTextColor(250, 204, 21); // Amber-400 Gold
   doc.text(student.id || '-', detailsX + 11, lineY);
   lineY += 3.8;
 
   // Class & Dorm
   doc.setFont('Helvetica', 'normal');
-  doc.setTextColor(71, 85, 105);
+  doc.setTextColor(148, 163, 184);
   doc.text('Kelas/Jenjang:', detailsX, lineY);
   doc.setFont('Helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(226, 232, 240); // slate-200
   doc.text(`${student.class} (${student.dorm || 'Asrama'})`, detailsX + 15, lineY);
   lineY += 3.8;
 
   // Wali Asuh
   doc.setFont('Helvetica', 'normal');
-  doc.setTextColor(71, 85, 105);
+  doc.setTextColor(148, 163, 184);
   doc.text('Wali Asuh:', detailsX, lineY);
   doc.setFont('Helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(226, 232, 240);
   const rawCaretaker = student.caretaker ? String(student.caretaker).trim() : '';
   const caretakerText = rawCaretaker ? (rawCaretaker.length > 22 ? rawCaretaker.substring(0, 22) + '...' : rawCaretaker) : '-';
   doc.text(caretakerText, detailsX + 11, lineY);
   lineY += 4.2;
 
-  // RFID Tag Badge
-  doc.setFillColor(236, 253, 245); // emerald-50
-  doc.setDrawColor(167, 243, 208); // emerald-200
-  doc.setLineWidth(0.2);
+  // RFID Tag Badge - Dark Emerald & Gold Luxury
+  doc.setFillColor(6, 78, 59); // emerald-900
+  doc.setDrawColor(217, 119, 6); // Gold border
+  doc.setLineWidth(0.3);
   doc.roundedRect(detailsX, lineY - 2.5, 38, 5, 1, 1, 'FD');
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(5);
-  doc.setTextColor(4, 120, 87); // emerald-700
+  doc.setTextColor(110, 231, 183); // emerald-300
   const rfidDisplay = student.rfidTag ? `RFID UID: ${student.rfidTag}` : 'SMART RFID CARD ENABLED';
   doc.text(rfidDisplay, detailsX + 2, lineY + 0.8);
 
-  // Bottom Footer Bar
+  // Bottom Footer Bar - Obsidian Carbon Black
   const footerY = offsetY + h - 10;
-  doc.setFillColor(248, 250, 252);
+  doc.setFillColor(2, 6, 23); // slate-950
   doc.rect(offsetX + 1, footerY, w - 2, 9, 'F');
-  doc.setDrawColor(226, 232, 240);
+  doc.setDrawColor(217, 119, 6);
   doc.line(offsetX + 1, footerY, offsetX + w - 1, footerY);
 
-  // Simulated Barcode lines for RFID ID
+  // Simulated Barcode lines in Gold/Light Gray on Dark background
   const bcX = offsetX + 3.5;
   const bcY = footerY + 1.5;
-  doc.setFillColor(30, 41, 59);
+  doc.setFillColor(226, 232, 240); // light bars on dark bg
   const barPattern = [1, 0.5, 1.5, 0.5, 1, 2, 0.5, 1, 0.5, 2, 1, 0.5, 1.5, 0.5, 1, 0.5, 2, 1, 0.5, 1.5, 0.5];
   let curX = bcX;
   for (const bw of barPattern) {
@@ -1769,14 +1769,14 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(4.5);
-  doc.setTextColor(100, 116, 139);
+  doc.setTextColor(148, 163, 184);
   doc.text(`*${student.id}*`, bcX + 1, bcY + 6.5);
 
   // Card Validity / Security Note
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(4.5);
-  doc.setTextColor(30, 58, 138);
-  doc.text('KARTU RESMI ASRAMA', offsetX + w - 3.5, footerY + 3.5, { align: 'right' });
+  doc.setTextColor(250, 204, 21); // Amber-400 Gold
+  doc.text('KARTU RESMI ASRAMA LUXURY', offsetX + w - 3.5, footerY + 3.5, { align: 'right' });
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(4);
   doc.setTextColor(148, 163, 184);

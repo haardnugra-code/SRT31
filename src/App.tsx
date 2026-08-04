@@ -1075,6 +1075,8 @@ export default function App() {
                 onSaveRecord={handleSaveMedicalRecord}
                 onDeleteRecord={handleDeleteMedicalRecord}
                 config={config}
+                onReconcileShadowData={handleReconcileShadowData}
+                onShowToast={showToast}
               />
             )}
 

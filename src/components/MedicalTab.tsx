@@ -40,9 +40,13 @@ import {
   UserCheck,
   TrendingUp,
   Scale,
-  Ruler
+  Ruler,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { Student, MedicalRecord, AppConfig } from '../types';
+import { clearStorageCache } from '../services/storage';
+import { ShadowDataAuditStats } from '../utils/dataSanitizer';
 
 interface MedicalTabProps {
   students: Student[];
@@ -50,6 +54,8 @@ interface MedicalTabProps {
   onSaveRecord: (record: MedicalRecord) => void;
   onDeleteRecord: (id: string) => void;
   config: AppConfig;
+  onReconcileShadowData?: (purgeOrphans?: boolean) => Promise<ShadowDataAuditStats>;
+  onShowToast?: (title: string, message: string, type?: 'success' | 'warning' | 'error') => void;
 }
 
 const COMMON_SYMPTOMS = [
@@ -110,13 +116,17 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
   records,
   onSaveRecord,
   onDeleteRecord,
-  config
+  config,
+  onReconcileShadowData,
+  onShowToast
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'records' | 'student-history'>('records');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [locationFilter, setLocationFilter] = useState<string>('All');
+  const [shadowFilter, setShadowFilter] = useState<'valid_only' | 'all' | 'shadow_only'>('valid_only');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<string>('');
+  const [isCleaningCache, setIsCleaningCache] = useState(false);
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -124,6 +134,66 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
   const [printRecord, setPrintRecord] = useState<MedicalRecord | null>(null);
   const [printWaliAsrama, setPrintWaliAsrama] = useState<string>('');
   const [printWaliAsramaNip, setPrintWaliAsramaNip] = useState<string>('');
+
+  // Shadow Data Audit Analysis for Medical Records
+  const shadowAnalysis = useMemo(() => {
+    let orphanedCount = 0;
+    let mismatchedCount = 0;
+    const shadowRecordIds = new Set<string>();
+
+    records.forEach((r) => {
+      const match = students.find(
+        (s) =>
+          String(s.id).trim().toLowerCase() === String(r.studentId || '').trim().toLowerCase() ||
+          s.name.toLowerCase().trim() === String(r.studentName || '').toLowerCase().trim()
+      );
+
+      if (!match) {
+        orphanedCount++;
+        shadowRecordIds.add(r.id);
+      } else if (match.name !== r.studentName || match.id !== r.studentId) {
+        mismatchedCount++;
+        shadowRecordIds.add(r.id);
+      }
+    });
+
+    return {
+      orphanedCount,
+      mismatchedCount,
+      totalShadowCount: orphanedCount + mismatchedCount,
+      shadowRecordIds
+    };
+  }, [records, students]);
+
+  // Handle Clean Cache & Shadow Data
+  const handleClearCacheAndShadowData = async () => {
+    setIsCleaningCache(true);
+    try {
+      // 1. Clean localStorage cache
+      const cacheRes = clearStorageCache();
+
+      // 2. Reconcile shadow data (purge orphans & align student names)
+      let stats: ShadowDataAuditStats | null = null;
+      if (onReconcileShadowData) {
+        stats = await onReconcileShadowData(true);
+      }
+
+      const msg = stats
+        ? `Cache browser dioptimalkan (${cacheRes.clearedSize}). Data shadow diselaraskan: ${stats.fixedNamesCount} nama disesuaikan, ${stats.orphanedRecordsRemoved} data yatim dihapus.`
+        : `Cache dioptimalkan (${cacheRes.clearedSize}). Data shadow diselaraskan.`;
+
+      if (onShowToast) {
+        onShowToast('Bersihkan Cache & Data Shadow Selesai', msg, 'success');
+      }
+    } catch (e) {
+      console.error(e);
+      if (onShowToast) {
+        onShowToast('Gagal Pembersihan', 'Terjadi kesalahan saat memproses pembersihan cache.', 'error');
+      }
+    } finally {
+      setIsCleaningCache(false);
+    }
+  };
 
   // Form State
   const [formData, setFormData] = useState<Partial<MedicalRecord>>({
@@ -159,9 +229,14 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
     return { total, activeSick, referred, cured };
   }, [records]);
 
-  // Filtered Records
+  // Filtered Records (With Shadow Data Filtering)
   const filteredRecords = useMemo(() => {
     return records.filter((r) => {
+      const isShadow = shadowAnalysis.shadowRecordIds.has(r.id);
+
+      if (shadowFilter === 'valid_only' && isShadow) return false;
+      if (shadowFilter === 'shadow_only' && !isShadow) return false;
+
       const matchesSearch =
         r.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.symptoms.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -173,7 +248,8 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
 
       return matchesSearch && matchesStatus && matchesLocation;
     });
-  }, [records, searchTerm, statusFilter, locationFilter]);
+  }, [records, searchTerm, statusFilter, locationFilter, shadowFilter, shadowAnalysis]);
+
 
   // Student Health History View
   const historyForSelectedStudent = useMemo(() => {
@@ -391,15 +467,70 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
               Pencatatan pemeriksaan kesehatan, riwayat medis, izin sakit UKS, dan penanganan rujukan klinik/rumah sakit Sekolah Rakyat.
             </p>
           </div>
-          <button
-            onClick={handleOpenAdd}
-            className="inline-flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-bold px-5 py-3 rounded-xl shadow-lg shadow-rose-950/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Catat Rekam Medis / Izin UKS</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleClearCacheAndShadowData}
+              disabled={isCleaningCache}
+              className="inline-flex items-center justify-center gap-2 bg-slate-900/80 hover:bg-slate-900 text-amber-300 font-bold px-4 py-3 rounded-xl border border-amber-400/30 shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-sm"
+              title="Bersihkan cache browser & rekonsiliasi data shadow yatim"
+            >
+              <Sparkles className={`w-4 h-4 ${isCleaningCache ? 'animate-spin' : ''}`} />
+              <span>{isCleaningCache ? 'Membersihkan...' : 'Bersihkan Cache & Data Shadow'}</span>
+            </button>
+            <button
+              onClick={handleOpenAdd}
+              className="inline-flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-bold px-5 py-3 rounded-xl shadow-lg shadow-rose-950/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-sm"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Catat Rekam Medis / Izin UKS</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Shadow Data Audit Alert Banner */}
+      {shadowAnalysis.totalShadowCount > 0 ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 text-amber-800 rounded-lg shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 text-sm">
+                Terdeteksi {shadowAnalysis.totalShadowCount} Data Shadow / Yatim pada Rekam Medis
+              </h4>
+              <p className="text-xs text-slate-600 mt-0.5">
+                {shadowAnalysis.orphanedCount > 0 && `${shadowAnalysis.orphanedCount} record berasal dari siswa yang telah dihapus/tidak terdaftar. `}
+                {shadowAnalysis.mismatchedCount > 0 && `${shadowAnalysis.mismatchedCount} record memiliki ketidakcocokan ejaan nama. `}
+                Klik tombol di samping untuk menyelaraskan ejaan dan mempurge data yatim.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleClearCacheAndShadowData}
+            disabled={isCleaningCache}
+            className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isCleaningCache ? 'animate-spin' : ''}`} />
+            <span>Bersihkan Data Shadow Sekarang</span>
+          </button>
+        </div>
+      ) : (
+        <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs text-emerald-900">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Semua data rekam medis terverifikasi bersih dari shadow data & selaras dengan Data Induk Siswa.</span>
+          </div>
+          <button
+            onClick={handleClearCacheAndShadowData}
+            disabled={isCleaningCache}
+            className="text-emerald-700 hover:text-emerald-900 font-bold underline flex items-center gap-1 text-[11px]"
+          >
+            <Sparkles className="w-3 h-3" /> Bersihkan Cache Browser
+          </button>
+        </div>
+      )}
+
 
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -520,6 +651,17 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                 <option value="Klinik / RS Rujukan">Klinik / RS Rujukan</option>
                 <option value="Klinik Sekolah">Klinik Sekolah</option>
               </select>
+
+              {/* Shadow Data Filter */}
+              <select
+                value={shadowFilter}
+                onChange={(e) => setShadowFilter(e.target.value as any)}
+                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              >
+                <option value="valid_only">✓ Data Valid (Bersih)</option>
+                <option value="all">Semua Data (Termasuk Shadow)</option>
+                <option value="shadow_only">⚠️ Data Shadow / Yatim ({shadowAnalysis.totalShadowCount})</option>
+              </select>
             </div>
           </div>
 
@@ -546,12 +688,15 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                         <HeartPulse className="w-12 h-12 mx-auto mb-2 text-slate-300" />
                         <p className="font-semibold text-sm">Belum ada rekam medis ditemukan</p>
                         <p className="text-xs mt-1">
-                          Klik tombol "Catat Rekam Medis / Izin UKS" di atas untuk menambahkan data baru.
+                          {shadowFilter === 'shadow_only'
+                            ? 'Tidak ditemukan data shadow rekam medis. Semua data bersih.'
+                            : 'Klik tombol "Catat Rekam Medis / Izin UKS" di atas untuk menambahkan data baru.'}
                         </p>
                       </td>
                     </tr>
                   ) : (
                     filteredRecords.map((rec) => {
+                      const isShadow = shadowAnalysis.shadowRecordIds.has(rec.id);
                       const studentObj = students.find(
                         (s) =>
                           s.id === rec.studentId ||
@@ -559,7 +704,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                       );
 
                       return (
-                        <tr key={rec.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr key={rec.id} className={`hover:bg-slate-50/80 transition-colors ${isShadow ? 'bg-amber-50/40' : ''}`}>
                           <td className="py-3 px-4 font-medium whitespace-nowrap">
                             <div className="flex items-center gap-1.5 text-slate-900 font-bold">
                               <Calendar className="w-3.5 h-3.5 text-rose-500" />
@@ -572,13 +717,25 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                           </td>
 
                           <td className="py-3 px-4 font-semibold text-slate-900">
-                            <div>{rec.studentName}</div>
-                            {studentObj && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>{rec.studentName}</span>
+                              {isShadow && (
+                                <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Shadow Data
+                                </span>
+                              )}
+                            </div>
+                            {studentObj ? (
                               <div className="text-[11px] text-slate-400 font-normal mt-0.5">
                                 Kelas {studentObj.class} • {studentObj.dorm}
                               </div>
+                            ) : (
+                              <div className="text-[11px] text-amber-600 font-medium mt-0.5">
+                                Siswa tidak terdaftar di data induk
+                              </div>
                             )}
                           </td>
+
 
                           <td className="py-3 px-4">
                             <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">

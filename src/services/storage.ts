@@ -596,3 +596,50 @@ export function compressImageFile(file: File, maxWidth = 800, maxHeight = 800, q
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * Clears obsolete browser cache, temporary items, and optimizes localStorage usage
+ */
+export function clearStorageCache(): { clearedSize: string; keyCount: number } {
+  let totalBytes = 0;
+  let count = 0;
+
+  const coreKeys = [
+    'sr_app_config',
+    'sr_students',
+    'sr_violations',
+    'sr_counseling',
+    'sr_leaves',
+    'sr_daily_journals',
+    'sr_reports',
+    'sr_medical_records',
+    'sr_prayer_attendance',
+    'sr_last_sync_time',
+    'sr_auth_status'
+  ];
+
+  // Remove non-core / temporary cache keys
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && !coreKeys.includes(key)) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => {
+    const val = localStorage.getItem(key) || '';
+    totalBytes += key.length + val.length;
+    localStorage.removeItem(key);
+    count++;
+  });
+
+  // Calculate size of remaining core storage
+  coreKeys.forEach((k) => {
+    const val = localStorage.getItem(k);
+    if (val) totalBytes += val.length;
+  });
+
+  const clearedKb = (totalBytes / 1024).toFixed(1);
+  return { clearedSize: `${clearedKb} KB`, keyCount: count };
+}

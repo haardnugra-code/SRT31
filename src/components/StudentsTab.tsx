@@ -85,6 +85,35 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     });
   }, [students, searchQuery, classFilter, dormFilter]);
 
+  // Multi-selection state for printing cards
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
+  const isAllFilteredSelected = useMemo(() => {
+    if (filteredStudents.length === 0) return false;
+    return filteredStudents.every((s) => selectedStudentIds.includes(s.id));
+  }, [filteredStudents, selectedStudentIds]);
+
+  const toggleSelectAll = () => {
+    if (isAllFilteredSelected) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(filteredStudents.map((s) => s.id));
+    }
+  };
+
+  const toggleSelectStudent = (id: string) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const selectedStudentsToPrint = useMemo(() => {
+    if (selectedStudentIds.length > 0) {
+      return students.filter((s) => selectedStudentIds.includes(s.id));
+    }
+    return filteredStudents;
+  }, [students, selectedStudentIds, filteredStudents]);
+
   const handleOpenAddModal = () => {
     setEditingStudentId(null);
     setFormName('');
@@ -251,23 +280,39 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             <>
               <button
                 onClick={() => {
-                  generateAllStudentCardsPDF(filteredStudents.length > 0 ? filteredStudents : students, config);
-                  onShowToast('Mencetak Kartu CR80', `Mencetak ${filteredStudents.length > 0 ? filteredStudents.length : students.length} Kartu CR80 (85.6 x 54 mm)...`, 'success');
+                  const targetList = selectedStudentsToPrint;
+                  if (targetList.length === 0) {
+                    onShowToast('Pilih Siswa', 'Pilih minimal 1 siswa untuk dicetak!', 'warning');
+                    return;
+                  }
+                  generateAllStudentCardsPDF(targetList, config);
+                  onShowToast('Mencetak Kartu CR80', `Mencetak ${targetList.length} Kartu CR80 (85.6 x 54 mm)...`, 'success');
                 }}
                 className="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold px-3 py-2.5 rounded-lg shadow transition active:scale-95 flex items-center gap-1.5"
                 title="Cetak Ukuran Standar ID Card CR80 (85.6 x 54 mm per halaman)"
               >
-                <Printer className="w-4 h-4 text-indigo-200" /> Cetak CR80 (85.6 x 54 mm)
+                <Printer className="w-4 h-4 text-indigo-200" />
+                {selectedStudentIds.length > 0
+                  ? `Cetak Terpilih (${selectedStudentIds.length}) - CR80`
+                  : `Cetak Semua (${filteredStudents.length}) - CR80`}
               </button>
               <button
                 onClick={() => {
-                  generateStudentCardSheetA4PDF(filteredStudents.length > 0 ? filteredStudents : students, config);
-                  onShowToast('Mencetak Grid A4', `Mencetak ${filteredStudents.length > 0 ? filteredStudents.length : students.length} Kartu ke Lembar A4 (10 Kartu/Halaman)...`, 'success');
+                  const targetList = selectedStudentsToPrint;
+                  if (targetList.length === 0) {
+                    onShowToast('Pilih Siswa', 'Pilih minimal 1 siswa untuk dicetak!', 'warning');
+                    return;
+                  }
+                  generateStudentCardSheetA4PDF(targetList, config);
+                  onShowToast('Mencetak Grid A4', `Mencetak ${targetList.length} Kartu ke Lembar A4 (10 Kartu/Halaman)...`, 'success');
                 }}
                 className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-2.5 rounded-lg shadow transition active:scale-95 flex items-center gap-1.5"
                 title="Cetak Grid A4 (10 Kartu ID per Lembar Kertas A4 dengan Garis Potong)"
               >
-                <Printer className="w-4 h-4 text-emerald-200" /> Cetak Grid A4 (10 Kartu/Hal)
+                <Printer className="w-4 h-4 text-emerald-200" />
+                {selectedStudentIds.length > 0
+                  ? `Cetak Terpilih (${selectedStudentIds.length}) - Grid A4`
+                  : `Cetak Semua (${filteredStudents.length}) - Grid A4`}
               </button>
             </>
           )}
@@ -280,42 +325,76 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-3">
-        <div className="flex-1 relative">
-          <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari siswa berdasarkan nama atau NISN..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
-          />
+      {/* Filter & Multi-Selection Control Bar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <div className="flex flex-col lg:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari siswa berdasarkan nama atau NISN..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
+            >
+              <option value="">Semua Jenjang</option>
+              <option value="SD">SD (Sekolah Dasar)</option>
+              <option value="SMP">SMP (Sekolah Menengah Pertama)</option>
+              <option value="SMA">SMA (Sekolah Menengah Atas)</option>
+            </select>
+            <select
+              value={dormFilter}
+              onChange={(e) => setDormFilter(e.target.value)}
+              className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
+            >
+              <option value="">Semua Gedung Asrama</option>
+              {config.dormList.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <select
-            value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-            className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
-          >
-            <option value="">Semua Jenjang</option>
-            <option value="SD">SD (Sekolah Dasar)</option>
-            <option value="SMP">SMP (Sekolah Menengah Pertama)</option>
-            <option value="SMA">SMA (Sekolah Menengah Atas)</option>
-          </select>
-          <select
-            value={dormFilter}
-            onChange={(e) => setDormFilter(e.target.value)}
-            className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
-          >
-            <option value="">Semua Gedung Asrama</option>
-            {config.dormList.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </div>
+
+        {/* Multi-Selection Control Row */}
+        {filteredStudents.length > 0 && (
+          <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs flex-wrap gap-2">
+            <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isAllFilteredSelected}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+              <span>Pilih Semua ({filteredStudents.length} Siswa)</span>
+            </label>
+            {selectedStudentIds.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200">
+                  {selectedStudentIds.length} Siswa Terpilih
+                </span>
+                <button
+                  onClick={() => setSelectedStudentIds([])}
+                  className="text-slate-500 hover:text-slate-800 underline text-xs font-semibold"
+                >
+                  Batal Pilih
+                </button>
+              </div>
+            ) : (
+              <span className="text-slate-400 text-[11px]">
+                Centang siswa yang ingin dicetak kartunya khusus (Cetak Terpilih).
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Grid of Student Cards */}
@@ -327,22 +406,28 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         ) : (
           filteredStudents.map((s) => {
             const disc = calculateStudentDisciplineScore(s.id, violations, config, undefined, undefined, s.name);
+            const isSelected = selectedStudentIds.includes(s.id);
             return (
               <div
                 key={s.id}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-4 relative overflow-hidden flex flex-col justify-between hover:border-slate-300 transition"
+                className={`bg-white rounded-xl border shadow-sm p-4 sm:p-5 space-y-4 relative overflow-hidden flex flex-col justify-between transition ${
+                  isSelected
+                    ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50/10'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
               >
-                <div className="absolute right-2 top-2 flex gap-1 z-20">
-                  <button
-                    onClick={() => {
-                      generateStudentCardPDF(s, config);
-                      onShowToast('Mencetak Kartu', `Membuat Kartu Tanda Siswa ${s.name}...`, 'success');
-                    }}
-                    className="w-7 h-7 flex items-center justify-center rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition"
-                    title="Cetak Kartu Tanda Siswa RFID"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                  </button>
+                {/* Selection Checkbox */}
+                <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelectStudent(s.id)}
+                    className="w-4.5 h-4.5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    title="Pilih siswa untuk cetak kartu"
+                  />
+                </div>
+
+                <div className="absolute right-2 top-2 flex items-center gap-1 z-20">
                   <button
                     onClick={() => handleOpenEditModal(s)}
                     className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition"
@@ -360,7 +445,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 </div>
                 <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-slate-100 to-transparent -z-0 rounded-bl-full pointer-events-none" />
 
-                <div className="flex items-start gap-3.5 relative z-10 min-w-0 pt-2">
+                <div className="flex items-start gap-3.5 relative z-10 min-w-0 pt-3">
                   <div className="w-12 h-12 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold text-base border border-red-100 flex-shrink-0">
                     {s.name.charAt(0).toUpperCase()}
                   </div>
@@ -401,8 +486,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                     <span className="block text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
                       Wali Asuh
                     </span>
-                    <span className="text-xs font-bold text-slate-700 mt-0.5 block truncate" title={s.caretaker}>
-                      {s.caretaker}
+                    <span className="text-xs font-bold text-slate-700 mt-0.5 block truncate" title={s.caretaker || '-'}>
+                      {s.caretaker || '-'}
                     </span>
                   </div>
                 </div>
@@ -427,24 +512,14 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   </div>
                 </div>
 
-                {/* Card Action Buttons */}
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    onClick={() => {
-                      generateStudentCardPDF(s, config);
-                      onShowToast('Mencetak Kartu', `Membuat Kartu Tanda Siswa ${s.name}...`, 'success');
-                    }}
-                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold py-2 px-3 rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5"
-                    title="Cetak Kartu Tanda Siswa RFID"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-indigo-600" /> Cetak Kartu
-                  </button>
+                {/* Card Action Button */}
+                <div className="pt-1">
                   <button
                     onClick={() => {
                       setSelectedStudentForHistory(s);
                       setHistoryTab('violations');
                     }}
-                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5"
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5"
                   >
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Riwayat Kedisiplinan
                   </button>

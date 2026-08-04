@@ -379,7 +379,49 @@ export const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [
     officer: 'Tim Medis UKS / Pembina Asrama',
     temperature: '38.5°C',
     vitalSigns: '110/70 mmHg, Nadi 88x/m',
+    height: 142,
+    weight: 36,
     notes: 'Perlu diminum obat setelah makan. Evaluasi ulang suhu tubuh jam 16:00.'
+  },
+  {
+    id: 'MED-2026-000A',
+    studentId: 'SR0001',
+    studentName: 'A Rakka Attala',
+    date: '2026-05-15',
+    time: '09:00',
+    location: 'Klinik Sekolah',
+    symptoms: 'Pemeriksaan Kesehatan Rutin & Penimbangan Fisik Per Triwulan',
+    diagnosis: 'Kondisi Sehat & Perkembangan Normal',
+    treatment: 'Pemberian Multivitamin & Obat Cacing Rutin',
+    restDays: 0,
+    isSickLeave: false,
+    status: 'Sembuh / Kembali Sekolah',
+    officer: 'Tim UKS Puskesmas Pembantu',
+    temperature: '36.5°C',
+    vitalSigns: '110/70 mmHg',
+    height: 140,
+    weight: 34,
+    notes: 'Pertumbuhan fisik meningkat 2cm dan berat badan naik 2kg dalam 3 bulan.'
+  },
+  {
+    id: 'MED-2026-000B',
+    studentId: 'SR0001',
+    studentName: 'A Rakka Attala',
+    date: '2026-01-10',
+    time: '10:00',
+    location: 'Klinik Sekolah',
+    symptoms: 'Pemeriksaan Kesehatan Awal Semester Ganjil',
+    diagnosis: 'Sehat Bebas Keluhan',
+    treatment: 'Edukasi Kebersihan Diri & Gizi Seimbang',
+    restDays: 0,
+    isSickLeave: false,
+    status: 'Sembuh / Kembali Sekolah',
+    officer: 'Tim Medis UKS',
+    temperature: '36.6°C',
+    vitalSigns: '105/65 mmHg',
+    height: 137,
+    weight: 32,
+    notes: 'Data fisik awal tahun ajaran baru.'
   },
   {
     id: 'MED-2026-002',
@@ -397,6 +439,8 @@ export const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [
     officer: 'dr. Hidayatullah (Klinik Swasta Kemitraan)',
     temperature: '36.8°C',
     vitalSigns: '120/80 mmHg',
+    height: 146,
+    weight: 40,
     notes: 'Dirujuk ke Klinik Kemitraan Palembang untuk infus cairan D5% dan observasi 1x24 jam.'
   },
   {
@@ -415,6 +459,8 @@ export const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [
     officer: 'Tim Medis UKS',
     temperature: '36.5°C',
     vitalSigns: '115/75 mmHg',
+    height: 168,
+    weight: 58,
     notes: 'Sudah membaik dan disarankan tidak berolahraga berat selama 1 minggu.'
   }
 ];

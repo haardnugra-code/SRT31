@@ -63,6 +63,294 @@ interface PrayerAttendanceTabProps {
   config: AppConfig;
 }
 
+interface StudentQRCodeProps {
+  student: Student;
+  payloadFormat?: 'id' | 'json';
+  existingUrl?: string;
+  className?: string;
+  size?: number;
+}
+
+const StudentQRCode: React.FC<StudentQRCodeProps> = ({
+  student,
+  payloadFormat = 'id',
+  existingUrl,
+  className = 'w-16 h-16 object-contain',
+  size = 400
+}) => {
+  const [dataUrl, setDataUrl] = useState<string>(existingUrl || '');
+
+  useEffect(() => {
+    if (existingUrl) {
+      setDataUrl(existingUrl);
+      return;
+    }
+
+    let isMounted = true;
+    const studentKey = String(student?.id || '').trim();
+    if (!studentKey) return;
+
+    const qrPayload =
+      payloadFormat === 'json'
+        ? JSON.stringify({ id: studentKey, name: student.name, class: student.class, dorm: student.dorm })
+        : studentKey;
+
+    QRCode.toDataURL(qrPayload, {
+      width: size,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+      color: {
+        dark: '#020617',
+        light: '#ffffff'
+      }
+    })
+      .then((url) => {
+        if (isMounted) setDataUrl(url);
+      })
+      .catch((err) => {
+        console.error('Gagal generate QR Code untuk student', student?.id, err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [student, payloadFormat, existingUrl, size]);
+
+  if (!dataUrl) {
+    return (
+      <div className={`bg-slate-200 animate-pulse rounded flex items-center justify-center text-[8px] font-mono text-slate-500 ${className}`}>
+        QR...
+      </div>
+    );
+  }
+
+  return <img src={dataUrl} alt={`QR-${student?.id || ''}`} className={className} />;
+};
+
+interface StudentCardFrontProps {
+  student: Student;
+  config: AppConfig;
+  qrPayloadFormat?: 'id' | 'json';
+  qrUrl?: string;
+  theme?: 'dark' | 'light';
+  isPrint?: boolean;
+  showCropMarks?: boolean;
+}
+
+const StudentCardFront: React.FC<StudentCardFrontProps> = ({
+  student,
+  config,
+  qrPayloadFormat = 'id',
+  qrUrl,
+  theme = 'dark',
+  isPrint = false,
+  showCropMarks = false
+}) => {
+  const isDark = theme === 'dark';
+
+  return (
+    <div
+      className={`relative flex flex-col justify-between overflow-hidden select-none box-border ${
+        isPrint
+          ? `cr80-card-print p-[2.5mm] ${
+              isDark
+                ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 text-white border border-red-500/40'
+                : 'bg-white text-slate-900 border-2 border-slate-900'
+            } ${showCropMarks ? 'ring-1 ring-slate-400' : ''}`
+          : `w-full aspect-[85.6/54] p-3 ${
+              isDark
+                ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 text-white border border-red-500/40 rounded-2xl shadow-lg'
+                : 'bg-white text-slate-900 border-2 border-slate-900 rounded-2xl shadow-md'
+            }`
+      }`}
+      style={isPrint ? { pageBreakInside: 'avoid', breakInside: 'avoid' } : undefined}
+    >
+      {/* Card Header */}
+      <div className={`flex items-center justify-between pb-1 mb-1 border-b ${isDark ? 'border-white/20' : 'border-slate-900'}`}>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {config.logoKiriUrl ? (
+            <img
+              src={config.logoKiriUrl}
+              alt="Logo"
+              className={`w-5 h-5 object-contain flex-shrink-0 ${isDark ? 'bg-white/10 rounded-full p-0.5' : ''}`}
+            />
+          ) : (
+            <GraduationCap className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-red-400' : 'text-red-700'}`} />
+          )}
+          <div className="min-w-0">
+            <h4
+              className={`font-extrabold text-[8.5px] uppercase tracking-wider leading-tight truncate ${
+                isDark ? 'text-slate-100' : 'text-slate-900'
+              }`}
+            >
+              SEKOLAH RAKYAT TERINTEGRASI
+            </h4>
+            <p className={`text-[7px] font-extrabold uppercase truncate ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+              KEMENTERIAN SOSIAL RI
+            </p>
+          </div>
+        </div>
+        <span
+          className={`text-[6.5px] font-extrabold px-1.5 py-0.5 rounded uppercase flex-shrink-0 ${
+            isDark ? 'bg-red-600 text-white shadow-xs' : 'border border-slate-900 bg-slate-100 text-slate-900'
+          }`}
+        >
+          OFFICIAL CARD
+        </span>
+      </div>
+
+      {/* Card Body */}
+      <div className="flex items-center gap-2.5 my-auto">
+        <div
+          className={`p-1 rounded-xl text-center flex-shrink-0 bg-white ${
+            isDark ? 'shadow-md border border-white/30' : 'border border-slate-900'
+          }`}
+        >
+          <StudentQRCode
+            student={student}
+            payloadFormat={qrPayloadFormat}
+            existingUrl={qrUrl}
+            className="w-14 h-14 object-contain"
+            size={400}
+          />
+          <span className="text-[7px] font-mono font-black text-slate-900 block mt-0.5 leading-none">{student.id}</span>
+        </div>
+
+        <div className="space-y-0.5 flex-1 min-w-0">
+          <div>
+            <span
+              className={`text-[6.5px] block font-bold leading-none uppercase ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}
+            >
+              NAMA MURID:
+            </span>
+            <h3
+              className={`font-extrabold text-[11px] leading-tight uppercase truncate ${
+                isDark ? 'text-white' : 'text-slate-900'
+              }`}
+            >
+              {student.name}
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-1 text-[8.5px]">
+            <div>
+              <span
+                className={`text-[6.5px] block font-bold leading-none uppercase ${
+                  isDark ? 'text-slate-400' : 'text-slate-500'
+                }`}
+              >
+                KELAS:
+              </span>
+              <span className={`font-extrabold ${isDark ? 'text-red-300' : 'text-red-700'}`}>{student.class}</span>
+            </div>
+            <div>
+              <span
+                className={`text-[6.5px] block font-bold leading-none uppercase ${
+                  isDark ? 'text-slate-400' : 'text-slate-500'
+                }`}
+              >
+                ASRAMA:
+              </span>
+              <span className={`font-bold truncate block ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                {student.dorm}
+              </span>
+            </div>
+          </div>
+          <div>
+            <span
+              className={`text-[6.5px] block font-bold leading-none uppercase ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}
+            >
+              WALI ASUH:
+            </span>
+            <span
+              className={`font-medium text-[7.5px] truncate block ${
+                isDark ? 'text-slate-300' : 'text-slate-800 font-bold'
+              }`}
+            >
+              {student.caretaker || '-'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Card Footer */}
+      <div
+        className={`pt-1 border-t flex items-center justify-between text-[7px] font-medium ${
+          isDark ? 'border-white/15 text-slate-300' : 'border-slate-300 text-slate-600 font-bold'
+        }`}
+      >
+        <span className="truncate">Asrama Terpadu Palembang</span>
+        <span className={`font-mono flex-shrink-0 ${isDark ? 'text-red-300 font-bold' : ''}`}>NISN: {student.id}</span>
+      </div>
+    </div>
+  );
+};
+
+interface StudentCardBackProps {
+  student: Student;
+  qrPayloadFormat?: 'id' | 'json';
+  qrUrl?: string;
+  isPrint?: boolean;
+  showCropMarks?: boolean;
+}
+
+const StudentCardBack: React.FC<StudentCardBackProps> = ({
+  student,
+  qrPayloadFormat = 'id',
+  qrUrl,
+  isPrint = false,
+  showCropMarks = false
+}) => {
+  return (
+    <div
+      className={`relative flex flex-col justify-between overflow-hidden select-none box-border ${
+        isPrint
+          ? `cr80-card-print p-[2.5mm] bg-white text-slate-900 border-2 border-slate-900 rounded-[3.18mm] ${
+              showCropMarks ? 'ring-1 ring-slate-400' : ''
+            }`
+          : 'w-full aspect-[85.6/54] p-3 bg-white text-slate-900 border-2 border-slate-900 rounded-2xl shadow-md'
+      }`}
+      style={isPrint ? { pageBreakInside: 'avoid', breakInside: 'avoid' } : undefined}
+    >
+      <div className="text-center border-b border-slate-900 pb-1">
+        <h4 className="font-extrabold text-[8.5px] uppercase text-slate-900 leading-tight">
+          KETENTUAN & TATA TERTIB KEASRAMAAN
+        </h4>
+        <p className="text-[7px] font-bold text-red-700 uppercase">SEKOLAH RAKYAT KEMENSOS RI</p>
+      </div>
+
+      <ol className="list-decimal list-inside text-[7.5px] space-y-0.5 font-semibold text-slate-800 leading-tight my-auto">
+        <li>Wajib membawa kartu ini saat presensi sholat 5 waktu berjamaah.</li>
+        <li>Tanda pengenal resmi akses fasilitas & lingkungan asrama.</li>
+        <li>Apabila kartu hilang/rusak, segera lapor ke Wali Asuh.</li>
+      </ol>
+
+      <div className="pt-1 border-t border-slate-300 flex items-center justify-between">
+        <div className="text-[7px] space-y-0.5">
+          <p className="font-bold">Palembang, 2026</p>
+          <p className="font-bold text-slate-700">Kepala Pengasuh Asrama,</p>
+          <div className="h-2.5" />
+          <p className="font-extrabold underline text-slate-900">Tim Pengasuhan SR</p>
+        </div>
+
+        <div className="text-center bg-slate-50 p-1 rounded border border-slate-300">
+          <StudentQRCode
+            student={student}
+            payloadFormat={qrPayloadFormat}
+            existingUrl={qrUrl}
+            className="w-10 h-10 object-contain"
+            size={300}
+          />
+          <span className="text-[6.5px] font-mono font-bold text-slate-800 block">NISN: {student.id}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   students,
   prayerAttendance,
@@ -125,8 +413,11 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   const [qrCodeDataUrls, setQrCodeDataUrls] = useState<Record<string, string>>({});
   const [singleCardPreviewStudent, setSingleCardPreviewStudent] = useState<Student | null>(null);
   const [previewSideModal, setPreviewSideModal] = useState<'front' | 'back'>('front');
+  const [qrPayloadFormat, setQrPayloadFormat] = useState<'id' | 'json'>('id');
+  const jsonFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // HD Card Print Customization Options
+  const [cardDesignTheme, setCardDesignTheme] = useState<'dark' | 'light'>('dark'); // 'dark' = Official Dark Luxury Gradient, 'light' = Clean White Minimalist
   const [cardPrintSide, setCardPrintSide] = useState<'front' | 'both'>('front'); // 'front' = Tampak Depan Saja, 'both' = 2 Sisi (Depan & Belakang CR80)
   const [cardColorMode, setCardColorMode] = useState<'full' | 'grayscale'>('full'); // 'full' = Full Color HD, 'grayscale' = Hemat Tinta
   const [showCropMarks, setShowCropMarks] = useState<boolean>(true); // Garis Potong Presisi (Crop Marks)
@@ -185,34 +476,62 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     }
   };
 
-  // Generate QR Code data URL for each student in Ultra HD Resolution
+  // Generate QR Code data URL for each student in parallel
   useEffect(() => {
+    let isCancelled = false;
     const generateAllQrs = async () => {
-      const urls: Record<string, string> = {};
-      for (const s of students) {
-        try {
-          // Payload contains clean student ID or JSON
-          const qrPayload = s.id;
-          const url = await QRCode.toDataURL(qrPayload, {
-            width: 800, // Ultra HD resolution for crisp scanning & high DPI print
-            margin: 1,
-            errorCorrectionLevel: 'H', // High error tolerance
-            color: {
-              dark: '#020617',
-              light: '#ffffff'
-            }
-          });
-          urls[s.id] = url;
-        } catch (err) {
-          console.error('Gagal generate QR HD untuk student', s.id, err);
-        }
+      if (!students || students.length === 0) {
+        setQrCodeDataUrls({});
+        return;
       }
-      setQrCodeDataUrls(urls);
+
+      try {
+        const results = await Promise.all(
+          students.map(async (s) => {
+            const studentKey = String(s.id).trim();
+            const qrPayload =
+              qrPayloadFormat === 'json'
+                ? JSON.stringify({ id: studentKey, name: s.name, class: s.class, dorm: s.dorm })
+                : studentKey;
+            try {
+              const url = await QRCode.toDataURL(qrPayload, {
+                width: 400,
+                margin: 1,
+                errorCorrectionLevel: 'M',
+                color: {
+                  dark: '#020617',
+                  light: '#ffffff'
+                }
+              });
+              return { id: s.id, key: studentKey, url };
+            } catch (err) {
+              console.error('Gagal generate QR HD untuk student', s.id, err);
+              return { id: s.id, key: studentKey, url: '' };
+            }
+          })
+        );
+
+        if (!isCancelled) {
+          const map: Record<string, string> = {};
+          for (const res of results) {
+            if (res.url) {
+              map[res.id] = res.url;
+              map[res.key] = res.url;
+            }
+          }
+          setQrCodeDataUrls(map);
+        }
+      } catch (err) {
+        console.error('Error batch generating QR codes:', err);
+      }
     };
-    if (students.length > 0) {
-      generateAllQrs();
-    }
-  }, [students]);
+
+    generateAllQrs();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [students, qrPayloadFormat]);
 
   // Maintain latest refs to avoid stale closure issues in scanner callback
   const prayerAttendanceRef = useRef(prayerAttendance);
@@ -311,9 +630,32 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     }
   };
 
-  // Process a Scanned Student ID or RFID Tag UID
+  // Process a Scanned Student ID or RFID Tag UID (Supports Plain ID or JSON Payload)
   const handleProcessScan = (rawScannedCode: string) => {
-    const cleanId = rawScannedCode.trim().toUpperCase();
+    let extractedCode = rawScannedCode.trim();
+    if (!extractedCode) return;
+
+    // Check if raw scanned code is in JSON format e.g. {"id": "SR0001"}
+    if (extractedCode.startsWith('{') && extractedCode.endsWith('}')) {
+      try {
+        const parsedObj = JSON.parse(extractedCode);
+        const jsonId =
+          parsedObj.id ||
+          parsedObj.studentId ||
+          parsedObj.nisn ||
+          parsedObj.code ||
+          parsedObj.rfidTag ||
+          parsedObj.rfid ||
+          parsedObj.nis;
+        if (jsonId) {
+          extractedCode = String(jsonId).trim();
+        }
+      } catch {
+        // Fallback to raw string if JSON parsing fails
+      }
+    }
+
+    const cleanId = extractedCode.toUpperCase();
     if (!cleanId) return;
 
     // Prevent duplicate rapid scanning of the same ID within 1.5s
@@ -759,6 +1101,72 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     });
   }, [prayerAttendance, recapDateFilter, recapPrayerFilter, recapClassFilter, recapSearch]);
 
+  // Export & Save Prayer Attendance Data as JSON File
+  const handleExportJSON = (dateOnly = false) => {
+    const recordsToSave = dateOnly
+      ? prayerAttendance.filter((p) => p.date === selectedDate)
+      : prayerAttendance;
+
+    if (recordsToSave.length === 0) {
+      alert('Tidak ada data absensi sholat untuk disimpan atau diunduh.');
+      return;
+    }
+
+    const jsonString = JSON.stringify(recordsToSave, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const filename = dateOnly
+      ? `absensi_sholat_${selectedPrayerTime}_${selectedDate}.json`
+      : `absensi_sholat_semua_${new Date().toISOString().split('T')[0]}.json`;
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Import Prayer Attendance Data from JSON File
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const content = evt.target?.result as string;
+        const parsed = JSON.parse(content);
+        if (!Array.isArray(parsed)) {
+          alert('Format file JSON tidak valid. Isi data harus berupa daftar array rekam absensi sholat.');
+          return;
+        }
+
+        const validRecords: PrayerAttendance[] = parsed.filter(
+          (item: any) => item && item.studentId && item.studentName && item.prayerTime && item.date
+        );
+
+        if (validRecords.length === 0) {
+          alert('File JSON tidak berisi rekam data absensi sholat yang valid.');
+          return;
+        }
+
+        // Merge without duplicate IDs
+        const existingIds = new Set(prayerAttendance.map((p) => p.id));
+        const newRecords = validRecords.filter((r) => !existingIds.has(r.id));
+
+        const combined = [...newRecords, ...prayerAttendance];
+        onSavePrayerAttendance(combined);
+        alert(`Berhasil mengimpor ${newRecords.length} rekam absensi baru dari file JSON! Total data saat ini: ${combined.length}`);
+      } catch (err: any) {
+        alert('Gagal mengimpor file JSON: ' + (err?.message || 'Format tidak valid'));
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   // Export Recap PDF
   const handleExportRecapPDF = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -863,6 +1271,15 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Hidden File Input for JSON Attendance Import */}
+      <input
+        type="file"
+        ref={jsonFileInputRef}
+        onChange={handleImportJSON}
+        accept=".json,application/json"
+        className="hidden"
+      />
+
       {/* HEADER BANNER */}
       <div className="no-print bg-gradient-to-r from-slate-900 via-slate-800 to-red-950 text-white rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -1021,6 +1438,33 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                   title="Buka checklist murid untuk memilih siapa saja yang tidak hadir / izin / sakit"
                 >
                   <UserCheck className="w-4 h-4 text-amber-400" /> Pilih Siswa Tidak Hadir / Checklist
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExportJSON(true)}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 active:scale-95"
+                  title="Simpan & Unduh data absensi sholat sesi ini sebagai file JSON"
+                >
+                  <Download className="w-3.5 h-3.5" /> Simpan JSON Sesi Ini
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExportJSON(false)}
+                  className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-3 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 border border-slate-700 active:scale-95"
+                  title="Simpan & Unduh seluruh data absensi sholat sebagai file JSON"
+                >
+                  <HardDrive className="w-3.5 h-3.5 text-blue-400" /> Simpan JSON All
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => jsonFileInputRef.current?.click()}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 active:scale-95"
+                  title="Impor rekam absensi dari file JSON"
+                >
+                  <Code2 className="w-3.5 h-3.5 text-indigo-200" /> Impor JSON
                 </button>
 
                 <button
@@ -2013,8 +2457,8 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
             </div>
 
             {/* Filter Bar & HD Print Customization Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-              <div className="relative">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 text-xs">
+              <div className="relative col-span-1 sm:col-span-2">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
@@ -2031,10 +2475,33 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                   onChange={(e) => setCardClassFilter(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                 >
-                  <option value="">Semua Jenjang / Kelas</option>
+                  <option value="">Semua Kelas</option>
                   <option value="SD">Jenjang SD</option>
                   <option value="SMP">Jenjang SMP</option>
                   <option value="SMA">Jenjang SMA</option>
+                </select>
+              </div>
+
+              <div>
+                <select
+                  value={cardDesignTheme}
+                  onChange={(e) => setCardDesignTheme(e.target.value as 'dark' | 'light')}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                >
+                  <option value="dark">Desain: Dark Luxury</option>
+                  <option value="light">Desain: Clean Minimalist</option>
+                </select>
+              </div>
+
+              <div>
+                <select
+                  value={qrPayloadFormat}
+                  onChange={(e) => setQrPayloadFormat(e.target.value as 'id' | 'json')}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                  title="Pilih format isi payload QR Code"
+                >
+                  <option value="id">QR: NISN / ID Plain</option>
+                  <option value="json">QR: JSON Object</option>
                 </select>
               </div>
 
@@ -2044,24 +2511,9 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                   onChange={(e) => setCardPrintSide(e.target.value as 'front' | 'both')}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                 >
-                  <option value="front">Muka Kartu: Tampak Depan Saja</option>
-                  <option value="both">Muka Kartu: 2 Sisi (Depan & Belakang)</option>
+                  <option value="front">Cetak: Tampak Depan</option>
+                  <option value="both">Cetak: 2 Sisi (Depan & Belakang)</option>
                 </select>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
-                <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 text-[11px]">
-                  <input
-                    type="checkbox"
-                    checked={showCropMarks}
-                    onChange={(e) => setShowCropMarks(e.target.checked)}
-                    className="rounded text-red-600 focus:ring-red-500"
-                  />
-                  Garis Potong (Crop Marks)
-                </label>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  Terpilih: {selectedStudentIdsForCards.length}
-                </span>
               </div>
             </div>
           </div>
@@ -2076,65 +2528,31 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                 <div
                   key={s.id}
                   onClick={() => toggleSelectCard(s.id)}
-                  className={`relative cursor-pointer rounded-2xl border transition-all overflow-hidden p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 text-white shadow-md hover:shadow-xl ${
-                    isSelected ? 'ring-4 ring-red-500 border-red-500 scale-[1.01]' : 'border-slate-800 opacity-95 hover:opacity-100'
+                  className={`relative cursor-pointer transition-all ${
+                    isSelected ? 'ring-4 ring-red-500 rounded-2xl scale-[1.01]' : 'opacity-95 hover:opacity-100'
                   }`}
                 >
                   {/* Selection Checkbox Pill */}
-                  <div className="absolute top-3 right-3 z-10">
+                  <div className="absolute top-2.5 right-2.5 z-20">
                     <div
                       className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                        isSelected ? 'bg-red-600 text-white shadow-md' : 'bg-white/20 text-transparent border border-white/30'
+                        isSelected ? 'bg-red-600 text-white shadow-md' : 'bg-black/30 text-transparent border border-white/40'
                       }`}
                     >
                       <Check className="w-3.5 h-3.5 stroke-[3]" />
                     </div>
                   </div>
 
-                  {/* Card Header */}
-                  <div className="flex items-center gap-2 border-b border-white/15 pb-2.5 mb-3 pr-8">
-                    {config.logoKiriUrl ? (
-                      <img src={config.logoKiriUrl} alt="Logo" className="w-7 h-7 object-contain bg-white/10 rounded-full p-0.5" />
-                    ) : (
-                      <GraduationCap className="w-6 h-6 text-red-400" />
-                    )}
-                    <div>
-                      <h4 className="font-extrabold text-[11px] uppercase tracking-wider text-slate-100 leading-tight">
-                        KARTU TANDA MURID
-                      </h4>
-                      <p className="text-[9px] text-red-300 font-bold uppercase">SEKOLAH RAKYAT KEMENSOS RI</p>
-                    </div>
-                  </div>
-
-                  {/* Card Main Info */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="space-y-1 text-xs flex-1">
-                      <span className="inline-block px-2 py-0.5 bg-red-600/40 border border-red-500/50 text-red-200 text-[9px] font-extrabold rounded-full uppercase">
-                        KELAS {s.class}
-                      </span>
-                      <h3 className="font-extrabold text-sm text-white leading-tight">{s.name}</h3>
-                      <p className="text-[10px] text-slate-300 font-mono">NISN: {s.id}</p>
-                      {s.rfidTag && (
-                        <p className="text-[10px] text-amber-300 font-mono font-bold flex items-center gap-1">
-                          <Cpu className="w-3 h-3 text-amber-400" /> RFID: {s.rfidTag}
-                        </p>
-                      )}
-                      <p className="text-[10px] text-slate-400">Gedung: {s.dorm}</p>
-                    </div>
-
-                    {/* QR Code Container HD */}
-                    <div className="bg-white p-1.5 rounded-xl shadow-lg border border-white/20 flex-shrink-0 text-center">
-                      {qrUrl ? (
-                        <img src={qrUrl} alt={`QR-${s.id}`} className="w-16 h-16 object-contain" />
-                      ) : (
-                        <div className="w-16 h-16 bg-slate-200 animate-pulse rounded" />
-                      )}
-                      <span className="text-[8px] font-mono font-black text-slate-900 block mt-0.5">{s.id}</span>
-                    </div>
-                  </div>
+                  <StudentCardFront
+                    student={s}
+                    config={config}
+                    qrPayloadFormat={qrPayloadFormat}
+                    qrUrl={qrUrl}
+                    theme={cardDesignTheme}
+                  />
 
                   {/* Card Footer Actions */}
-                  <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[10px]">
+                  <div className="mt-1 flex items-center justify-between text-[10px] px-1">
                     <span className="text-slate-400 font-medium">CR80 • 85.6x54mm</span>
                     <button
                       onClick={(e) => {
@@ -2142,7 +2560,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                         setSingleCardPreviewStudent(s);
                         setPreviewSideModal('front');
                       }}
-                      className="text-red-300 hover:text-white font-bold underline flex items-center gap-1"
+                      className="text-red-600 hover:text-red-700 font-bold underline flex items-center gap-1"
                     >
                       Pratinjau HD &rarr;
                     </button>
@@ -2190,104 +2608,19 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
                 {/* Card Container Preview HD */}
                 {previewSideModal === 'front' ? (
-                  <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 text-white shadow-2xl space-y-4 border-2 border-red-600/50 relative overflow-hidden">
-                    <div className="flex items-center justify-between border-b border-white/20 pb-3">
-                      <div className="flex items-center gap-2">
-                        {config.logoKiriUrl ? (
-                          <img src={config.logoKiriUrl} alt="Logo" className="w-8 h-8 object-contain bg-white/10 rounded-full p-0.5" />
-                        ) : (
-                          <GraduationCap className="w-8 h-8 text-red-500" />
-                        )}
-                        <div>
-                          <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-100">
-                            SEKOLAH RAKYAT TERINTEGRASI
-                          </h4>
-                          <p className="text-[9px] text-red-300 font-bold uppercase">KEMENTERIAN SOSIAL REPUBLIK INDONESIA</p>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-extrabold px-2 py-0.5 bg-red-600 text-white rounded uppercase shadow">
-                        OFFICIAL CARD
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <div className="bg-white p-2 rounded-xl shadow-lg flex-shrink-0 text-center border border-white/30">
-                        {qrCodeDataUrls[singleCardPreviewStudent.id] && (
-                          <img
-                            src={qrCodeDataUrls[singleCardPreviewStudent.id]}
-                            alt="QR"
-                            className="w-24 h-24 object-contain"
-                          />
-                        )}
-                        <span className="text-[9px] font-mono font-black text-slate-900 block mt-1">
-                          {singleCardPreviewStudent.id}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs">
-                        <div>
-                          <span className="text-[9px] text-slate-400 block font-bold">NAMA MURID:</span>
-                          <h3 className="font-extrabold text-base text-white leading-tight uppercase">{singleCardPreviewStudent.name}</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-[11px]">
-                          <div>
-                            <span className="text-[9px] text-slate-400 block font-bold">JENJANG/KELAS:</span>
-                            <span className="font-extrabold text-red-300">{singleCardPreviewStudent.class}</span>
-                          </div>
-                          <div>
-                            <span className="text-[9px] text-slate-400 block font-bold">ASRAMA:</span>
-                            <span className="font-bold text-slate-200">{singleCardPreviewStudent.dorm}</span>
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-[9px] text-slate-400 block font-bold">WALI ASUH:</span>
-                          <span className="font-medium text-slate-300 text-[10px]">{singleCardPreviewStudent.caretaker || '-'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-2.5 border-t border-white/15 flex items-center justify-between text-[9px] text-slate-300">
-                      <span>Gedung Asrama Terpadu Palembang</span>
-                      <span className="font-semibold text-red-300">TA 2025/2026</span>
-                    </div>
-                  </div>
+                  <StudentCardFront
+                    student={singleCardPreviewStudent}
+                    config={config}
+                    qrPayloadFormat={qrPayloadFormat}
+                    qrUrl={qrCodeDataUrls[singleCardPreviewStudent.id]}
+                    theme={cardDesignTheme}
+                  />
                 ) : (
-                  <div className="p-5 rounded-2xl bg-white text-slate-900 shadow-2xl space-y-3 border-2 border-slate-900 relative">
-                    <div className="text-center border-b-2 border-slate-900 pb-2">
-                      <h4 className="font-extrabold text-xs uppercase text-slate-900">
-                        KETENTUAN & TATA TERTIB KEASRAMAAN
-                      </h4>
-                      <p className="text-[9px] font-bold text-red-700 uppercase">SEKOLAH RAKYAT KEMENSOS RI</p>
-                    </div>
-
-                    <ol className="list-decimal list-inside text-[10px] space-y-1 font-medium text-slate-800 leading-tight">
-                      <li>Wajib membawa kartu ini pada setiap ibadah sholat 5 waktu berjamaah.</li>
-                      <li>Kartu ini merupakan tanda pengenal resmi akses lingkungan asrama.</li>
-                      <li>Apabila kartu hilang/rusak, wajib segera lapor ke Wali Asuh.</li>
-                    </ol>
-
-                    <div className="pt-2 border-t border-slate-300 flex items-center justify-between">
-                      <div className="text-[8px] space-y-0.5">
-                        <p className="font-bold">Palembang, 2026</p>
-                        <p className="font-bold text-slate-700">Kepala Pengasuh Asrama,</p>
-                        <div className="h-6" />
-                        <p className="font-extrabold underline text-slate-900">Tim Pengasuhan SR</p>
-                      </div>
-
-                      <div className="text-center bg-slate-100 p-1.5 rounded-lg border border-slate-300">
-                        {qrCodeDataUrls[singleCardPreviewStudent.id] && (
-                          <img
-                            src={qrCodeDataUrls[singleCardPreviewStudent.id]}
-                            alt="QR"
-                            className="w-12 h-12 object-contain"
-                          />
-                        )}
-                        <span className="text-[7px] font-mono font-bold text-slate-800 block">
-                          NISN: {singleCardPreviewStudent.id}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  <StudentCardBack
+                    student={singleCardPreviewStudent}
+                    qrPayloadFormat={qrPayloadFormat}
+                    qrUrl={qrCodeDataUrls[singleCardPreviewStudent.id]}
+                  />
                 )}
 
                 <div className="flex items-center gap-3 pt-2">
@@ -2327,7 +2660,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="cr80-print-grid">
               {(selectedStudentIdsForCards.length > 0
                 ? students.filter((s) => selectedStudentIdsForCards.includes(s.id))
                 : filteredStudentsForCards
@@ -2336,110 +2669,26 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
                 return (
                   <React.Fragment key={s.id}>
-                    {/* FRONT SIDE CARD (TAMPAK DEPAN) */}
-                    <div
-                      className={`cr80-card-print relative border-2 border-slate-900 rounded-xl p-3 bg-white text-slate-900 flex flex-col justify-between shadow-none page-break-inside-avoid ${
-                        showCropMarks ? 'ring-1 ring-slate-400' : ''
-                      }`}
-                      style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
-                    >
-                      {/* Card Header */}
-                      <div className="flex items-center justify-between border-b-2 border-slate-900 pb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          {config.logoKiriUrl ? (
-                            <img src={config.logoKiriUrl} alt="Logo" className="w-5 h-5 object-contain" />
-                          ) : (
-                            <GraduationCap className="w-5 h-5 text-red-700" />
-                          )}
-                          <div>
-                            <h4 className="font-extrabold text-[9px] uppercase text-slate-900 leading-tight">
-                              SEKOLAH RAKYAT TERINTEGRASI
-                            </h4>
-                            <p className="text-[7.5px] font-extrabold text-red-700 uppercase">KEMENTERIAN SOSIAL RI</p>
-                          </div>
-                        </div>
-                        <span className="text-[7px] font-extrabold px-1 py-0.5 border border-slate-900 rounded uppercase">
-                          OFFICIAL CARD
-                        </span>
-                      </div>
+                    {/* FRONT SIDE CARD */}
+                    <StudentCardFront
+                      student={s}
+                      config={config}
+                      qrPayloadFormat={qrPayloadFormat}
+                      qrUrl={qrUrl}
+                      theme={cardDesignTheme}
+                      isPrint={true}
+                      showCropMarks={showCropMarks}
+                    />
 
-                      {/* Card Body */}
-                      <div className="flex items-center gap-2.5 my-1">
-                        <div className="border border-slate-900 p-0.5 rounded text-center flex-shrink-0 bg-white">
-                          {qrUrl ? (
-                            <img src={qrUrl} alt="QR" className="w-16 h-16 object-contain" />
-                          ) : (
-                            <div className="w-16 h-16 bg-slate-200" />
-                          )}
-                          <span className="text-[7px] font-mono font-extrabold text-slate-900 block mt-0.5">{s.id}</span>
-                        </div>
-
-                        <div className="space-y-0.5 text-slate-900 flex-1 min-w-0">
-                          <div>
-                            <span className="text-[7px] text-slate-500 block font-bold leading-none">NAMA MURID:</span>
-                            <h3 className="font-extrabold text-[11px] leading-tight uppercase truncate">{s.name}</h3>
-                          </div>
-                          <div className="grid grid-cols-2 gap-1 text-[9px]">
-                            <div>
-                              <span className="text-[7px] text-slate-500 block font-bold leading-none">KELAS:</span>
-                              <span className="font-extrabold text-red-700">{s.class}</span>
-                            </div>
-                            <div>
-                              <span className="text-[7px] text-slate-500 block font-bold leading-none">ASRAMA:</span>
-                              <span className="font-bold truncate block">{s.dorm}</span>
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-[7px] text-slate-500 block font-bold leading-none">WALI ASUH:</span>
-                            <span className="font-bold text-[8px] text-slate-800 truncate block">{s.caretaker || '-'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Card Footer */}
-                      <div className="pt-1 border-t border-slate-300 flex items-center justify-between text-[7px] text-slate-600 font-bold">
-                        <span>Asrama Terpadu Palembang</span>
-                        <span className="font-mono">NISN: {s.id}</span>
-                      </div>
-                    </div>
-
-                    {/* BACK SIDE CARD (TAMPAK BELAKANG) - Optional 2 Sisi */}
+                    {/* BACK SIDE CARD */}
                     {cardPrintSide === 'both' && (
-                      <div
-                        className={`cr80-card-print relative border-2 border-slate-900 rounded-xl p-3 bg-white text-slate-900 flex flex-col justify-between shadow-none page-break-inside-avoid ${
-                          showCropMarks ? 'ring-1 ring-slate-400' : ''
-                        }`}
-                        style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
-                      >
-                        <div className="text-center border-b border-slate-900 pb-1">
-                          <h4 className="font-extrabold text-[8.5px] uppercase text-slate-900">
-                            KETENTUAN & TATA TERTIB KEASRAMAAN
-                          </h4>
-                          <p className="text-[7px] font-bold text-red-700 uppercase">SEKOLAH RAKYAT KEMENSOS RI</p>
-                        </div>
-
-                        <ol className="list-decimal list-inside text-[7.5px] space-y-0.5 font-semibold text-slate-800 leading-tight">
-                          <li>Wajib membawa kartu ini saat presensi sholat 5 waktu berjamaah.</li>
-                          <li>Tanda pengenal resmi akses fasilitas & lingkungan asrama.</li>
-                          <li>Apabila kartu hilang/rusak, segera lapor ke Wali Asuh.</li>
-                        </ol>
-
-                        <div className="pt-1 border-t border-slate-300 flex items-center justify-between">
-                          <div className="text-[7px] space-y-0.5">
-                            <p className="font-bold">Palembang, 2026</p>
-                            <p className="font-bold text-slate-700">Kepala Pengasuh Asrama,</p>
-                            <div className="h-3" />
-                            <p className="font-extrabold underline text-slate-900">Tim Pengasuhan SR</p>
-                          </div>
-
-                          <div className="text-center bg-slate-50 p-1 rounded border border-slate-300">
-                            {qrUrl && <img src={qrUrl} alt="QR" className="w-10 h-10 object-contain" />}
-                            <span className="text-[6.5px] font-mono font-bold text-slate-800 block">
-                              NISN: {s.id}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                      <StudentCardBack
+                        student={s}
+                        qrPayloadFormat={qrPayloadFormat}
+                        qrUrl={qrUrl}
+                        isPrint={true}
+                        showCropMarks={showCropMarks}
+                      />
                     )}
                   </React.Fragment>
                 );
@@ -2463,12 +2712,28 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                 </p>
               </div>
 
-              <button
-                onClick={handleExportRecapPDF}
-                className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
-              >
-                <Download className="w-4 h-4" /> Unduh Laporan PDF Resmi Kop Sekolah
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => handleExportJSON(false)}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 border border-slate-700"
+                  title="Simpan & Unduh seluruh data rekap absensi sholat sebagai file JSON"
+                >
+                  <Download className="w-4 h-4 text-blue-400" /> Simpan JSON Absensi
+                </button>
+                <button
+                  onClick={() => jsonFileInputRef.current?.click()}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                  title="Impor file JSON rekap absensi sholat"
+                >
+                  <Code2 className="w-4 h-4 text-indigo-200" /> Impor File JSON
+                </button>
+                <button
+                  onClick={handleExportRecapPDF}
+                  className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                >
+                  <Download className="w-4 h-4" /> Unduh Laporan PDF Resmi Kop Sekolah
+                </button>
+              </div>
             </div>
 
             {/* Filter Controls */}

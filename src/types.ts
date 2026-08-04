@@ -107,6 +107,8 @@ export interface MedicalRecord {
   temperature?: string; // Suhu Tubuh (e.g. 38.2°C)
   vitalSigns?: string; // Tensi / Nadi (e.g. 110/70 mmHg)
   notes?: string;
+  height?: number; // Tinggi badan saat diperiksa (cm)
+  weight?: number; // Berat badan saat diperiksa (kg)
   customWaliAsrama?: string;
   customWaliAsramaNip?: string;
 }

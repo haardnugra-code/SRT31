@@ -1,4 +1,14 @@
 import React, { useState, useMemo } from 'react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 import { formatDateIndonesian } from '../utils/dateFormatter';
 import { printSickLeavePDF } from '../services/pdfGenerator';
 import {
@@ -27,7 +37,10 @@ import {
   ClipboardList,
   Sparkles,
   Download,
-  UserCheck
+  UserCheck,
+  TrendingUp,
+  Scale,
+  Ruler
 } from 'lucide-react';
 import { Student, MedicalRecord, AppConfig } from '../types';
 
@@ -51,6 +64,46 @@ const COMMON_SYMPTOMS = [
   'Sesak / Asma',
   'Alergi / Gatal'
 ];
+
+const PhysicalTrendTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-slate-900/95 backdrop-blur-sm text-white p-3.5 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1.5 z-50">
+        <p className="font-black text-slate-200 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
+          <Calendar className="w-3.5 h-3.5 text-rose-400" />
+          {data.formattedDate || label}
+        </p>
+        {data.note && (
+          <p className="text-[11px] text-slate-400 italic">
+            "{data.note}"
+          </p>
+        )}
+        <div className="space-y-1 pt-1">
+          {data.height !== null && (
+            <p className="font-bold text-blue-400 flex items-center justify-between gap-6">
+              <span className="flex items-center gap-1"><Ruler className="w-3.5 h-3.5" /> Tinggi Badan:</span>
+              <span className="font-mono text-white text-xs">{data.height} cm</span>
+            </p>
+          )}
+          {data.weight !== null && (
+            <p className="font-bold text-rose-400 flex items-center justify-between gap-6">
+              <span className="flex items-center gap-1"><Scale className="w-3.5 h-3.5" /> Berat Badan:</span>
+              <span className="font-mono text-white text-xs">{data.weight} kg</span>
+            </p>
+          )}
+          {data.bmi !== null && (
+            <p className="font-bold text-emerald-400 flex items-center justify-between gap-6 border-t border-slate-800 pt-1 text-[11px]">
+              <span className="flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> Indeks IMT/BMI:</span>
+              <span className="font-mono text-white">{data.bmi}</span>
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export const MedicalTab: React.FC<MedicalTabProps> = ({
   students,
@@ -88,6 +141,8 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
     officer: 'Tim Medis UKS',
     temperature: '37.0°C',
     vitalSigns: '120/80 mmHg',
+    height: undefined,
+    weight: undefined,
     notes: '',
     customWaliAsrama: '',
     customWaliAsramaNip: ''
@@ -125,21 +180,92 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
     if (!selectedStudentForHistory) return [];
     return records.filter(
       (r) =>
-        r.studentId === selectedStudentForHistory ||
+        String(r.studentId).trim() === String(selectedStudentForHistory).trim() ||
         r.studentName.toLowerCase() === selectedStudentForHistory.toLowerCase()
     );
   }, [records, selectedStudentForHistory]);
 
   const selectedStudentObj = useMemo(() => {
-    return students.find((s) => s.id === selectedStudentForHistory);
+    return students.find((s) => String(s.id).trim() === String(selectedStudentForHistory).trim());
   }, [students, selectedStudentForHistory]);
+
+  // Growth / Physical Trend Chart Data (Height & Weight over time) for Recharts
+  const growthChartData = useMemo(() => {
+    if (!selectedStudentForHistory) return [];
+
+    const studentObj = students.find((s) => String(s.id).trim() === String(selectedStudentForHistory).trim());
+    const studentRecs = records.filter(
+      (r) =>
+        String(r.studentId).trim() === String(selectedStudentForHistory).trim() ||
+        (studentObj && r.studentName.toLowerCase() === studentObj.name.toLowerCase())
+    );
+
+    const pointsMap = new Map<string, { date: string; height?: number; weight?: number; note?: string }>();
+
+    // 1. Gather measurements from student's medical records
+    studentRecs.forEach((r) => {
+      if (r.height || r.weight) {
+        pointsMap.set(r.date, {
+          date: r.date,
+          height: r.height,
+          weight: r.weight,
+          note: r.diagnosis || r.symptoms || 'Pemeriksaan UKS'
+        });
+      }
+    });
+
+    // 2. Add current student profile height & weight if available
+    if (studentObj && (studentObj.height || studentObj.weight)) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (!pointsMap.has(todayStr)) {
+        pointsMap.set(todayStr, {
+          date: todayStr,
+          height: studentObj.height,
+          weight: studentObj.weight,
+          note: 'Profil Utama Siswa'
+        });
+      }
+    }
+
+    // Sort chronologically by date
+    const sorted = Array.from(pointsMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    return sorted.map((pt) => {
+      const h = pt.height || undefined;
+      const w = pt.weight || undefined;
+      let bmi: number | null = null;
+      if (h && w) {
+        const hMeters = h / 100;
+        bmi = Number((w / (hMeters * hMeters)).toFixed(1));
+      }
+      return {
+        date: pt.date,
+        formattedDate: formatDateIndonesian(pt.date),
+        height: h || null,
+        weight: w || null,
+        bmi,
+        note: pt.note
+      };
+    });
+  }, [selectedStudentForHistory, students, records]);
+
+  const latestMeasurement = useMemo(() => {
+    if (!growthChartData || growthChartData.length === 0) return null;
+    return growthChartData[growthChartData.length - 1];
+  }, [growthChartData]);
+
+  const firstMeasurement = useMemo(() => {
+    if (!growthChartData || growthChartData.length <= 1) return null;
+    return growthChartData[0];
+  }, [growthChartData]);
 
   // Handlers
   const handleOpenAdd = () => {
     setEditingRecord(null);
+    const firstStudent = students.length > 0 ? students[0] : null;
     setFormData({
-      studentId: students.length > 0 ? students[0].id : '',
-      studentName: students.length > 0 ? students[0].name : '',
+      studentId: firstStudent ? firstStudent.id : '',
+      studentName: firstStudent ? firstStudent.name : '',
       date: new Date().toISOString().split('T')[0],
       time: new Date().toTimeString().slice(0, 5),
       location: 'UKS Asrama',
@@ -152,6 +278,8 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
       officer: 'Tim Medis UKS / Petugas Kesehatan',
       temperature: '37.0°C',
       vitalSigns: '120/80 mmHg',
+      height: firstStudent?.height,
+      weight: firstStudent?.weight,
       notes: '',
       customWaliAsrama: config.waliAsrama || '',
       customWaliAsramaNip: config.waliAsramaNip || ''
@@ -176,12 +304,14 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
   };
 
   const handleStudentSelectInForm = (studentId: string) => {
-    const found = students.find((s) => s.id === studentId);
+    const found = students.find((s) => String(s.id).trim() === String(studentId).trim());
     if (found) {
       setFormData((prev) => ({
         ...prev,
         studentId: found.id,
-        studentName: found.name
+        studentName: found.name,
+        height: prev.height || found.height,
+        weight: prev.weight || found.weight
       }));
     }
   };
@@ -218,6 +348,8 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
       officer: formData.officer || 'Petugas UKS',
       temperature: formData.temperature || '',
       vitalSigns: formData.vitalSigns || '',
+      height: formData.height !== undefined && formData.height !== null && !isNaN(Number(formData.height)) ? Number(formData.height) : undefined,
+      weight: formData.weight !== undefined && formData.weight !== null && !isNaN(Number(formData.weight)) ? Number(formData.weight) : undefined,
       notes: formData.notes || '',
       customWaliAsrama: formData.customWaliAsrama || '',
       customWaliAsramaNip: formData.customWaliAsramaNip || ''
@@ -583,9 +715,137 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Student Profile Card */}
+            <div className="space-y-6">
+              {/* Physical Growth & Measurement Line Chart Card (Recharts) */}
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-blue-600" /> Grafik Riwayat Perkembangan Berat & Tinggi Badan
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Visualisasi grafik garis (line chart) perkembangan fisik {selectedStudentObj?.name} dari waktu ke waktu
+                    </p>
+                  </div>
+
+                  {/* Metric Summary Badges */}
+                  {latestMeasurement && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                      {latestMeasurement.height && (
+                        <span className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                          <Ruler className="w-3.5 h-3.5 text-blue-600" />
+                          Tinggi: {latestMeasurement.height} cm
+                          {firstMeasurement?.height && latestMeasurement.height !== firstMeasurement.height && (
+                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-md ml-1">
+                              {latestMeasurement.height >= firstMeasurement.height ? '+' : ''}
+                              {latestMeasurement.height - firstMeasurement.height} cm
+                            </span>
+                          )}
+                        </span>
+                      )}
+
+                      {latestMeasurement.weight && (
+                        <span className="bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                          <Scale className="w-3.5 h-3.5 text-rose-600" />
+                          Berat: {latestMeasurement.weight} kg
+                          {firstMeasurement?.weight && latestMeasurement.weight !== firstMeasurement.weight && (
+                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-md ml-1">
+                              {latestMeasurement.weight >= firstMeasurement.weight ? '+' : ''}
+                              {Number((latestMeasurement.weight - firstMeasurement.weight).toFixed(1))} kg
+                            </span>
+                          )}
+                        </span>
+                      )}
+
+                      {latestMeasurement.bmi && (
+                        <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          BMI: {latestMeasurement.bmi} (
+                          {latestMeasurement.bmi < 18.5
+                            ? 'Kurus'
+                            : latestMeasurement.bmi < 23
+                            ? 'Ideal / Normal'
+                            : latestMeasurement.bmi < 27
+                            ? 'Kelebihan BB'
+                            : 'Obesitas'}
+                          )
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {growthChartData.length === 0 ? (
+                  <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-8 text-center space-y-2">
+                    <TrendingUp className="w-10 h-10 mx-auto text-slate-300" />
+                    <p className="text-sm font-bold text-slate-700">Belum Ada Data Pengukuran Tinggi & Berat Badan</p>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                      Silakan isi data tinggi (cm) dan berat badan (kg) siswa saat menambah rekam medis UKS atau perbarui di menu Data Siswa.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="w-full h-72 pt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={growthChartData} margin={{ top: 15, right: 30, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis
+                          dataKey="formattedDate"
+                          tick={{ fontSize: 11, fill: '#64748b' }}
+                          stroke="#cbd5e1"
+                        />
+                        <YAxis
+                          yAxisId="left"
+                          orientation="left"
+                          stroke="#2563eb"
+                          tick={{ fontSize: 11, fill: '#2563eb' }}
+                          domain={['dataMin - 5', 'dataMax + 5']}
+                          unit=" cm"
+                        />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          stroke="#e11d48"
+                          tick={{ fontSize: 11, fill: '#e11d48' }}
+                          domain={['dataMin - 3', 'dataMax + 3']}
+                          unit=" kg"
+                        />
+                        <Tooltip content={<PhysicalTrendTooltip />} />
+                        <Legend
+                          verticalAlign="top"
+                          height={36}
+                          formatter={(value) => <span className="text-xs font-bold text-slate-700">{value}</span>}
+                        />
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="height"
+                          name="Tinggi Badan (cm)"
+                          stroke="#2563eb"
+                          strokeWidth={3}
+                          dot={{ r: 5, fill: '#2563eb', strokeWidth: 2, stroke: '#ffffff' }}
+                          activeDot={{ r: 8, strokeWidth: 2, stroke: '#ffffff' }}
+                          connectNulls
+                        />
+                        <Line
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="weight"
+                          name="Berat Badan (kg)"
+                          stroke="#e11d48"
+                          strokeWidth={3}
+                          dot={{ r: 5, fill: '#e11d48', strokeWidth: 2, stroke: '#ffffff' }}
+                          activeDot={{ r: 8, strokeWidth: 2, stroke: '#ffffff' }}
+                          connectNulls
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Student Profile Card */}
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-rose-100 text-rose-700 rounded-full flex items-center justify-center font-black text-xl border border-rose-200">
                     {selectedStudentObj?.name.charAt(0) || 'S'}
@@ -691,9 +951,10 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                 )}
               </div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
+    )}
 
       {/* MODAL FORM: ADD / EDIT REKAM MEDIS */}
       {isModalOpen && (
@@ -785,8 +1046,8 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                 </div>
               </div>
 
-              {/* Vitals (Suhu & Tensi) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              {/* Vitals (Suhu, Tensi, Tinggi & Berat) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Suhu Tubuh (°C)
@@ -802,14 +1063,40 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Tensi / Nadi (Vital Signs)
+                    Tensi / Vital Signs
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. 110/70 mmHg, Nadi 84x/m"
+                    placeholder="e.g. 110/70 mmHg"
                     value={formData.vitalSigns || ''}
                     onChange={(e) => setFormData({ ...formData, vitalSigns: e.target.value })}
                     className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Tinggi Badan (cm)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 142"
+                    value={formData.height !== undefined && formData.height !== null ? formData.height : ''}
+                    onChange={(e) => setFormData({ ...formData, height: e.target.value ? Number(e.target.value) : undefined })}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Berat Badan (kg)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 36"
+                    value={formData.weight !== undefined && formData.weight !== null ? formData.weight : ''}
+                    onChange={(e) => setFormData({ ...formData, weight: e.target.value ? Number(e.target.value) : undefined })}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"
                   />
                 </div>
               </div>

@@ -58,10 +58,30 @@
     height: 54mm !important;
     max-width: 85.6mm !important;
     max-height: 54mm !important;
+    min-width: 85.6mm !important;
+    min-height: 54mm !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    border-radius: 3.18mm !important;
+    margin: 0 !important;
+  }
+
+  .cr80-print-grid {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 5mm !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+  }
+
+  /* Force exact background colors, gradients and text contrast in print */
+  .cr80-card-print,
+  .cr80-card-print * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

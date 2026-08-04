@@ -116,7 +116,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
   // Shadow Data Prevention State
-  const [purgeOrphans, setPurgeOrphans] = useState<boolean>(false);
+  const [purgeOrphans, setPurgeOrphans] = useState<boolean>(true);
   const [isReconciling, setIsReconciling] = useState<boolean>(false);
   const [lastAuditStats, setLastAuditStats] = useState<ShadowDataAuditStats | null>(null);
 

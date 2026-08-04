@@ -619,7 +619,7 @@ export default function App() {
 
   // --- Shadow Data Prevention & Database Sheet Reconciliation Handler ---
   const handleReconcileShadowData = useCallback(
-    async (purgeOrphans: boolean = false): Promise<ShadowDataAuditStats> => {
+    async (purgeOrphans: boolean = true): Promise<ShadowDataAuditStats> => {
       const res = reconcileAndSanitizeShadowData(
         students,
         violations,
@@ -868,7 +868,7 @@ export default function App() {
             fetchedMedical,
             prayerAttendance,
             fetchedReports,
-            false // preserve records by default
+            true // purge orphan and invalid records so non-existent data is eliminated
           );
 
           setStudents(reconciled.students);

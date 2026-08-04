@@ -43,7 +43,7 @@ export function reconcileAndSanitizeShadowData(
   medicalRecordsInput: MedicalRecord[],
   prayerAttendanceInput: PrayerAttendance[],
   reportsInput: Record<string, ReportCardData>,
-  purgeOrphans: boolean = false
+  purgeOrphans: boolean = true
 ): ReconciliationResult {
   const stats: ShadowDataAuditStats = {
     fixedNamesCount: 0,
@@ -52,6 +52,17 @@ export function reconcileAndSanitizeShadowData(
     duplicateRecordsRemoved: 0,
     orphanedRecordsRemoved: 0,
     totalRecordsChecked: 0
+  };
+
+  // Helper to detect table header rows accidentally sent from Sheets
+  const isHeaderRow = (idStr: string, nameStr: string): boolean => {
+    const normId = idStr.toLowerCase().trim();
+    const normName = nameStr.toLowerCase().trim();
+    const headerKeywords = [
+      'nisn/id', 'nisn', 'id', 'no', 'nis', 'nipd', 'no.', 'id siswa',
+      'nama lengkap', 'nama siswa', 'nama murid', 'nama', 'name', 'siswa/i', 'siswa'
+    ];
+    return headerKeywords.includes(normId) || headerKeywords.includes(normName);
   };
 
   // 1. DEDUPLICATE & CLEAN MASTER STUDENTS
@@ -63,6 +74,9 @@ export function reconcileAndSanitizeShadowData(
     if (!s) return;
     let cleanName = String(s.name || '').trim();
     let cleanId = String(s.id || '').trim();
+
+    // Ignore header rows
+    if (isHeaderRow(cleanId, cleanName)) return;
 
     // Auto-fix missing ID or Name
     if (!cleanId && cleanName) {

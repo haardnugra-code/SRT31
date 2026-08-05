@@ -22,12 +22,35 @@ export const DEFAULT_CONFIG: AppConfig = {
   googleScriptUrl: DEFAULT_SCRIPT_URL,
   waliAsrama: "HISNUL HASHIN, SE",
   waliAsramaNip: "NIP. 197406262025211027",
+  waliAsramaTitle: "Wali Asrama Mandiri",
   kepalaSekolah: "YUNI ARSI, S.Pd",
   kepalaSekolahNip: "197206051999032002",
   kopKiri: "KEMENTERIAN SOSIAL REPUBLIK INDONESIA\nPUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI",
   kopKanan: "SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG\nJl. Komp Sosial Km 5 Sukabangun, Palembang",
-  waliAsuhList: ["M. ARDIAN NUGRAHA, S.H|NIP. 199202042026221001", "Bp. Hermawan|NIP. 198005122010121001", "Ibu Handayani|NIP. 198509152014032003", "Ibu Rahmawati, S.Psi.|NIP. 198801122015032002", "Bp. Rudy|NIP. 197904102008011005"],
-  dormList: ["Asrama Terpadu", "Asrama Putra A", "Asrama Putra B", "Asrama Putri C"],
+  waliAsuhList: [
+    "M ARDIAN NUGRAHA|NIP. 199202042026221001",
+    "ULPA JAYANTI|NIP. 199412032026222001",
+    "Muhamad Isroni|NIP. 199311082026221001",
+    "Jepri Julianto|NIP. 200007292026221001",
+    "Yuniarti Anggraini|NIP. 199106092026222001",
+    "SRI AGUSTINA|NIP. 199808262026222001",
+    "Yogi Antoni|NIP. 199208202026221002",
+    "Oktra Suhri|NIP. 199210172026221001",
+    "Muhammad Irfan|NIP. 199801202026221001",
+    "Angginta Christia Ginting|NIP. 198611172026222001",
+    "Umi Kulsum|NIP. 199305112026222001",
+    "Denok Permatasari Heri|NIP. 199707202026222001",
+    "Vivin Dian Oktasari|NIP. 199706162026222001",
+    "Nurul Huda|NIP. 198903202026222001"
+  ],
+  dormList: [
+    "Asrama Dewantara",
+    "Asrama Pattimura",
+    "Asrama Teuku Umar",
+    "Asrama Cut Nyak Dien",
+    "Asrama RA Kartini",
+    "Asrama Dewi Sartika"
+  ],
   logoKiriUrl: "https://lh3.googleusercontent.com/d/1m4voglUO4iLNJ1Pz-ygtKbYstpCwOhOJ",
   logoKananUrl: "https://lh3.googleusercontent.com/d/1rNFA7Zb_jx0c8yAX0gisbzH-EjdoNGtg",
   watermarkOpacity: 0.04,
@@ -234,6 +257,12 @@ export function loadAppConfig(): AppConfig {
       const parsed = JSON.parse(saved);
       if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq')) {
         parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
+      }
+      if (!parsed.waliAsuhList || parsed.waliAsuhList.some((w: string) => w.includes('Bp. Hermawan') || w.includes('Ibu Handayani'))) {
+        parsed.waliAsuhList = DEFAULT_CONFIG.waliAsuhList;
+      }
+      if (!parsed.dormList || parsed.dormList.includes('Asrama Putra A')) {
+        parsed.dormList = DEFAULT_CONFIG.dormList;
       }
       return { ...DEFAULT_CONFIG, ...parsed };
     } catch (e) {

@@ -2167,7 +2167,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                         className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                       >
                         <option value="">Semua Gedung Asrama</option>
-                        {Array.from(new Set(students.map((s) => s.dorm))).map((dorm) => (
+                        {Array.from(new Set([...(config.dormList || []), ...students.map((s) => s.dorm)])).map((dorm) => (
                           <option key={dorm} value={dorm}>
                             {dorm}
                           </option>

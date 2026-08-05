@@ -9,6 +9,7 @@ interface HeaderProps {
   onSync: () => void;
   onToggleMobileSidebar: () => void;
   onLogout: () => void;
+  userRole?: 'admin' | 'guru';
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,7 +18,8 @@ export const Header: React.FC<HeaderProps> = ({
   isSyncing,
   onSync,
   onToggleMobileSidebar,
-  onLogout
+  onLogout,
+  userRole = 'admin'
 }) => {
   return (
     <header className="no-print app-header bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-8 flex-shrink-0 sticky top-0 z-20">
@@ -82,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <User className="w-3.5 h-3.5 text-slate-500 group-hover:hidden" />
           <LogOut className="w-3.5 h-3.5 text-red-600 hidden group-hover:inline-block" />
-          <span>Admin</span>
+          <span>{userRole === 'guru' ? 'Guru' : 'Admin'}</span>
         </button>
       </div>
     </header>

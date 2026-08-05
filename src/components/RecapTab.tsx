@@ -43,7 +43,7 @@ export const RecapTab: React.FC<RecapTabProps> = ({
 
   // Modal State for Signatories
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [caretakerTitle, setCaretakerTitle] = useState<string>("Wali Asrama Mandiri / Wali Asuh");
+  const [caretakerTitle, setCaretakerTitle] = useState<string>(config.waliAsramaTitle || "Wali Asrama Mandiri");
   const [caretakerName, setCaretakerName] = useState<string>(config.waliAsrama || "");
   const [caretakerNip, setCaretakerNip] = useState<string>(config.waliAsramaNip || "");
 

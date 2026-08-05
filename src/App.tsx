@@ -58,6 +58,10 @@ export default function App() {
     return sessionStorage.getItem('sr_auth_status') === 'logged_in';
   });
 
+  const [userRole, setUserRole] = useState<'admin' | 'guru'>(() => {
+    return (sessionStorage.getItem('sr_user_role') as 'admin' | 'guru') || 'admin';
+  });
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
@@ -72,9 +76,10 @@ export default function App() {
   const [prayerAttendance, setPrayerAttendance] = useState<PrayerAttendance[]>(loadPrayerAttendance);
   const [reports, setReports] = useState<Record<string, ReportCardData>>(loadReports);
 
-  const [announcement, setAnnouncement] = useState<string>(
-    'Selamat Datang di Portal Sistem Keasramaan Sekolah Rakyat Terintegrasi 31 Palembang.'
-  );
+  const [announcement, setAnnouncement] = useState<string>(() => {
+    return localStorage.getItem('sr_announcement_text') ||
+      'Selamat Datang di Portal Sistem Keasramaan Sekolah Rakyat Terintegrasi 31 Palembang.';
+  });
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => loadLastSyncTime());
@@ -96,9 +101,65 @@ export default function App() {
 
   const handleLogout = useCallback(() => {
     sessionStorage.removeItem('sr_auth_status');
+    sessionStorage.removeItem('sr_user_role');
     setIsLoggedIn(false);
     showToast('Sign Out Berhasil', 'Anda telah keluar dari sistem.', 'success');
   }, [showToast]);
+
+  const handleLoginSuccess = useCallback((role: 'admin' | 'guru') => {
+    setUserRole(role);
+    setIsLoggedIn(true);
+    if (role === 'guru' && ['students', 'report-card', 'settings'].includes(activeTab)) {
+      setActiveTab('dashboard');
+    }
+    showToast(
+      'Login Berhasil',
+      role === 'guru'
+        ? 'Selamat datang! Anda masuk sebagai Guru / Staf Pengajar.'
+        : 'Selamat datang! Anda masuk sebagai Pengasuh Asrama / Admin.',
+      'success'
+    );
+  }, [activeTab, showToast]);
+
+  // Restrict Guru role from accessing prohibited tabs
+  useEffect(() => {
+    if (isLoggedIn && userRole === 'guru' && ['students', 'report-card', 'settings'].includes(activeTab)) {
+      setActiveTab('dashboard');
+      showToast(
+        'Akses Terbatas',
+        'Role Guru tidak dapat mengakses Data Murid, Rapor Keasramaan, dan Pengaturan Sistem.',
+        'warning'
+      );
+    }
+  }, [userRole, activeTab, isLoggedIn, showToast]);
+
+  const handleUpdateAnnouncement = useCallback(async (msg: string) => {
+    setAnnouncement(msg);
+    localStorage.setItem('sr_announcement_text', msg);
+
+    if (config.googleScriptUrl) {
+      try {
+        await fetch(config.googleScriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'saveAnnouncement',
+            data: {
+              id: 'ANN001',
+              message: msg,
+              status: 'Aktif'
+            }
+          })
+        });
+        showToast('Pengumuman Disimpan', 'Pengumuman berhasil diperbarui & disinkronkan ke database sheet.');
+      } catch (err) {
+        console.error('Error saving announcement:', err);
+        showToast('Tersimpan Lokal', 'Pengumuman disimpan secara lokal.');
+      }
+    } else {
+      showToast('Tersimpan Lokal', 'Pengumuman disimpan di penyimpanan browser.');
+    }
+  }, [config.googleScriptUrl, showToast]);
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -693,12 +754,21 @@ export default function App() {
         const resJson = await response.json();
 
         if (resJson.status === 'success') {
-          if (resJson.announcements && resJson.announcements.length > 0) {
-            const activeMsg = resJson.announcements
-              .filter((a: any) => (a['Status Aktif'] || a['status']) === 'Aktif')
-              .map((a: any) => a['Pesan'] || a['pesan'] || '')
-              .join('  •  ');
-            if (activeMsg) setAnnouncement(activeMsg);
+          if (resJson.announcements && Array.isArray(resJson.announcements) && resJson.announcements.length > 0) {
+            const activeMsgs = resJson.announcements
+              .filter((a: any) => {
+                const statusVal = a['Status Aktif'] ?? a['Status'] ?? a['status'] ?? a['aktif'] ?? a['Aktif'] ?? 'Aktif';
+                const s = String(statusVal).trim().toLowerCase();
+                return s === 'aktif' || s === 'true' || s === '1' || s === 'ya' || s === 'yes' || s === '';
+              })
+              .map((a: any) => a['Pesan'] ?? a['pesan'] ?? a['Pengumuman'] ?? a['pengumuman'] ?? a['Isi'] ?? '')
+              .filter((msg: string) => String(msg).trim() !== '');
+
+            if (activeMsgs.length > 0) {
+              const combinedMsg = activeMsgs.join('  •  ');
+              setAnnouncement(combinedMsg);
+              localStorage.setItem('sr_announcement_text', combinedMsg);
+            }
           }
 
           let activeStudentsList: Student[] = students;
@@ -744,7 +814,7 @@ export default function App() {
                   id,
                   name,
                   class: getVal('Jenjang', 'Jenjang Pendidikan', 'Kelas', 'class', 'Tingkat') || 'SD',
-                  dorm: getVal('Asrama', 'Lokasi Asrama', 'Gedung Asrama', 'dorm', 'Gedung') || 'Asrama Terpadu',
+                  dorm: getVal('Asrama', 'Lokasi Asrama', 'Gedung Asrama', 'dorm', 'Gedung') || (config.dormList[0] || 'Asrama Terpadu'),
                   caretaker: getVal('Wali Asuh', 'Wali', 'caretaker', 'Pendamping') || '',
                   rfidTag: rfid || undefined,
                   height: hRaw && !isNaN(Number(hRaw)) ? Number(hRaw) : undefined,
@@ -938,7 +1008,7 @@ export default function App() {
       />
 
       {/* Login Screen Modal */}
-      <LoginModal isLoggedIn={isLoggedIn} onLoginSuccess={() => setIsLoggedIn(true)} />
+      <LoginModal isLoggedIn={isLoggedIn} onLoginSuccess={handleLoginSuccess} />
 
       {/* Main Row Container */}
       <div className="flex flex-col md:flex-row min-h-screen flex-1 relative">
@@ -948,6 +1018,7 @@ export default function App() {
           onSelectTab={setActiveTab}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          userRole={userRole}
         />
 
         {/* Main Content Area */}
@@ -959,6 +1030,7 @@ export default function App() {
             onSync={() => syncCloudData(true)}
             onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
             onLogout={handleLogout}
+            userRole={userRole}
           />
 
           <div className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8 overflow-y-auto">
@@ -1006,7 +1078,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'students' && (
+            {activeTab === 'students' && userRole === 'admin' && (
               <StudentsTab
                 students={studentsWithViolationCounts}
                 violations={violations}
@@ -1080,7 +1152,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'report-card' && (
+            {activeTab === 'report-card' && userRole === 'admin' && (
               <ReportCardTab
                 students={studentsWithViolationCounts}
                 violations={violations}
@@ -1109,7 +1181,7 @@ export default function App() {
 
             {activeTab === 'guide' && <GuideTab onSelectTab={setActiveTab} />}
 
-            {activeTab === 'settings' && (
+            {activeTab === 'settings' && userRole === 'admin' && (
               <SettingsTab
                 config={config}
                 onSaveConfig={handleSaveConfig}
@@ -1120,6 +1192,8 @@ export default function App() {
                 onReconcileShadowData={handleReconcileShadowData}
                 studentsCount={students.length}
                 recordsCount={violations.length + counseling.length + leaves.length + dailyJournals.length + medicalRecords.length + prayerAttendance.length}
+                announcement={announcement}
+                onUpdateAnnouncement={handleUpdateAnnouncement}
               />
             )}
           </div>

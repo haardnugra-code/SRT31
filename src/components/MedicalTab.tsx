@@ -1632,7 +1632,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
               <div className="pt-8 grid grid-cols-2 text-center text-xs font-sans">
                 <div>
                   <p className="text-slate-600">Mengetahui,</p>
-                  <p className="font-bold text-slate-800">Wali Asrama / Wali Asuh</p>
+                  <p className="font-bold text-slate-800">{config.waliAsramaTitle || 'Wali Asrama / Wali Asuh'}</p>
                   <div className="h-16"></div>
                   <p className="font-bold underline text-slate-900">{printWaliAsrama || config.waliAsrama || 'Wali Asrama'}</p>
                   <p className="text-[10px] text-slate-500">

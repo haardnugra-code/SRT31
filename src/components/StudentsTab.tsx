@@ -71,6 +71,30 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
   const cleanWaliAsuh = config.waliAsuhList.map((item) => item.split('|')[0].trim());
 
+  // List of dorm options following system configuration (config.dormList)
+  const dormListFromConfig = useMemo(() => {
+    return config.dormList && config.dormList.length > 0
+      ? config.dormList
+      : ['Asrama Terpadu'];
+  }, [config.dormList]);
+
+  // Dorm options for form modal selection (includes current formDorm if not in system config)
+  const formDormOptions = useMemo(() => {
+    if (formDorm && !dormListFromConfig.includes(formDorm)) {
+      return [formDorm, ...dormListFromConfig];
+    }
+    return dormListFromConfig;
+  }, [dormListFromConfig, formDorm]);
+
+  // Dorm options for filter dropdown
+  const filterDormOptions = useMemo(() => {
+    const set = new Set<string>(dormListFromConfig);
+    students.forEach((s) => {
+      if (s.dorm) set.add(s.dorm);
+    });
+    return Array.from(set);
+  }, [dormListFromConfig, students]);
+
   // Filtered Students using useMemo for zero input lag
   const filteredStudents = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -355,7 +379,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
               className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
             >
               <option value="">Semua Gedung Asrama</option>
-              {config.dormList.map((d) => (
+              {filterDormOptions.map((d) => (
                 <option key={d} value={d}>
                   {d}
                 </option>
@@ -898,7 +922,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       onChange={(e) => setFormDorm(e.target.value)}
                       className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3.5 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
                     >
-                      {config.dormList.map((d) => (
+                      {formDormOptions.map((d) => (
                         <option key={d} value={d}>
                           {d}
                         </option>

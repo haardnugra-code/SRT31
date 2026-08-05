@@ -26,7 +26,8 @@ import {
   Edit2,
   RefreshCw,
   CheckCircle2,
-  Clock
+  Clock,
+  Megaphone
 } from 'lucide-react';
 import { AppConfig, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, ReportCategory } from '../types';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/googleAppsScriptCode';
@@ -44,6 +45,8 @@ interface SettingsTabProps {
   onReconcileShadowData?: (purgeOrphans: boolean) => Promise<ShadowDataAuditStats>;
   studentsCount?: number;
   recordsCount?: number;
+  announcement?: string;
+  onUpdateAnnouncement?: (msg: string) => void;
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
@@ -55,7 +58,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   isSyncing = false,
   onReconcileShadowData,
   studentsCount = 0,
-  recordsCount = 0
+  recordsCount = 0,
+  announcement = '',
+  onUpdateAnnouncement
 }) => {
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState<boolean>(false);
@@ -69,6 +74,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [kepalaSekolahNip, setKepalaSekolahNip] = useState<string>(config.kepalaSekolahNip);
   const [waliAsrama, setWaliAsrama] = useState<string>(config.waliAsrama);
   const [waliAsramaNip, setWaliAsramaNip] = useState<string>(config.waliAsramaNip);
+  const [waliAsramaTitle, setWaliAsramaTitle] = useState<string>(config.waliAsramaTitle || 'Wali Asrama Mandiri');
   const [logoKiriUrl, setLogoKiriUrl] = useState<string>(config.logoKiriUrl);
   const [logoKananUrl, setLogoKananUrl] = useState<string>(config.logoKananUrl);
   const [watermarkOpacity, setWatermarkOpacity] = useState<number>(config.watermarkOpacity);
@@ -77,6 +83,15 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [dormText, setDormText] = useState<string>(config.dormList.join('\n'));
   const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(config.semester || 'Genap');
   const [academicYear, setAcademicYear] = useState<string>(config.academicYear || '2025/2026');
+
+  // Announcement State
+  const [announcementText, setAnnouncementText] = useState<string>(announcement);
+
+  React.useEffect(() => {
+    if (announcement) {
+      setAnnouncementText(announcement);
+    }
+  }, [announcement]);
 
   // Discipline & Violation Custom Config State
   const [autoResetPoints, setAutoResetPoints] = useState<boolean>(
@@ -247,6 +262,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       googleScriptUrl: googleScriptUrl.trim(),
       waliAsrama: waliAsrama.trim(),
       waliAsramaNip: waliAsramaNip.trim(),
+      waliAsramaTitle: waliAsramaTitle.trim() || 'Wali Asrama Mandiri',
       kepalaSekolah: kepalaSekolah.trim(),
       kepalaSekolahNip: kepalaSekolahNip.trim(),
       kopKiri: kopKiri.trim(),
@@ -539,6 +555,45 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column: Kop Surat & Signatures */}
           <div className="space-y-4">
+            {/* Announcement Ticker Section */}
+            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <Megaphone className="w-4 h-4 text-indigo-600 animate-pulse" />
+                  Pengumuman Running Text (Dashboard Ticker)
+                </h3>
+                <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">
+                  Database Sheet
+                </span>
+              </div>
+              <p className="text-[11px] text-indigo-800 leading-relaxed">
+                Teks pengumuman ini berjalan di ticker running text Dashboard dan tersimpan langsung di Tab <strong>Announcements</strong> Google Sheet database.
+              </p>
+              <textarea
+                disabled={isLocked}
+                value={announcementText}
+                onChange={(e) => setAnnouncementText(e.target.value)}
+                rows={2}
+                className={inputClass(isLocked)}
+                placeholder="Tuliskan pesan pengumuman running text di sini..."
+              />
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  disabled={isLocked || !announcementText.trim()}
+                  onClick={() => {
+                    if (onUpdateAnnouncement) {
+                      onUpdateAnnouncement(announcementText);
+                    }
+                  }}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Simpan & Sync Pengumuman
+                </button>
+              </div>
+            </div>
+
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b pb-1 border-slate-200 flex items-center gap-1.5">
               <FileSpreadsheet className="w-4 h-4" /> Kop Surat Instansi (Bagian Bawah)
             </h3>
@@ -625,6 +680,20 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   className={inputClass(isLocked)}
                 />
               </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Jabatan / Otorisasi Penandatangan Wali Asrama
+              </label>
+              <input
+                type="text"
+                disabled={isLocked}
+                value={waliAsramaTitle}
+                onChange={(e) => setWaliAsramaTitle(e.target.value)}
+                className={inputClass(isLocked)}
+                placeholder="e.g. Wali Asrama Mandiri, Pembina Asrama, Kepala Asrama"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -214,6 +214,16 @@ function doPost(e) {
       return responseJSON({ status: 'success', message: 'Rapor dihapus' });
     }
 
+    // 8. Announcements CRUD
+    if (action === 'saveAnnouncement' || action === 'addAnnouncement') {
+      saveOrUpdateRow('Announcements', 0, data.id || 'ANN001', [
+        data.id || 'ANN001',
+        data.message || data.pesan || '',
+        data.status || 'Aktif'
+      ]);
+      return responseJSON({ status: 'success', message: 'Pengumuman disimpan' });
+    }
+
     return responseJSON({ status: 'error', message: 'Aksi tidak dikenali: ' + action });
   } catch (err) {
     return responseJSON({ status: 'error', message: err.toString() });

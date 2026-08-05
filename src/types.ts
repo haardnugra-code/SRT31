@@ -172,6 +172,7 @@ export interface AppConfig {
   googleScriptUrl: string;
   waliAsrama: string;
   waliAsramaNip: string;
+  waliAsramaTitle?: string;
   kepalaSekolah: string;
   kepalaSekolahNip: string;
   kopKiri: string;

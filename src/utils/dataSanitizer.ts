@@ -108,7 +108,7 @@ export function reconcileAndSanitizeShadowData(
           id: cleanId,
           name: cleanName,
           class: s.class || 'SD',
-          dorm: s.dorm || 'Asrama Terpadu',
+          dorm: s.dorm || 'Asrama Dewantara',
           caretaker: s.caretaker ? String(s.caretaker).trim() : '',
           rfidTag: s.rfidTag ? String(s.rfidTag).trim() : undefined
         };
@@ -122,7 +122,7 @@ export function reconcileAndSanitizeShadowData(
         id: cleanId,
         name: cleanName,
         class: s.class || 'SD',
-        dorm: s.dorm || 'Asrama Terpadu',
+        dorm: s.dorm || 'Asrama Dewantara',
         caretaker: s.caretaker ? String(s.caretaker).trim() : '',
         rfidTag: s.rfidTag ? String(s.rfidTag).trim() : undefined
       };

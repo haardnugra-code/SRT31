@@ -468,7 +468,8 @@ export async function printLeavePassPDF(
   doc.text(`Palembang, ${dateStr}`, 135, sigY);
   doc.text("Mengetahui & Mengesahkan,", 135, sigY + 4.5);
   doc.setFont("Helvetica", "bold");
-  doc.text("Wali Asrama Mandiri,", 135, sigY + 9);
+  const waliTitle = config?.waliAsramaTitle ? `${config.waliAsramaTitle},` : "Wali Asrama Mandiri,";
+  doc.text(waliTitle, 135, sigY + 9);
 
   const rightNameY = sigY + 28;
   const dormMasterName =
@@ -866,7 +867,7 @@ export async function printReportCardPDF(
   doc.text(`Palembang, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 140, sigY);
   doc.text("Mengetahui / Menyetujui:", 15, sigY + 5);
   doc.text("Wali Asuh,", 15, sigY + 11);
-  doc.text("Wali Asrama,", 140, sigY + 11);
+  doc.text(`${config?.waliAsramaTitle || "Wali Asrama"},`, 140, sigY + 11);
 
   doc.setFont("Helvetica", "bold");
   doc.text(`( ${customCaretakerName} )`, 15, sigY + 24);
@@ -1111,7 +1112,7 @@ export async function generateComprehensivePDF(
     finalY = 30;
   }
 
-  const cTitle = signatory?.caretakerTitle || "Wali Asrama Mandiri / Wali Asuh,";
+  const cTitle = signatory?.caretakerTitle || config?.waliAsramaTitle || "Wali Asrama Mandiri";
   const cName = signatory?.caretakerName || config.waliAsrama || "Wali Asrama";
   const cNip = signatory?.caretakerNip !== undefined ? signatory.caretakerNip : config.waliAsramaNip;
 
@@ -1475,7 +1476,7 @@ export async function printSickLeavePDF(
 
   const row1Y = contentY;
   doc.text("Mengetahui,", 20, row1Y);
-  doc.text("Wali Asrama / Pembina Keasramaan,", 20, row1Y + 4.5);
+  doc.text(`${config?.waliAsramaTitle || "Wali Asrama / Pembina Keasramaan"},`, 20, row1Y + 4.5);
 
   doc.text(`Palembang, ${dateStr}`, 135, row1Y);
   doc.text("Petugas Medis / Pembina UKS,", 135, row1Y + 4.5);

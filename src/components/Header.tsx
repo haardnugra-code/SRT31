@@ -10,6 +10,9 @@ interface HeaderProps {
   onToggleMobileSidebar: () => void;
   onLogout: () => void;
   userRole?: 'admin' | 'guru';
+  connectionStatus?: 'online' | 'offline' | 'checking';
+  lastPingTime?: string | null;
+  onCheckConnection?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,7 +22,10 @@ export const Header: React.FC<HeaderProps> = ({
   onSync,
   onToggleMobileSidebar,
   onLogout,
-  userRole = 'admin'
+  userRole = 'admin',
+  connectionStatus = 'offline',
+  lastPingTime = null,
+  onCheckConnection
 }) => {
   return (
     <header className="no-print app-header bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-8 flex-shrink-0 sticky top-0 z-20">
@@ -41,31 +47,58 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <div
-          className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-semibold ${
-            config.googleScriptUrl
-              ? 'bg-emerald-100 text-emerald-800'
-              : 'bg-amber-100 text-amber-800'
-          } max-w-[150px] sm:max-w-none truncate`}
+        {/* Real-Time Connection Status Badge */}
+        <button
+          type="button"
+          onClick={onCheckConnection}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold border transition-all active:scale-95 cursor-pointer max-w-[160px] sm:max-w-none truncate shadow-xs ${
+            connectionStatus === 'online'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+              : connectionStatus === 'checking'
+              ? 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100'
+              : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
+          }`}
+          title={
+            connectionStatus === 'online'
+              ? `Terhubung ke Google Script (${lastPingTime ? 'Ping terakhir ' + lastPingTime : 'Online'}). Klik untuk tes ulang.`
+              : connectionStatus === 'checking'
+              ? 'Memeriksa koneksi ke Google Script...'
+              : 'Terputus / Offline dari Google Script. Klik untuk tes ulang koneksi.'
+          }
         >
           <span className="relative flex h-2 w-2 flex-shrink-0">
             <span
-              className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
-                config.googleScriptUrl ? 'bg-emerald-400' : 'bg-amber-400'
-              } opacity-75`}
+              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                connectionStatus === 'online'
+                  ? 'bg-emerald-400'
+                  : connectionStatus === 'checking'
+                  ? 'bg-amber-400'
+                  : 'bg-rose-400'
+              }`}
             ></span>
             <span
               className={`relative inline-flex rounded-full h-2 w-2 ${
-                config.googleScriptUrl ? 'bg-emerald-500' : 'bg-amber-500'
+                connectionStatus === 'online'
+                  ? 'bg-emerald-600'
+                  : connectionStatus === 'checking'
+                  ? 'bg-amber-600'
+                  : 'bg-rose-600'
               }`}
             ></span>
           </span>
           <span className="truncate">
-            {config.googleScriptUrl
-              ? 'Database Cloud Terhubung'
-              : 'Mode Offline (Lokal)'}
+            {connectionStatus === 'online'
+              ? 'Online'
+              : connectionStatus === 'checking'
+              ? 'Memeriksa...'
+              : 'Offline'}
           </span>
-        </div>
+          {lastPingTime && connectionStatus === 'online' && (
+            <span className="hidden lg:inline text-[9px] font-normal opacity-80 border-l border-emerald-300 pl-1.5">
+              {lastPingTime}
+            </span>
+          )}
+        </button>
 
         <button
           onClick={onSync}

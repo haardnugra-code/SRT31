@@ -84,6 +84,10 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => loadLastSyncTime());
 
+  // Real-time Connection Status State
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'checking'>('checking');
+  const [lastPingTime, setLastPingTime] = useState<string | null>(null);
+
   // Toast State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -969,6 +973,9 @@ export default function App() {
           saveLastSyncTime(nowIso);
           setLastSyncTime(nowIso);
 
+          setConnectionStatus('online');
+          setLastPingTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+
           if (isManual) {
             showToast('Sinkronisasi & Rekonsiliasi Berhasil', 'Database cloud diselaraskan dan data shadow telah dibersihkan.', 'success');
           }
@@ -976,6 +983,7 @@ export default function App() {
           showToast('Sinkronisasi Tertolak', resJson.message || 'Respon dari script backend gagal.', 'error');
         }
       } catch (err) {
+        setConnectionStatus('offline');
         if (isManual) {
           showToast('Mode Offline', 'Gagal menghubungi database cloud. Aplikasi tetap beroperasi lokal.', 'warning');
         }
@@ -986,12 +994,67 @@ export default function App() {
     [config.googleScriptUrl, showToast, students, violations, counseling, leaves, dailyJournals, medicalRecords, prayerAttendance, reports]
   );
 
-  // Sync on initial mount
+  // --- Real-Time Connection Ping Check ---
+  const checkConnection = useCallback(async () => {
+    if (!config.googleScriptUrl) {
+      setConnectionStatus('offline');
+      return;
+    }
+
+    setConnectionStatus('checking');
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const res = await fetch(`${config.googleScriptUrl}?action=ping`, {
+        method: 'GET',
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        setConnectionStatus('online');
+        const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setLastPingTime(nowTime);
+      } else {
+        setConnectionStatus('offline');
+      }
+    } catch (err) {
+      setConnectionStatus('offline');
+    }
+  }, [config.googleScriptUrl]);
+
+  // Sync on initial mount & periodic real-time connection check
   useEffect(() => {
     if (config.googleScriptUrl) {
+      checkConnection();
       syncCloudData(false);
+    } else {
+      setConnectionStatus('offline');
     }
-  }, []);
+
+    const interval = setInterval(() => {
+      if (config.googleScriptUrl) {
+        checkConnection();
+      }
+    }, 30000); // Check connection every 30 seconds
+
+    const handleOnline = () => {
+      if (config.googleScriptUrl) checkConnection();
+    };
+    const handleOffline = () => {
+      setConnectionStatus('offline');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [config.googleScriptUrl, checkConnection]);
 
   return (
     <div className="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans selection:bg-red-500 selection:text-white">
@@ -1031,6 +1094,9 @@ export default function App() {
             onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
             onLogout={handleLogout}
             userRole={userRole}
+            connectionStatus={connectionStatus}
+            lastPingTime={lastPingTime}
+            onCheckConnection={checkConnection}
           />
 
           <div className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8 overflow-y-auto">

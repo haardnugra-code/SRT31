@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@media print {
+  /* Hide standard screen web app UI elements */
+  .no-print,
+  .app-sidebar,
+  .app-header,
+  header,
+  aside,
+  nav,
+  button:not(.print-keep),
+  .modal-backdrop {
+    display: none !important;
+  }
+
+  /* Reset body and container bounds for printing */
+  html, body, #root, main {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  div {
+    overflow: visible !important;
+  }
+
+  /* Print containers display */
+  .print-cards-container {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .print-ppt-container {
+    display: block !important;
+  }
+
+  .page-break-after {
+    page-break-after: always !important;
+    break-after: page !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .page-break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* CR80 Standard ID Card Exact Print Sizing (85.6mm x 54mm) */
+  .cr80-card-print {
+    width: 85.6mm !important;
+    height: 54mm !important;
+    max-width: 85.6mm !important;
+    max-height: 54mm !important;
+    min-width: 85.6mm !important;
+    min-height: 54mm !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    border-radius: 3.18mm !important;
+    margin: 0 !important;
+  }
+
+  .cr80-print-grid {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 5mm !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+  }
+
+  /* Force exact background colors, gradients and text contrast in print */
+  .cr80-card-print,
+  .cr80-card-print * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+}
+

@@ -61,7 +61,6 @@ interface MedicalTabProps {
   config: AppConfig;
   onReconcileShadowData?: (purgeOrphans?: boolean) => Promise<ShadowDataAuditStats>;
   onShowToast?: (title: string, message: string, type?: 'success' | 'warning' | 'error') => void;
-  onAskConfirm?: (title: string, message: string) => Promise<boolean>;
 }
 
 const COMMON_SYMPTOMS = [
@@ -124,8 +123,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
   onDeleteRecord,
   config,
   onReconcileShadowData,
-  onShowToast,
-  onAskConfirm
+  onShowToast
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'records' | 'student-history'>('records');
   const [searchTerm, setSearchTerm] = useState('');
@@ -145,12 +143,12 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
   const [printWaliAsrama, setPrintWaliAsrama] = useState<string>('');
   const [printWaliAsramaNip, setPrintWaliAsramaNip] = useState<string>('');
 
-  const DRAFT_MEDICAL_KEY = 'SANTRI_MEDICAL_DRAFT';
+  const DRAFT_MEDICAL_KEY = 'SISWA_MEDICAL_DRAFT';
 
   // Check saved draft on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_MEDICAL_KEY);
+      const saved = localStorage.getItem(DRAFT_MEDICAL_KEY) || localStorage.getItem('SANTRI_MEDICAL_DRAFT');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.symptoms || parsed.diagnosis || parsed.treatment || parsed.notes)) {
@@ -921,14 +919,8 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={async () => {
-                                  let confirmed = false;
-                                  if (onAskConfirm) {
-                                    confirmed = await onAskConfirm('Hapus Rekam Medis?', `Apakah Anda yakin ingin menghapus rekam medis UKS atas nama ${rec.studentName}?`);
-                                  } else {
-                                    confirmed = confirm(`Hapus rekam medis untuk ${rec.studentName}?`);
-                                  }
-                                  if (confirmed) {
+                                onClick={() => {
+                                  if (confirm(`Hapus rekam medis untuk ${rec.studentName}?`)) {
                                     onDeleteRecord(rec.id);
                                   }
                                 }}
@@ -1678,7 +1670,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                     <Minus className="w-4 h-4 text-rose-600" /> Minimalkan ke Bilah Bawah (Disarankan)
                   </p>
                   <p className="text-[11px] text-rose-800/80 mt-0.5">
-                    Isian tidak akan hilang. Anda dapat melihat riwayat santri lain dan membukanya lagi.
+                    Isian tidak akan hilang. Anda dapat melihat riwayat siswa lain dan membukanya lagi.
                   </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-rose-600 group-hover:translate-x-1 transition-transform shrink-0" />

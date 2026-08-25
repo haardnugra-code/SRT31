@@ -31,7 +31,8 @@ import {
   loadPrayerAttendance,
   savePrayerAttendance,
   loadLastSyncTime,
-  saveLastSyncTime
+  saveLastSyncTime,
+  purgeAllDummyData
 } from './services/storage';
 import { reconcileAndSanitizeShadowData, ShadowDataAuditStats } from './utils/dataSanitizer';
 
@@ -39,7 +40,7 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
-import { LandingPage } from './components/LandingPage';
+import { LoginModal } from './components/LoginModal';
 
 import { DashboardTab } from './components/DashboardTab';
 import { StudentProfileTab } from './components/StudentProfileTab';
@@ -50,8 +51,6 @@ import { DisciplineAndCounselingTab } from './components/DisciplineAndCounseling
 import { LeavesTab } from './components/LeavesTab';
 import { MedicalTab } from './components/MedicalTab';
 import { ReportAndRecapTab } from './components/ReportAndRecapTab';
-import { GuideTab, PptPrintSlides } from './components/GuideTab';
-import { CmsWebsiteTab } from './components/CmsWebsiteTab';
 import { SettingsTab } from './components/SettingsTab';
 
 export default function App() {
@@ -224,13 +223,12 @@ export default function App() {
     'prayer-attendance': 'Absensi Presensi Asrama (Sholat, Makan & Kegiatan)',
     checklist: 'Jurnal & Ceklist Anak Asuh',
     students: 'Data Induk Murid Sekolah Rakyat',
-    violations: 'Pelanggaran & Layanan Konseling BK',
+    violations: 'Pelanggaran & Konseling',
     counseling: 'Pendampingan BK & Konseling',
     leaves: 'Surat Izin Keluar & Kepulangan Asrama (Pesiar, Berobat & Pulang)',
     medical: 'Klinik UKS & Rekam Medis Keasramaan',
-    'report-card': 'Rapor Keasramaan & Rekapitulasi Lengkap Asrama',
-    recap: 'Rapor Keasramaan & Rekapitulasi Lengkap Asrama',
-    guide: 'Panduan Lengkap Penggunaan Aplikasi',
+    'report-card': 'Rapor & Rekapitulasi',
+    recap: 'Rapor & Rekapitulasi',
     settings: 'Pengaturan & Kustomisasi Sistem'
   };
 
@@ -657,7 +655,28 @@ export default function App() {
     [showToast]
   );
 
-  // 6. Report Card CRUD
+  const handleDeletePrayerAttendanceItem = useCallback(
+    (id: string) => {
+      setPrayerAttendance((prev) => {
+        const updated = prev.filter((p) => String(p.id).trim() !== String(id).trim());
+        savePrayerAttendance(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deletePrayerAttendance',
+            data: { id }
+          })
+        }).catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl]
+  );
+
+  // 8. Report Card CRUD
   const handleSaveReport = useCallback(
     (studentId: string, data: ReportCardData) => {
       setReports((prev) => {
@@ -672,6 +691,28 @@ export default function App() {
           body: JSON.stringify({
             action: 'saveReportCard',
             data: { studentId, report: data }
+          })
+        }).catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl]
+  );
+
+  const handleDeleteReport = useCallback(
+    (studentId: string) => {
+      setReports((prev) => {
+        const updated = { ...prev };
+        delete updated[studentId];
+        saveReports(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteReportCard',
+            data: { studentId, id: studentId }
           })
         }).catch((err) => console.error(err));
       }
@@ -1063,7 +1104,21 @@ export default function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [config.googleScriptUrl, checkConnection]);
+  }, [config.googleScriptUrl, checkConnection, syncCloudData]);
+
+  const handlePurgeDummyAndReload = useCallback(async () => {
+    const confirmed = await askConfirm(
+      'Hapus Data Dummy & Muat Database Google Sheet',
+      'Tindakan ini akan menghapus semua sisa data dummy / data shadow lokal di browser Anda dan memuat data murni secara langsung dari Google Sheet. Lanjutkan?'
+    );
+    if (!confirmed) return;
+
+    purgeAllDummyData();
+    setStudents([]);
+    setMedicalRecords([]);
+    showToast('Data Dummy Dihapus', 'Mengambil database murni dari Google Sheet...', 'info');
+    await syncCloudData(true);
+  }, [askConfirm, showToast, syncCloudData]);
 
   return (
     <div className="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans selection:bg-red-500 selection:text-white">
@@ -1079,13 +1134,12 @@ export default function App() {
         onCancel={() => handleConfirmResolve(false)}
       />
 
-      {/* Landing Page (Public Website) & Login Modal */}
-      {!isLoggedIn ? (
-        <LandingPage onLoginSuccess={handleLoginSuccess} />
-      ) : (
-        /* Main Row Container */
-        <div className="flex flex-col md:flex-row min-h-screen flex-1 relative">
-          {/* Sidebar */}
+      {/* Login Screen Modal */}
+      <LoginModal isLoggedIn={isLoggedIn} onLoginSuccess={handleLoginSuccess} />
+
+      {/* Main Row Container */}
+      <div className="flex flex-col md:flex-row min-h-screen flex-1 relative">
+        {/* Sidebar */}
         <Sidebar
           activeTab={activeTab}
           onSelectTab={setActiveTab}
@@ -1235,7 +1289,6 @@ export default function App() {
                 config={config}
                 onReconcileShadowData={handleReconcileShadowData}
                 onShowToast={showToast}
-                onAskConfirm={askConfirm}
               />
             )}
 
@@ -1255,12 +1308,6 @@ export default function App() {
                 onAskConfirm={askConfirm}
               />
             )}
-            
-            {activeTab === 'cms' && userRole === 'admin' && (
-              <CmsWebsiteTab onShowToast={showToast} />
-            )}
-
-            {activeTab === 'guide' && <GuideTab onSelectTab={setActiveTab} />}
 
             {activeTab === 'settings' && userRole === 'admin' && (
               <SettingsTab
@@ -1271,19 +1318,40 @@ export default function App() {
                 onSync={() => syncCloudData(true)}
                 isSyncing={isSyncing}
                 onReconcileShadowData={handleReconcileShadowData}
+                onPurgeDummyDataAndReload={handlePurgeDummyAndReload}
                 studentsCount={students.length}
                 recordsCount={violations.length + counseling.length + leaves.length + dailyJournals.length + medicalRecords.length + prayerAttendance.length}
                 announcement={announcement}
                 onUpdateAnnouncement={handleUpdateAnnouncement}
+                students={students}
+                onSaveStudent={handleSaveStudent}
+                onDeleteStudent={handleDeleteStudent}
+                violations={violations}
+                onSaveViolation={handleSaveViolation}
+                onDeleteViolation={handleDeleteViolation}
+                counseling={counseling}
+                onSaveCounseling={handleSaveCounseling}
+                onDeleteCounseling={handleDeleteCounseling}
+                leaves={leaves}
+                onSaveLeave={handleSaveLeave}
+                onDeleteLeave={handleDeleteLeave}
+                dailyJournals={dailyJournals}
+                onSaveJournal={handleSaveJournal}
+                onDeleteJournal={handleDeleteJournal}
+                medicalRecords={medicalRecords}
+                onSaveMedicalRecord={handleSaveMedicalRecord}
+                onDeleteMedicalRecord={handleDeleteMedicalRecord}
+                reports={reports}
+                onSaveReport={handleSaveReport}
+                onDeleteReport={handleDeleteReport}
+                prayerAttendance={prayerAttendance}
+                onSavePrayerAttendance={handleSavePrayerAttendance}
+                onDeletePrayerAttendance={handleDeletePrayerAttendanceItem}
               />
             )}
           </div>
         </main>
       </div>
-      )}
-
-      {/* DEDICATED GLOBAL PRINT PPT SLIDES CONTAINER (PRINT MODE ONLY - GUIDE TAB) */}
-      {isLoggedIn && activeTab === 'guide' && <PptPrintSlides />}
     </div>
   );
 }

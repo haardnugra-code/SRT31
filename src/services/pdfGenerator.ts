@@ -22,9 +22,9 @@ function generateProgrammaticLogo(type: 'left' | 'right'): string {
     ctx.lineTo(20, 85);
     ctx.lineTo(20, 35);
     ctx.closePath();
-    ctx.fillStyle = '#1e3a8a';
+    ctx.fillStyle = '#334155';
     ctx.fill();
-    ctx.strokeStyle = '#f59e0b';
+    ctx.strokeStyle = '#d97706';
     ctx.lineWidth = 4;
     ctx.stroke();
 
@@ -37,7 +37,7 @@ function generateProgrammaticLogo(type: 'left' | 'right'): string {
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = '#f59e0b';
+    ctx.fillStyle = '#d97706';
     ctx.beginPath();
     ctx.arc(60, 40, 7, 0, 2 * Math.PI);
     ctx.fill();
@@ -228,7 +228,7 @@ export async function printJournalPDF(journal: DailyJournal, student: Student | 
     body: tableRows,
     startY: metaY + 18,
     theme: 'grid',
-    headStyles: { fillColor: [22, 163, 74], fontStyle: 'bold', fontSize: 8.5 },
+    headStyles: { fillColor: [71, 85, 105], fontStyle: 'bold', fontSize: 8.5 },
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
       1: { cellWidth: 'auto' },
@@ -237,9 +237,9 @@ export async function printJournalPDF(journal: DailyJournal, student: Student | 
     didParseCell: function (data) {
       if (data.section === 'body' && data.column.index === 2) {
         if (data.cell.raw === "Tuntas") {
-          data.cell.styles.textColor = [22, 163, 74];
+          data.cell.styles.textColor = [22, 101, 52];
         } else {
-          data.cell.styles.textColor = [220, 38, 38];
+          data.cell.styles.textColor = [180, 83, 9];
         }
       }
     },
@@ -698,7 +698,7 @@ export async function generateLeaveRecapReportPDF(
     startY: statBoxY + 13,
     theme: 'grid',
     headStyles: {
-      fillColor: [15, 23, 42],
+      fillColor: [71, 85, 105],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 7.5,
@@ -777,7 +777,7 @@ export async function generateLeaveRecapReportPDF(
     doc.setFont('Helvetica', 'normal');
     doc.setTextColor(148, 163, 184);
     doc.text(
-      `Sistem Informasi Keasramaan Sekolah Rakyat 31 Palembang - Rekapitulasi Izin Keluar & Kepulangan Santri`,
+      `Sistem Informasi Keasramaan Sekolah Rakyat 31 Palembang - Rekapitulasi Izin Keluar & Kepulangan Siswa`,
       15,
       pageHeight - 8
     );
@@ -890,7 +890,7 @@ export async function printReportCardPDF(
       {
         content: cat.name,
         colSpan: 4,
-        styles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left', cellPadding: 2 }
+        styles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left', cellPadding: 2 }
       }
     ]);
     cat.indicators.forEach((ind, idx) => {
@@ -908,7 +908,7 @@ export async function printReportCardPDF(
     body: tableRows,
     startY: startTableY,
     theme: 'grid',
-    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 8.5 },
+    headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
       1: { cellWidth: 60, fontStyle: 'bold' },
@@ -1225,9 +1225,9 @@ export async function generateComprehensivePDF(
   const doc = new jsPDF('p', 'mm', 'a4');
   const periodText = `TAHUN AJARAN 2025/2026 - PERIODE REKAPITULASI: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
 
-  doc.setFillColor(30, 41, 59);
+  doc.setFillColor(51, 65, 85);
   doc.rect(0, 0, 210, 297, 'F');
-  doc.setFillColor(220, 38, 38);
+  doc.setFillColor(71, 85, 105);
   doc.rect(0, 110, 210, 15, 'F');
 
   doc.setTextColor(255, 255, 255);
@@ -1257,7 +1257,7 @@ export async function generateComprehensivePDF(
   const watermarkBase64 = await generateWatermarkBase64(leftLogoBase64, config.watermarkOpacity);
 
   function drawSectionHeader(title: string) {
-    doc.setFillColor(30, 41, 59);
+    doc.setFillColor(71, 85, 105);
     doc.rect(15, 10, 180, 0.5, 'F');
     doc.setTextColor(30, 41, 59);
     doc.setFont("Helvetica", "bold");
@@ -1324,7 +1324,7 @@ export async function generateComprehensivePDF(
     body: counselingRows,
     startY: 32,
     theme: 'striped',
-    headStyles: { fillColor: [245, 158, 11] },
+    headStyles: { fillColor: [71, 85, 105] },
     styles: { fontSize: 8, cellPadding: 2.5 },
     didDrawPage: function (data) {
       if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
@@ -1350,7 +1350,7 @@ export async function generateComprehensivePDF(
     body: leaveRows,
     startY: 32,
     theme: 'striped',
-    headStyles: { fillColor: [16, 185, 129] },
+    headStyles: { fillColor: [71, 85, 105] },
     styles: { fontSize: 8, cellPadding: 2.5 },
     didDrawPage: function (data) {
       if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
@@ -1378,7 +1378,7 @@ export async function generateComprehensivePDF(
       body: medicalRows,
       startY: 32,
       theme: 'striped',
-      headStyles: { fillColor: [190, 18, 60] },
+      headStyles: { fillColor: [71, 85, 105] },
       styles: { fontSize: 8, cellPadding: 2.5 },
       didDrawPage: function (data) {
         if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
@@ -2002,7 +2002,7 @@ export async function printSickLeavePDF(
     ],
     startY: contentY,
     theme: 'grid',
-    headStyles: { fillColor: [30, 58, 138], fontStyle: 'bold', fontSize: 9, halign: 'left' },
+    headStyles: { fillColor: [51, 65, 85], fontStyle: 'bold', fontSize: 9, halign: 'left' },
     styles: { fontSize: 8.5, cellPadding: 2.2, textColor: [30, 41, 59] },
     columnStyles: {
       0: { cellWidth: 55, fontStyle: 'bold', fillColor: [248, 250, 252] },
@@ -2030,7 +2030,7 @@ export async function printSickLeavePDF(
     ],
     startY: contentY,
     theme: 'grid',
-    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 9, halign: 'left' },
+    headStyles: { fillColor: [71, 85, 105], fontStyle: 'bold', fontSize: 9, halign: 'left' },
     styles: { fontSize: 8.5, cellPadding: 2.2, textColor: [30, 41, 59] },
     columnStyles: {
       0: { cellWidth: 55, fontStyle: 'bold', fillColor: [248, 250, 252] },
@@ -2237,7 +2237,7 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
 
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(4.5);
-  doc.setTextColor(186, 230, 253); // sky-200
+  doc.setTextColor(226, 232, 240); // slate-200
   doc.text('PUSAT PENDIDIKAN & PELATIHAN PROFESI', offsetX + 13.5, offsetY + 8.5);
 
   doc.setFont('Helvetica', 'bold');
@@ -2283,7 +2283,7 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(4);
-  doc.setTextColor(3, 105, 161); // sky-700
+  doc.setTextColor(71, 85, 105); // slate-600
   doc.text('QR ABSENSI', photoX + photoW / 2, photoY + photoH - 1.2, { align: 'center' });
 
   // 4. Student Details Section (Simple Layout without dividing lines)
@@ -2304,7 +2304,7 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   doc.setTextColor(148, 163, 184); // slate-400
   doc.text('NISN / ID:', detailsX, lineY);
   doc.setFont('Helvetica', 'bold');
-  doc.setTextColor(56, 189, 248); // sky-400
+  doc.setTextColor(241, 245, 249); // slate-100
   doc.text(student.id || '-', detailsX + 11, lineY);
   lineY += 4.0;
 
@@ -2345,7 +2345,7 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   doc.setTextColor(148, 163, 184);
   doc.text('Sekolah Rakyat Terintegrasi 31 Palembang', offsetX + 3.5, footerY);
   doc.setFont('Helvetica', 'bold');
-  doc.setTextColor(56, 189, 248);
+  doc.setTextColor(203, 213, 225); // slate-300
   doc.text(`ID: ${student.id}`, offsetX + w - 3.5, footerY, { align: 'right' });
 }
 
@@ -2458,7 +2458,7 @@ export async function generatePrayerAttendanceReportPDF(
   // Document Title
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(12);
-  doc.setTextColor(185, 28, 28); // Red tone
+  doc.setTextColor(15, 23, 42);
 
   let defaultTitle = 'LAPORAN RESMI DAFTAR HADIR ASRAMA';
   if (isMeal) {
@@ -2596,7 +2596,7 @@ export async function generatePrayerAttendanceReportPDF(
     body: tableBody,
     theme: 'grid',
     headStyles: {
-      fillColor: [185, 28, 28],
+      fillColor: [71, 85, 105],
       textColor: 255,
       fontSize: 7.5,
       fontStyle: 'bold',
@@ -2769,7 +2769,7 @@ export async function printCounselingSessionPDF(
   const titleY = yKop + 10;
   doc.setFont("Helvetica", "bold");
   doc.setFontSize(12);
-  doc.setTextColor(180, 83, 9); // amber-700
+  doc.setTextColor(15, 23, 42); // soft dark slate
   doc.text("BERITA ACARA & LAPORAN LAYANAN BIMBINGAN KONSELING (BK)", 105, titleY, { align: 'center' });
 
   doc.setFont("Helvetica", "normal");
@@ -2877,10 +2877,10 @@ export async function printCounselingSessionPDF(
     body: narrativeRows,
     startY: contentY,
     theme: 'grid',
-    headStyles: { fillColor: [180, 83, 9], fontStyle: 'bold', fontSize: 8.5, halign: 'left', textColor: 255 },
+    headStyles: { fillColor: [71, 85, 105], fontStyle: 'bold', fontSize: 8.5, halign: 'left', textColor: 255 },
     styles: { fontSize: 8, cellPadding: 2.5, textColor: [30, 41, 59] },
     columnStyles: {
-      0: { cellWidth: 55, fontStyle: 'bold', fillColor: [254, 252, 232] },
+      0: { cellWidth: 55, fontStyle: 'bold', fillColor: [248, 250, 252] },
       1: { cellWidth: 'auto' }
     },
     margin: { left: 15, right: 15 },
@@ -3025,7 +3025,7 @@ export async function printCounselingRecapPDF(
   let currentY = yKop + 9;
   doc.setFont("Helvetica", "bold");
   doc.setFontSize(12);
-  doc.setTextColor(180, 83, 9); // amber-700
+  doc.setTextColor(15, 23, 42); // soft dark slate
   doc.text("BUKU AGENDA & REKAPITULASI LAYANAN BIMBINGAN KONSELING (BK)", 148.5, currentY, { align: 'center' });
 
   // Summary Metrics Banner
@@ -3070,7 +3070,7 @@ export async function printCounselingRecapPDF(
     body: tableBody,
     theme: 'grid',
     headStyles: {
-      fillColor: [180, 83, 9], // amber-700
+      fillColor: [71, 85, 105], // soft slate
       textColor: 255,
       fontSize: 7.5,
       fontStyle: 'bold',

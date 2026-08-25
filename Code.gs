@@ -16,7 +16,7 @@
  *    - Pilih fungsi 'setupSheet' pada dropdown di atas editor.
  *    - Klik tombol 'Jalankan' / 'Run'.
  *    - Berikan izin otorisasi Google (Review Permissions -> Pilih Akun -> Advanced -> Go to Untitled project).
- *    - Seluruh 13 Sheet database resmi & 7 Struktur Folder Google Drive dibuat OTOMATIS!
+ *    - Seluruh 10 Sheet database resmi & 5 Struktur Folder Google Drive dibuat OTOMATIS!
  * 7. Terapkan sebagai Aplikasi Web (Deploy as Web App):
  *    - Klik tombol "Terapkan" (Deploy) di kanan atas -> "Penerapan baru" (New deployment).
  *    - Pilih jenis: "Aplikasi web" (Web app).
@@ -49,13 +49,11 @@ function doGet(e) {
       return responseJSON(setupRes);
     }
 
-    if (action === 'setupTrigger') { createAutomatedDailyDriveSyncTrigger(); return responseJSON({status: 'success', message: 'Jadwal Backup Otomatis Drive Harian (23:00) berhasil diaktifkan.'}); }
     if (action === 'backupDrive' || action === 'backupData') {
       var backupRes = autoBackupToDrive();
       return responseJSON(backupRes);
     }
 
-    if (action === 'setupTrigger') { createAutomatedDailyDriveSyncTrigger(); return responseJSON({status: 'success', message: 'Jadwal Backup Otomatis Drive Harian (23:00) berhasil diaktifkan.'}); }
     if (action === 'setupDriveFolders') {
       var folderRes = createSystemDriveFolders();
       return responseJSON(folderRes);
@@ -96,7 +94,6 @@ function doPost(e) {
       return responseJSON(sRes);
     }
 
-    if (action === 'setupTrigger') { createAutomatedDailyDriveSyncTrigger(); return responseJSON({status: 'success', message: 'Jadwal Backup Otomatis Drive Harian (23:00) berhasil diaktifkan.'}); }
     if (action === 'backupDrive' || action === 'backupData') {
       var bRes = autoBackupToDrive();
       return responseJSON(bRes);
@@ -490,18 +487,6 @@ function setupSheet() {
     'BackupLogs': {
       color: '#334155', // Log Backup
       headers: ['ID Log', 'Waktu Backup', 'Nama File Backup', 'Tipe Backup', 'URL File Google Drive', 'URL Folder Drive', 'Total Siswa', 'Total Rekam Data', 'Status']
-    },
-    'WebsiteNews': {
-      color: '#ea580c', // Orange Berita
-      headers: ['ID Berita', 'Judul', 'Tanggal', 'Kategori', 'Status', 'URL Gambar', 'Isi Singkat', 'Isi Lengkap', 'Terakhir Diperbarui']
-    },
-    'WebsiteConfig': {
-      color: '#0891b2', // Cyan Website
-      headers: ['ID Config', 'Hero Title', 'Hero Subtitle', 'About Text', 'Visi', 'Misi (JSON)', 'Kontak (JSON)', 'Org Overview (JSON)', 'Terakhir Diperbarui']
-    },
-    'WebsiteOrganization': {
-      color: '#8b5cf6', // Violet Org
-      headers: ['ID Posisi', 'Nama Anggota', 'Jabatan', 'Deskripsi', 'Warna Tema', 'URL Foto', 'Terakhir Diperbarui']
     }
   };
   
@@ -540,7 +525,7 @@ function setupSheet() {
 
   return {
     status: 'success',
-    message: 'Setup Sheet Berhasil! Seluruh 13 Sheet database & 7 Folder Google Drive telah siap digunakan.',
+    message: 'Setup Sheet Berhasil! Seluruh 10 Sheet database & Struktur Google Drive telah siap digunakan.',
     totalSheets: Object.keys(sheetConfigs).length,
     driveFolders: driveInfo
   };
@@ -557,9 +542,7 @@ var SUBFOLDERS = {
   STUDENT_PHOTOS: "📁 2_FOTO_PROFIL_SISWA",
   COUNSELING_DOCS: "📁 3_DOKUMEN_BERITA_ACARA_BK",
   VIOLATION_EVIDENCE: "📁 4_BUKTI_FOTO_PELANGGARAN",
-  MEDICAL_FILES: "📁 5_SURAT_MEDIS_UKS",
-  WEBSITE_ASSETS: "📁 6_ASSET_WEBSITE",
-  WEBSITE_NEWS_IMAGES: "📁 7_FOTO_BERITA_WEBSITE"
+  MEDICAL_FILES: "📁 5_SURAT_MEDIS_UKS"
 };
 
 /**
@@ -774,9 +757,6 @@ function autoFormatSheets() {
 // 8. REKONSILIASI & PENCEGAHAN DATA SHADOW
 // ==============================================================================
 
-
-
-// ==============================================================================
 function cleanShadowData() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -788,15 +768,14 @@ function cleanShadowData() {
 
     var studentMap = {};
     for (var i = 1; i < studentData.length; i++) {
-      var id = String(studentData[i][0]).trim().toLowerCase();
+      var id = String(studentData[i][0]).trim();
       var name = String(studentData[i][1]).trim();
       if (id) {
-        studentMap[id] = { id: id, name: name };
+        studentMap[id.toLowerCase()] = { id: id, name: name };
       }
     }
 
     var fixedCount = 0;
-    var deletedCount = 0;
     var targetSheets = [
       { name: 'Violations', idCol: 2, nameCol: 3 },
       { name: 'Counseling', idCol: 3, nameCol: 4 },
@@ -817,53 +796,36 @@ function cleanShadowData() {
       if (rows.length <= 1) continue;
 
       var modified = false;
-      var rowsToDelete = [];
-      
       for (var r = 1; r < rows.length; r++) {
         var rowId = String(rows[r][conf.idCol]).trim().toLowerCase();
         var rowName = String(rows[r][conf.nameCol]).trim();
 
-        if (rowId) {
-          if (studentMap[rowId]) {
-            var masterName = studentMap[rowId].name;
-            if (rowName !== masterName) {
-              rows[r][conf.nameCol] = masterName;
-              fixedCount++;
-              modified = true;
-            }
-          } else {
-            // Orphaned record found
-            rowsToDelete.push(r + 1);
+        if (rowId && studentMap[rowId]) {
+          var masterName = studentMap[rowId].name;
+          if (rowName !== masterName) {
+            rows[r][conf.nameCol] = masterName;
+            fixedCount++;
+            modified = true;
           }
         }
       }
-      
-      // Hapus baris yatim piatu dari bawah ke atas agar indeks tidak bergeser
-      for (var d = rowsToDelete.length - 1; d >= 0; d--) {
-        sh.deleteRow(rowsToDelete[d]);
-        deletedCount++;
-      }
 
       if (modified) {
-        var updatedRows = rows.filter(function(row, index) {
-          return rowsToDelete.indexOf(index + 1) === -1;
-        });
-        sh.clearContents();
-        sh.getRange(1, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
+        range.setValues(rows);
       }
     }
 
     return {
       status: 'success',
-      message: 'Rekonsiliasi Data Shadow Selesai! ' + fixedCount + ' data nama diselaraskan, ' + deletedCount + ' data yatim (shadow) dihapus.',
-      fixedCount: fixedCount,
-      deletedCount: deletedCount
+      message: 'Rekonsiliasi Data Shadow Selesai! ' + fixedCount + ' data nama murid berhasil diselaraskan dengan Master Students.',
+      fixedCount: fixedCount
     };
   } catch (err) {
     return { status: 'error', message: 'Gagal membersihkan data shadow: ' + err.toString() };
   }
 }
 
+// ==============================================================================
 // 9. MENU TOMBOL OTOMATIS DI GOOGLE SPREADSHEET (UI MENU ON OPEN)
 // ==============================================================================
 

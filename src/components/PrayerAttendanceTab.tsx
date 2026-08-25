@@ -437,7 +437,7 @@ const StudentCardBack: React.FC<StudentCardBackProps> = ({
         <h4 className="font-extrabold text-[8.5px] uppercase text-slate-900 leading-tight">
           KETENTUAN & TATA TERTIB KEASRAMAAN
         </h4>
-        <p className="text-[7px] font-bold text-red-700 uppercase">SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG</p>
+        <p className="text-[7px] font-bold text-red-700 uppercase">SEKOLAH RAKYAT KEMENSOS RI</p>
       </div>
 
       <ol className="list-decimal list-inside text-[7.5px] space-y-0.5 font-semibold text-slate-800 leading-tight my-auto">
@@ -3386,7 +3386,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                     <pre className="bg-slate-950 text-slate-200 p-4 rounded-xl text-xs font-mono overflow-x-auto border border-slate-800 leading-relaxed max-h-56">
 {`/* 
  * SKETSA ARDUINO / ESP32 RFID SCANNER (Web Serial API)
- * Aplikasi: Sistem Absensi Sekolah Rakyat Terintegrasi 31 Palembang
+ * Aplikasi: Sistem Absensi Sekolah Rakyat Kemensos RI
  */
 
 #include <SPI.h>

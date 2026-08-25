@@ -12,8 +12,6 @@ import {
   FileSignature,
   FileText,
   Sliders,
-  BookOpen,
-  Globe,
   X,
   QrCode
 } from 'lucide-react';
@@ -37,12 +35,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
     { id: 'students', label: 'Data Siswa & Profil', icon: Users },
     { id: 'prayer-attendance', label: 'Absensi & Ceklist', icon: QrCode },
-    { id: 'violations', label: 'Pelanggaran & Layanan Konseling BK', icon: AlertTriangle },
+    { id: 'violations', label: 'Pelanggaran & Konseling', icon: AlertTriangle },
     { id: 'leaves', label: 'Surat Izin Keluar', icon: DoorOpen },
     { id: 'medical', label: 'UKS & Rekam Medis', icon: HeartPulse },
-    { id: 'report-card', label: 'Rapor & Rekapitulasi Keasramaan', icon: FileSignature, restrictedForGuru: true },
-    { id: 'cms', label: 'Manajemen Website', icon: Globe, restrictedForGuru: true },
-    { id: 'guide', label: 'Panduan Aplikasi', icon: BookOpen },
+    { id: 'report-card', label: 'Rapor & Rekapitulasi', icon: FileSignature, restrictedForGuru: true },
     { id: 'settings', label: 'Pengaturan Sistem', icon: Sliders, restrictedForGuru: true }
   ];
 
@@ -67,13 +63,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         } md:translate-x-0 transition-transform duration-300 ease-in-out z-50 md:z-30 h-screen md:h-auto`}
       >
         <div className="p-6 border-b border-slate-800 hidden md:flex items-center gap-3">
-          <div className="w-12 h-12 bg-white p-1 rounded-full text-white flex items-center justify-center shadow-lg shadow-red-950/50 overflow-hidden">
-            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+          <div className="bg-red-600 p-2.5 rounded-lg text-white flex items-center justify-center shadow-lg shadow-red-950/50">
+            <GraduationCap className="w-6 h-6" />
           </div>
           <div>
             <h1 className="font-bold text-base leading-tight">Sekolah Rakyat</h1>
             <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">
-              Terintegrasi 31 Palembang
+              Kemensos RI
             </p>
           </div>
         </div>

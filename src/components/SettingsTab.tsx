@@ -27,13 +27,29 @@ import {
   RefreshCw,
   CheckCircle2,
   Clock,
-  Megaphone
+  Megaphone,
+  TableProperties
 } from 'lucide-react';
-import { AppConfig, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, ReportCategory } from '../types';
+import {
+  AppConfig,
+  DisciplineLevelConfig,
+  DisciplineStatusThreshold,
+  ViolationTemplateItem,
+  ReportCategory,
+  Student,
+  Violation,
+  Counseling,
+  Leave,
+  DailyJournal,
+  MedicalRecord,
+  PrayerAttendance,
+  ReportCardData
+} from '../types';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/googleAppsScriptCode';
 import { DEFAULT_DISCIPLINE_LEVELS, DEFAULT_DISCIPLINE_THRESHOLDS, VIOLATION_TEMPLATES } from '../services/storage';
 import { RAPOR_STRUCTURE } from '../services/pdfGenerator';
 import { ShadowDataAuditStats } from '../utils/dataSanitizer';
+import { DatabaseCrudManager } from './DatabaseCrudManager';
 
 interface SettingsTabProps {
   config: AppConfig;
@@ -43,10 +59,44 @@ interface SettingsTabProps {
   onSync?: () => void;
   isSyncing?: boolean;
   onReconcileShadowData?: (purgeOrphans: boolean) => Promise<ShadowDataAuditStats>;
+  onPurgeDummyDataAndReload?: () => void;
   studentsCount?: number;
   recordsCount?: number;
   announcement?: string;
   onUpdateAnnouncement?: (msg: string) => void;
+
+  // CRUD Database Props
+  students?: Student[];
+  onSaveStudent?: (student: Student, isEdit: boolean) => void;
+  onDeleteStudent?: (id: string) => void;
+
+  violations?: Violation[];
+  onSaveViolation?: (violation: Violation, isEdit: boolean) => void;
+  onDeleteViolation?: (id: string) => void;
+
+  counseling?: Counseling[];
+  onSaveCounseling?: (counseling: Counseling, isEdit: boolean) => void;
+  onDeleteCounseling?: (id: string) => void;
+
+  leaves?: Leave[];
+  onSaveLeave?: (leave: Leave, isEdit: boolean) => void;
+  onDeleteLeave?: (id: string) => void;
+
+  dailyJournals?: DailyJournal[];
+  onSaveJournal?: (journal: DailyJournal) => void;
+  onDeleteJournal?: (id: string) => void;
+
+  medicalRecords?: MedicalRecord[];
+  onSaveMedicalRecord?: (record: MedicalRecord) => void;
+  onDeleteMedicalRecord?: (id: string) => void;
+
+  reports?: Record<string, ReportCardData>;
+  onSaveReport?: (studentId: string, data: ReportCardData) => void;
+  onDeleteReport?: (studentId: string) => void;
+
+  prayerAttendance?: PrayerAttendance[];
+  onSavePrayerAttendance?: (records: PrayerAttendance[]) => void;
+  onDeletePrayerAttendance?: (id: string) => void;
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
@@ -57,11 +107,37 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   onSync,
   isSyncing = false,
   onReconcileShadowData,
+  onPurgeDummyDataAndReload,
   studentsCount = 0,
   recordsCount = 0,
   announcement = '',
-  onUpdateAnnouncement
+  onUpdateAnnouncement,
+  students = [],
+  onSaveStudent = () => {},
+  onDeleteStudent = () => {},
+  violations = [],
+  onSaveViolation = () => {},
+  onDeleteViolation = () => {},
+  counseling = [],
+  onSaveCounseling = () => {},
+  onDeleteCounseling = () => {},
+  leaves = [],
+  onSaveLeave = () => {},
+  onDeleteLeave = () => {},
+  dailyJournals = [],
+  onSaveJournal = () => {},
+  onDeleteJournal = () => {},
+  medicalRecords = [],
+  onSaveMedicalRecord = () => {},
+  onDeleteMedicalRecord = () => {},
+  reports = {},
+  onSaveReport = () => {},
+  onDeleteReport = () => {},
+  prayerAttendance = [],
+  onSavePrayerAttendance = () => {},
+  onDeletePrayerAttendance = () => {}
 }) => {
+  const [activeSettingsView, setActiveSettingsView] = useState<'general' | 'database'>('general');
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState<boolean>(false);
   const [unlockPin, setUnlockPin] = useState<string>('');
@@ -215,23 +291,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       onShowToast('Backup Drive Terkirim', 'Perintah backup Google Drive berhasil dikirim. File JSON tersimpan di folder BACKUP_SEKOLAH_RAKYAT_SR31 di Drive Anda.', 'success');
     } catch (e) {
       onShowToast('Gagal Backup Drive', 'Gagal menghubungi Google Apps Script. Periksa koneksi atau URL script Anda.', 'error');
-    }
-  };
-
-  const handleTriggerAutomatedBackup = async () => {
-    if (!googleScriptUrl.trim()) {
-      onShowToast('Koneksi Gagal', 'Masukkan URL Google Apps Script Web App terlebih dahulu.', 'error');
-      return;
-    }
-    onShowToast('Memproses...', 'Mengaktifkan jadwal backup otomatis harian ke Google Drive...', 'warning');
-    try {
-      await fetch(`${googleScriptUrl.trim()}?action=setupTrigger`, {
-        method: 'GET',
-        mode: 'no-cors'
-      });
-      onShowToast('Jadwal Aktif', 'Jadwal Backup Otomatis Drive Harian (23:00) berhasil diaktifkan.', 'success');
-    } catch (e) {
-      onShowToast('Gagal', 'Gagal menghubungi Google Apps Script. Periksa koneksi atau URL script Anda.', 'error');
     }
   };
 
@@ -554,22 +613,89 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         )}
 
-        {/* Section Header */}
-        <div className="flex items-center gap-4 border-b border-slate-200/50 pb-5">
-          <div className="bg-gradient-to-br from-slate-700 to-slate-900 p-3 rounded-xl text-white flex-shrink-0 shadow-lg">
-            <Sliders className="w-6 h-6" />
+        {/* Section Header & Sub-Navigation */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200/50 pb-5">
+          <div className="flex items-center gap-4">
+            <div className="bg-gradient-to-br from-slate-700 to-slate-900 p-3 rounded-xl text-white flex-shrink-0 shadow-lg">
+              <Sliders className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-base md:text-xl font-bold text-slate-900 drop-shadow-sm">
+                Pengaturan & Database Sistem
+              </h2>
+              <p className="text-xs text-slate-600 font-medium">
+                Sesuaikan profil wali asrama, kop surat PDF, penandatangan berkas, serta pusat manajemen CRUD Database Google Sheet.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base md:text-xl font-bold text-slate-900 drop-shadow-sm">
-              Pengaturan & Kustomisasi Sistem
-            </h2>
-            <p className="text-xs text-slate-600 font-medium">
-              Sesuaikan profil wali asrama, kustomisasi kop surat PDF, penandatangan berkas, serta sinkronisasi Google Sheet.
-            </p>
+
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80 w-full sm:w-auto overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setActiveSettingsView('general')}
+              className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsView === 'general'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Setelan Sistem</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSettingsView('database')}
+              className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsView === 'database'
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>Manajemen CRUD Database</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${activeSettingsView === 'database' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'}`}>
+                9 Tabel
+              </span>
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {activeSettingsView === 'database' ? (
+          <DatabaseCrudManager
+            students={students}
+            onSaveStudent={onSaveStudent}
+            onDeleteStudent={onDeleteStudent}
+            violations={violations}
+            onSaveViolation={onSaveViolation}
+            onDeleteViolation={onDeleteViolation}
+            counseling={counseling}
+            onSaveCounseling={onSaveCounseling}
+            onDeleteCounseling={onDeleteCounseling}
+            leaves={leaves}
+            onSaveLeave={onSaveLeave}
+            onDeleteLeave={onDeleteLeave}
+            dailyJournals={dailyJournals}
+            onSaveJournal={onSaveJournal}
+            onDeleteJournal={onDeleteJournal}
+            medicalRecords={medicalRecords}
+            onSaveMedicalRecord={onSaveMedicalRecord}
+            onDeleteMedicalRecord={onDeleteMedicalRecord}
+            reports={reports}
+            onSaveReport={onSaveReport}
+            onDeleteReport={onDeleteReport}
+            prayerAttendance={prayerAttendance}
+            onSavePrayerAttendance={onSavePrayerAttendance}
+            onDeletePrayerAttendance={onDeletePrayerAttendance}
+            announcement={announcement}
+            onUpdateAnnouncement={onUpdateAnnouncement || (() => {})}
+            config={config}
+            onShowToast={onShowToast}
+            onSync={onSync}
+            isSyncing={isSyncing}
+          />
+        ) : (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column: Kop Surat & Signatures */}
           <div className="space-y-4">
             {/* Announcement Ticker Section */}
@@ -823,6 +949,18 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}</span>
                   </button>
                 )}
+                {onPurgeDummyDataAndReload && (
+                  <button
+                    type="button"
+                    onClick={onPurgeDummyDataAndReload}
+                    disabled={isSyncing}
+                    className="text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                    title="Hapus seluruh sisa data dummy bawaan & muat data segar langsung dari Google Sheet"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                    <span>Hapus Data Dummy & Muat Google Sheet</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setIsScriptModalOpen(true)}
@@ -844,16 +982,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   className="text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95"
                   title="Simpan file JSON backup instan ke folder Google Drive (BACKUP_SEKOLAH_RAKYAT_SR31)"
                 >
-                  <Database className="w-3.5 h-3.5 text-amber-600" /> Backup Instan ke Drive
+                  <Database className="w-3.5 h-3.5 text-amber-600" /> Backup ke Google Drive
                 </button>
                 <button
                   type="button"
-                  onClick={handleTriggerAutomatedBackup}
-                  className="text-xs font-bold text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95"
-                  title="Pasang jadwal backup database ke Drive secara otomatis setiap hari jam 23:00"
+                  onClick={() => setActiveSettingsView('database')}
+                  className="w-full mt-1.5 text-xs font-bold text-white bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 border border-red-700 px-3.5 py-2 rounded-xl flex items-center justify-center gap-2 transition active:scale-95 shadow-sm"
+                  title="Buka Pusat Manajemen & Operasi CRUD Database (Create, Read, Update, Delete)"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 
-                  Set Backup Harian Otomatis
+                  <TableProperties className="w-4 h-4 text-amber-300" />
+                  <span>Buka Pusat Manajemen CRUD Database (9 Tabel)</span>
                 </button>
               </div>
             </div>
@@ -1389,6 +1527,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </button>
         </div>
       </div>
+      )}
+    </div>
 
       {/* Unlock PIN Modal */}
       {isUnlockModalOpen && (
@@ -1483,7 +1623,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   <li>Klik menu <strong>Ekstensi (Extensions)</strong> → <strong>Apps Script</strong>.</li>
                   <li>Hapus semua isi kode bawaan, lalu tempelkan (paste) seluruh kode script di bawah ini.</li>
                   <li>
-                    Pilih fungsi <strong>setupSheet</strong> di dropdown atas editor Apps Script lalu klik <strong>Jalankan (Run)</strong> untuk membuat seluruh 13 Tab/Sheet resmi & 7 folder Google Drive secara otomatis.
+                    Pilih fungsi <strong>setupSheet</strong> di dropdown atas editor Apps Script lalu klik <strong>Jalankan (Run)</strong> untuk membuat seluruh 9 Tab/Sheet resmi & folder Google Drive secara otomatis.
                   </li>
                   <li>
                     Klik <strong>Terapkan (Deploy)</strong> → <strong>Penerapan baru (New deployment)</strong> → Pilih jenis <strong>Aplikasi Web (Web App)</strong>.

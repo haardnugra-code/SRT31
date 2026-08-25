@@ -452,20 +452,20 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* 1. STUDENT SELECTOR & SEARCH BAR */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         {/* Left: Quick Search & Filter */}
-        <div className="flex flex-1 flex-wrap items-center gap-2.5">
+        <div className="flex flex-1 flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-2.5">
           {onBackToTable && (
             <button
               onClick={onBackToTable}
-              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow flex items-center gap-1.5 active:scale-95 shrink-0"
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow flex items-center justify-center gap-1.5 active:scale-95 shrink-0"
               title="Kembali ke Tabel Data Siswa"
             >
               <ArrowLeft className="w-4 h-4" /> Data Siswa
             </button>
           )}
 
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-0 sm:min-w-[180px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -486,55 +486,57 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
             )}
           </div>
 
-          <select
-            value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-            className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:ring-2 focus:ring-red-500 focus:outline-none font-medium cursor-pointer"
-          >
-            <option value="">Semua Jenjang</option>
-            {availableClasses.map((cls) => (
-              <option key={cls} value={cls}>
-                Jenjang {cls}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={dormFilter}
-            onChange={(e) => setDormFilter(e.target.value)}
-            className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:ring-2 focus:ring-red-500 focus:outline-none font-medium cursor-pointer"
-          >
-            <option value="">Semua Asrama</option>
-            {availableDorms.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-
-          {(searchQuery || classFilter || dormFilter) && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setClassFilter('');
-                setDormFilter('');
-              }}
-              className="px-2.5 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 shrink-0 active:scale-95"
-              title="Reset semua filter"
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <select
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className="flex-1 sm:flex-initial py-2 px-2.5 sm:px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:ring-2 focus:ring-red-500 focus:outline-none font-medium cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" /> Reset
-            </button>
-          )}
+              <option value="">Semua Jenjang</option>
+              {availableClasses.map((cls) => (
+                <option key={cls} value={cls}>
+                  Jenjang {cls}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={dormFilter}
+              onChange={(e) => setDormFilter(e.target.value)}
+              className="flex-1 sm:flex-initial py-2 px-2.5 sm:px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:ring-2 focus:ring-red-500 focus:outline-none font-medium cursor-pointer"
+            >
+              <option value="">Semua Asrama</option>
+              {availableDorms.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+
+            {(searchQuery || classFilter || dormFilter) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setClassFilter('');
+                  setDormFilter('');
+                }}
+                className="px-2.5 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 shrink-0 active:scale-95"
+                title="Reset semua filter"
+              >
+                <X className="w-3.5 h-3.5" /> Reset
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Right: Active Student Dropdown & Prev/Next */}
-        <div className="flex items-center gap-1.5 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-100 shrink-0">
+        <div className="flex items-center justify-between sm:justify-start gap-1.5 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-100 w-full lg:w-auto">
           <button
             type="button"
             onClick={handlePrevStudent}
             disabled={currentFilteredIndex <= 0}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:hover:bg-slate-100 rounded-xl transition-all active:scale-95 shrink-0"
             title="Siswa Sebelumnya"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -547,7 +549,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
               if (val) setSelectedStudentId(val);
             }}
             disabled={filteredStudents.length === 0}
-            className="py-2 px-3 bg-red-50 hover:bg-red-100/80 border border-red-200 font-bold text-xs text-red-950 rounded-xl focus:ring-2 focus:ring-red-500 focus:outline-none max-w-[280px] truncate cursor-pointer disabled:opacity-50"
+            className="flex-1 lg:flex-initial py-2 px-2.5 sm:px-3 bg-red-50 hover:bg-red-100/80 border border-red-200 font-bold text-xs text-red-950 rounded-xl focus:ring-2 focus:ring-red-500 focus:outline-none min-w-0 max-w-full sm:max-w-[260px] truncate cursor-pointer disabled:opacity-50"
           >
             {filteredStudents.length === 0 ? (
               <option value="">Tidak ada siswa</option>
@@ -564,13 +566,13 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
             type="button"
             onClick={handleNextStudent}
             disabled={currentFilteredIndex < 0 || currentFilteredIndex >= filteredStudents.length - 1}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:hover:bg-slate-100 rounded-xl transition-all active:scale-95 shrink-0"
             title="Siswa Berikutnya"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
 
-          <span className="text-[11px] font-bold text-slate-500 pl-1 whitespace-nowrap">
+          <span className="text-[11px] font-bold text-slate-500 pl-1 whitespace-nowrap shrink-0">
             {filteredStudents.length > 0
               ? `${currentFilteredIndex + 1}/${filteredStudents.length}`
               : `0/${students.length}`}
@@ -604,15 +606,15 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
       {currentStudent && (
         <>
           {/* 2. HERO PROFILE BANNER & IDENTITY CARD */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
             {/* Top Decorative Header Accent */}
-            <div className="h-28 bg-gradient-to-r from-slate-900 via-red-950 to-slate-900 relative px-6 py-4 flex items-end justify-between">
+            <div className="h-24 sm:h-28 bg-gradient-to-r from-slate-900 via-red-950 to-slate-900 relative px-4 sm:px-6 py-3 sm:py-4 flex items-end justify-between">
               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
-              <div className="relative z-10 flex items-center gap-2 text-white/80 text-xs font-semibold">
-                <ShieldCheck className="w-4 h-4 text-amber-400" />
-                <span>Portofolio Keasramaan Terpadu • Sekolah Rakyat 31 Palembang</span>
+              <div className="relative z-10 flex items-center gap-1.5 sm:gap-2 text-white/80 text-[11px] sm:text-xs font-semibold truncate">
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" />
+                <span className="truncate">Portofolio Keasramaan Terpadu • Sekolah Rakyat 31 Palembang</span>
               </div>
-              <div className="relative z-10 hidden sm:flex items-center gap-2">
+              <div className="relative z-10 hidden sm:flex items-center gap-2 shrink-0">
                 <span className="px-3 py-1 bg-white/10 backdrop-blur-md text-white text-[11px] font-bold rounded-full border border-white/20">
                   {config.semester || 'Genap'} • TA {config.academicYear || '2025/2026'}
                 </span>
@@ -620,20 +622,20 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
             </div>
 
             {/* Profile Content Body */}
-            <div className="p-6 md:p-8 pt-0 -mt-12 relative z-20">
-              <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 pb-6 border-b border-slate-100">
+            <div className="p-4 sm:p-6 md:p-8 pt-0 -mt-10 sm:-mt-12 relative z-20">
+              <div className="flex flex-col lg:flex-row items-center sm:items-start lg:items-end justify-between gap-5 sm:gap-6 pb-5 sm:pb-6 border-b border-slate-100">
                 {/* Avatar & Main Info */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 w-full lg:w-auto">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 w-full text-center sm:text-left">
                   {/* Avatar Container */}
                   <div className="shrink-0">
-                    <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl border-4 border-white shadow-xl bg-gradient-to-br from-red-600 to-red-800 text-white flex items-center justify-center font-extrabold text-3xl md:text-4xl shadow-red-900/20">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-2xl sm:rounded-3xl border-4 border-white shadow-xl bg-gradient-to-br from-red-600 to-red-800 text-white flex items-center justify-center font-extrabold text-2xl sm:text-3xl md:text-4xl shadow-red-900/20">
                       {currentStudent.name.charAt(0).toUpperCase()}
                     </div>
                   </div>
 
                   {/* Student Title & Badges */}
-                  <div className="space-y-1.5 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2">
                       <span className="px-2.5 py-0.5 bg-red-100 text-red-800 font-bold text-xs rounded-lg">
                         Kelas {currentStudent.class}
                       </span>
@@ -647,11 +649,11 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                       )}
                     </div>
 
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight">
                       {currentStudent.name}
                     </h1>
 
-                    <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <div className="text-xs text-slate-500 flex flex-wrap items-center justify-center sm:justify-start gap-x-3 sm:gap-x-4 gap-y-1">
                       <span>NISN / ID: <strong className="text-slate-800 font-mono">{currentStudent.id}</strong></span>
                       <span>•</span>
                       <span>Wali Asuh: <strong className="text-slate-800">{currentStudent.caretaker || '-'}</strong></span>
@@ -674,17 +676,17 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                 </div>
 
                 {/* Quick Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:flex-wrap items-center gap-2 w-full lg:w-auto">
                   <button
                     onClick={handleOpenEditModal}
-                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                    className="px-3.5 py-2.5 sm:py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                   >
                     <Edit2 className="w-3.5 h-3.5 text-slate-600" /> Edit Biodata
                   </button>
 
                   <button
                     onClick={() => generateStudentCardPDF(currentStudent, config)}
-                    className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                    className="px-3.5 py-2.5 sm:py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                     title="Cetak KTA Kartu Siswa & QR"
                   >
                     <QrCode className="w-3.5 h-3.5 text-amber-400" /> Cetak KTA
@@ -694,47 +696,47 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                     onClick={() =>
                       generateStudentViolationHistoryPDF(currentStudent, violations, config)
                     }
-                    className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                    className="px-3.5 py-2.5 sm:py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                     title="Cetak Buku Historis Pelanggaran PDF"
                   >
-                    <Printer className="w-3.5 h-3.5" /> Cetak Historis (PDF)
+                    <Printer className="w-3.5 h-3.5" /> Cetak Historis
                   </button>
                 </div>
               </div>
 
               {/* Physical Biometrics & Uniform Badges */}
-              <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-                <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 text-center">
+              <div className="mt-4 sm:mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+                <div className="bg-slate-50 border border-slate-200/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 text-center">
                   <span className="text-[10px] font-semibold text-slate-500 block uppercase">Tinggi Badan</span>
-                  <span className="text-base font-bold text-slate-800">
+                  <span className="text-sm sm:text-base font-bold text-slate-800">
                     {currentStudent.height ? `${currentStudent.height} cm` : '-'}
                   </span>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 text-center">
+                <div className="bg-slate-50 border border-slate-200/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 text-center">
                   <span className="text-[10px] font-semibold text-slate-500 block uppercase">Berat Badan</span>
-                  <span className="text-base font-bold text-slate-800">
+                  <span className="text-sm sm:text-base font-bold text-slate-800">
                     {currentStudent.weight ? `${currentStudent.weight} kg` : '-'}
                   </span>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 text-center">
+                <div className="bg-slate-50 border border-slate-200/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 text-center">
                   <span className="text-[10px] font-semibold text-slate-500 block uppercase">Status BMI</span>
                   <span className={`text-xs font-bold block truncate mt-0.5 ${bmiInfo ? bmiInfo.category.includes('Normal') ? 'text-emerald-700' : 'text-amber-700' : 'text-slate-400'}`}>
                     {bmiInfo ? `${bmiInfo.bmi} (${bmiInfo.category})` : '-'}
                   </span>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 text-center">
+                <div className="bg-slate-50 border border-slate-200/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 text-center">
                   <span className="text-[10px] font-semibold text-slate-500 block uppercase">Ukuran Baju</span>
-                  <span className="text-base font-bold text-slate-800">
+                  <span className="text-sm sm:text-base font-bold text-slate-800">
                     {currentStudent.shirtSize || '-'}
                   </span>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 text-center col-span-2 sm:col-span-1">
+                <div className="bg-slate-50 border border-slate-200/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 text-center col-span-2 sm:col-span-1">
                   <span className="text-[10px] font-semibold text-slate-500 block uppercase">Ukuran Celana</span>
-                  <span className="text-base font-bold text-slate-800">
+                  <span className="text-sm sm:text-base font-bold text-slate-800">
                     {currentStudent.pantsSize || '-'}
                   </span>
                 </div>
@@ -743,11 +745,11 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
           </div>
 
           {/* 3. 4-PILLAR KPI SUMMARY CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* 1. Discipline Score KPI */}
             <div
               onClick={() => setActiveSubTab('violations')}
-              className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-red-300 hover:shadow-md transition-all cursor-pointer group"
+              className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs hover:border-red-300 hover:shadow-md transition-all cursor-pointer group"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Skor Disiplin</span>
@@ -756,7 +758,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                 </div>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900">
                   {studentDisciplineScore.score}
                 </span>
                 <span className="text-xs text-slate-400 font-bold">/ 100</span>
@@ -774,7 +776,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
             {/* 2. Daily Checklist Compliance KPI */}
             <div
               onClick={() => setActiveSubTab('checklist')}
-              className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer group"
+              className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer group"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ceklist Harian</span>
@@ -783,7 +785,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                 </div>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900">
                   {journalStats.complianceRate}%
                 </span>
                 <span className="text-xs text-slate-400 font-bold">Kepatuhan</span>
@@ -801,7 +803,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
             {/* 3. Report Card Status KPI */}
             <div
               onClick={() => setActiveSubTab('report-card')}
-              className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-amber-300 hover:shadow-md transition-all cursor-pointer group"
+              className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs hover:border-amber-300 hover:shadow-md transition-all cursor-pointer group"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Rapor Keasramaan</span>
@@ -810,7 +812,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                 </div>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-xl font-bold text-slate-900 truncate">
+                <span className="text-lg sm:text-xl font-bold text-slate-900 truncate">
                   {studentReport ? 'Terbit & Tercatat' : 'Belum Terisi'}
                 </span>
               </div>
@@ -827,7 +829,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
             {/* 4. Attendance & Health KPI */}
             <div
               onClick={() => setActiveSubTab('attendance')}
-              className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
+              className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Presensi Sholat</span>
@@ -836,7 +838,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                 </div>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900">
                   {attendanceStats.rate}%
                 </span>
                 <span className="text-xs text-slate-400 font-bold">Kehadiran</span>
@@ -1207,20 +1209,20 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <button
                       onClick={() => {
                         setSelectedSummonsViolation(studentViolations[0] || null);
                         setIsSummonsModalOpen(true);
                       }}
-                      className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                      className="flex-1 sm:flex-initial px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                       title="Buat Surat Panggilan Orang Tua Resmi"
                     >
                       <MailWarning className="w-3.5 h-3.5" /> Buat Surat Panggilan Ortu
                     </button>
                     <button
                       onClick={() => generateStudentViolationHistoryPDF(currentStudent, violations, config)}
-                      className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                      className="flex-1 sm:flex-initial px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5" /> Cetak Buku Historis (PDF)
                     </button>
@@ -1373,7 +1375,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                     <CheckSquare className="w-12 h-12 text-slate-300 mx-auto" />
                     <h4 className="font-bold text-slate-700">Belum Ada Rekaman Ceklist</h4>
                     <p className="text-xs text-slate-500">
-                      Gunakan tombol "Catat Ceklist Baru" untuk mencatat tugas harian santri/siswa.
+                      Gunakan tombol "Catat Ceklist Baru" untuk mencatat tugas harian siswa.
                     </p>
                   </div>
                 )}
@@ -1671,7 +1673,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
           </div>
           <h3 className="text-lg font-bold text-slate-800">Siswa Tidak Ditemukan</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Tidak ditemukan data santri/siswa yang cocok dengan pencarian{' '}
+            Tidak ditemukan data siswa yang cocok dengan pencarian{' '}
             {searchQuery && (
               <span>
                 &quot;<strong className="text-slate-700">{searchQuery}</strong>&quot;
@@ -1793,7 +1795,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                   rows={2}
                   value={checklistNotes}
                   onChange={(e) => setChecklistNotes(e.target.value)}
-                  placeholder="Catatan perkembangan khusus santri/siswa hari ini..."
+                  placeholder="Catatan perkembangan khusus siswa hari ini..."
                   className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>

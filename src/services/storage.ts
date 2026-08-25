@@ -1,156 +1,6 @@
 import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance } from '../types';
 
-export interface NewsPost {
-  id: string;
-  title: string;
-  date: string;
-  desc: string;
-  content?: string;
-  category: string;
-  img: string;
-  status: 'draft' | 'published';
-}
-
-export interface OrgMember {
-  id: string;
-  name: string;
-  role: string;
-  description: string;
-  img: string;
-  color: string;
-}
-
-export interface OrgOverviewConfig {
-  badge: string;
-  titleDark: string;
-  titleHighlight: string;
-  description: string;
-  quote: string;
-  staffCount: string;
-  period: string;
-}
-
-export interface LandingPageData {
-  heroTitle: string;
-  heroSubtitle: string;
-  aboutText: string;
-  news: NewsPost[];
-  vision: string;
-  missions: string[];
-  organization: OrgMember[];
-  orgOverview: OrgOverviewConfig;
-  contact: { address: string; email: string; phone: string; mapUrl: string };
-}
-
-export const DEFAULT_LANDING_DATA: LandingPageData = {
-  heroTitle: "Membangun Generasi <br className=\"hidden md:block\" /><span className=\"text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-500\">Mandiri & Berkarakter</span>",
-  heroSubtitle: "Penerimaan Siswa Baru 2026 Dibuka",
-  aboutText: "Sekolah Rakyat Terintegrasi 31 Palembang  memberikan layanan pendidikan dan keasramaan terbaik untuk mencetak generasi bangsa yang unggul, berakhlak mulia, dan siap menghadapi masa depan.",
-  news: [
-    {
-      id: '1',
-      title: 'Upacara Peringatan Hari Pendidikan Nasional 2026',
-      date: '2 Mei 2026',
-      desc: 'Seluruh civitas akademika Sekolah Rakyat melaksanakan upacara bendera dengan khidmat di lapangan utama.',
-      category: 'Kegiatan',
-      img: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=600&h=400',
-      status: 'published'
-    },
-    {
-      id: '2',
-      title: 'Peluncuran Sistem Digital Keasramaan Terpadu',
-      date: '15 April 2026',
-      desc: 'Inovasi terbaru Sekolah Rakyat Terintegrasi 31 Palembang untuk memantau presensi, pelanggaran, dan kesehatan siswa asrama secara real-time.',
-      category: 'Inovasi',
-      img: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=600&h=400',
-      status: 'published'
-    },
-    {
-      id: '3',
-      title: 'Prestasi Juara Umum Olimpiade Sains Tingkat Provinsi',
-      date: '28 Maret 2026',
-      desc: 'Dua siswa Sekolah Rakyat berhasil membawa pulang medali emas pada ajang bergengsi tahunan.',
-      category: 'Prestasi',
-      img: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=600&h=400',
-      status: 'published'
-    }
-  ],
-  vision: "Menjadi lembaga pendidikan dan keasramaan terdepan yang menghasilkan insan mandiri, berkarakter mulia, cerdas, dan peduli terhadap sesama sesuai dengan nilai-nilai Pancasila.",
-  missions: [
-    "Menyelenggarakan pendidikan formal yang berkualitas, inklusif, dan adaptif terhadap perkembangan teknologi.",
-    "Menerapkan sistem keasramaan yang disiplin, aman, dan berorientasi pada pembentukan karakter.",
-    "Menumbuhkan rasa kepedulian sosial, toleransi, dan kemandirian melalui kegiatan ekstrakurikuler terpadu.",
-    "Memberdayakan pendidik dan tenaga kependidikan secara berkelanjutan demi pelayanan terbaik."
-  ],
-  organization: [
-    {
-      id: "1",
-      name: "Yuni Arsi, M.Pd",
-      role: "Kepala Sekolah",
-      description: "Penanggung Jawab Utama",
-      img: "https://ui-avatars.com/api/?name=Direktur+Utama&background=ef4444&color=fff&size=200",
-      color: "red"
-    },
-    {
-      id: "2",
-      name: "Siti Rahmawati, M.Pd",
-      role: "Wakabid Akademik",
-      description: "Pengelola Kurikulum & Pengajar",
-      img: "https://ui-avatars.com/api/?name=Wakil+Akademik&background=3b82f6&color=fff&size=200",
-      color: "blue"
-    },
-    {
-      id: "3",
-      name: "M. Ardian Nugraha, S.H",
-      role: "Kepala Wali Asuh",
-      description: "Pengelola Keasramaan & Disiplin",
-      img: "https://ui-avatars.com/api/?name=Wakil+Asrama&background=f59e0b&color=fff&size=200",
-      color: "amber"
-    }
-  ],
-  orgOverview: {
-    badge: "Struktur Organisasi",
-    titleDark: "Pimpinan &",
-    titleHighlight: "Tenaga Pendidik",
-    description: "Sekolah Rakyat Terintegrasi 31 Palembang dipimpin oleh tenaga profesional yang berdedikasi tinggi untuk mencetak generasi emas. Kami memiliki tim pengajar yang kompeten dan berpengalaman di bidangnya.",
-    quote: "Pendidikan adalah senjata paling ampuh untuk mengubah dunia. Di Sekolah Rakyat Terintegrasi 31, kami berkomitmen memberikan yang terbaik untuk masa depan anak bangsa.",
-    staffCount: "51 Guru & Staff",
-    period: "Periode 2025/2026"
-  },
-  contact: {
-    address: "Jl. Sosial No. 31, Palembang, Sumatera Selatan",
-    email: "info@sekolahrakyat.go.id",
-    phone: "081352264191",
-    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3984.4449767355026!2d104.743128!3d-2.932029!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e3b74e645904de1%3A0x6b63d91789c9d1df!2sJl.%20Sosial%2C%20Suka%20Bangun%2C%20Kec.%20Sukarami%2C%20Kota%20Palembang%2C%20Sumatera%20Selatan!5e0!3m2!1sid!2sid!4v1716301234567!5m2!1sid!2sid"
-  }
-};
-
-export function loadLandingData(): LandingPageData {
-  const saved = localStorage.getItem('sr_landing_data');
-  if (saved) {
-    try {
-      const parsed = { ...DEFAULT_LANDING_DATA, ...JSON.parse(saved) };
-      if (parsed.organization) {
-        parsed.organization = parsed.organization.map((member: any) => {
-          if (member.name === 'Dr. H. Ahmad Fauzi') {
-            return { ...member, name: 'Yuni Arsi, M.Pd' };
-          }
-          return member;
-        });
-      }
-      return parsed;
-    } catch (e) {
-      console.error(e);
-    }
-  }
-  return DEFAULT_LANDING_DATA;
-}
-
-export function saveLandingData(data: LandingPageData) {
-  localStorage.setItem('sr_landing_data', JSON.stringify(data));
-}
-
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGMFU1S5xe1BLHB4F1HeRJhfGKFfFmmz6d7yyhoSrhJSN2fwxdIegHxWTZ7c12go8coA/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF/exec";
 
 export const DEFAULT_DISCIPLINE_LEVELS: DisciplineLevelConfig[] = [
   { level: 1, name: 'Tingkat 1 (Pelanggaran Ringan)', pointsDeduction: 5, defaultSanction: 'Teguran lisan & Piket asrama' },
@@ -173,7 +23,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   waliAsrama: "HISNUL HASHIN, SE",
   waliAsramaNip: "NIP. 197406262025211027",
   waliAsramaTitle: "Wali Asrama Mandiri",
-  kepalaSekolah: "YUNI ARSI, M.Pd",
+  kepalaSekolah: "YUNI ARSI, S.Pd",
   kepalaSekolahNip: "197206051999032002",
   kopKiri: "KEMENTERIAN SOSIAL REPUBLIK INDONESIA\nPUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI",
   kopKanan: "SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG\nJl. Komp Sosial Km 5 Sukabangun, Palembang",
@@ -339,13 +189,12 @@ export function loadAppConfig(): AppConfig {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u') || parsed.googleScriptUrl.includes('AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF')) {
+      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u')) {
         parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
       }
       if (!parsed.waliAsuhList || parsed.waliAsuhList.some((w: string) => w.includes('Bp. Hermawan') || w.includes('Ibu Handayani'))) {
         parsed.waliAsuhList = DEFAULT_CONFIG.waliAsuhList;
       }
-      if (parsed.kepalaSekolah === 'YUNI ARSI, S.Pd') { parsed.kepalaSekolah = 'YUNI ARSI, M.Pd'; }
       if (!parsed.dormList || parsed.dormList.includes('Asrama Putra A')) {
         parsed.dormList = DEFAULT_CONFIG.dormList;
       }
@@ -370,15 +219,39 @@ export function loadStudents(): Student[] {
     try {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        const legacyDummyNames = [
+          "a rakka attala", "abdul wahid", "ade rizki cahya", "al fatih al farizi",
+          "m fahri", "m farrel", "m firmansyah", "m. alvin", "m. fatir alfareza",
+          "m. syahrul romadon", "m.aditya", "muhamad fauzan", "muhammad reza",
+          "nur reva anugrah putri", "nur rivi anugrah putri", "reski al farizi",
+          "rizki abdulah", "sella marselina", "yeni inda sari", "shintyah anggraeni",
+          "muhammad rezky ramadhan", "adriansya khoirul khafi", "aira saputri",
+          "aldo ardiansyah", "amel", "ardiansyah", "fatma fauzia", "imel",
+          "imelda susanti", "lesi", "m. aqil abdul rasyid", "m badril munir",
+          "m jessen pratama", "m. richad rivaldo", "m.daffa saputra",
+          "mirza mushthafa mahdi", "muhamad ferdiansyah", "muhamad vernando agustian",
+          "nabilla", "puspa lestari", "puspita sari", "putri", "putri septiani",
+          "siti fadila", "abdi putra anggara", "achmad rizky kurniawan",
+          "an - anissa maulidya ningsih", "bagus ramadhan", "junian gunhar",
+          "kevin", "muhamat ridhowan", "muhammad iqbal", "muhammad rava oktardi",
+          "muhammad yogie prananda", "purwadi", "rahman firly afriansyah",
+          "reni mustika ratu", "riki rikardo", "rizki aditia", "saskiya amanda",
+          "syahara auliyah", "tirta pratama", "uswatun khasanah", "yogi saputra",
+          "yuni aulia sari"
+        ];
         const uniqueMap = new Map<string, Student>();
         parsed.forEach((s: Student) => {
           if (s && s.id && s.name) {
             const cleanedId = String(s.id).trim();
+            const normName = String(s.name).trim().toLowerCase();
+            // Discard legacy template dummy items so pure Google Sheet database is utilized
+            if (cleanedId.startsWith('SR00') && legacyDummyNames.includes(normName)) {
+              return;
+            }
             uniqueMap.set(cleanedId, { ...s, id: cleanedId, name: String(s.name).trim() });
           }
         });
-        const deduplicated = Array.from(uniqueMap.values());
-        if (deduplicated.length > 0) return deduplicated;
+        return Array.from(uniqueMap.values());
       }
     } catch (e) {
       console.error(e);
@@ -483,7 +356,11 @@ export function loadMedicalRecords(): MedicalRecord[] {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const legacyDummyMedIds = ['MED-2026-001', 'MED-2026-000A', 'MED-2026-000B', 'MED-2026-002', 'MED-2026-003'];
+        const cleaned = parsed.filter(m => m && m.id && !legacyDummyMedIds.includes(m.id));
+        return cleaned;
+      }
     } catch (e) {
       console.error(e);
     }
@@ -493,6 +370,21 @@ export function loadMedicalRecords(): MedicalRecord[] {
 
 export function saveMedicalRecords(records: MedicalRecord[]): void {
   localStorage.setItem('sr_medical_records', JSON.stringify(records));
+}
+
+/**
+ * Purges all hardcoded dummy data and shadow cache from local storage.
+ */
+export function purgeAllDummyData(): { removedStudents: number; removedRecords: number } {
+  const studentsBefore = loadStudents();
+  const medBefore = loadMedicalRecords();
+  localStorage.removeItem('sr_students');
+  localStorage.removeItem('sr_medical_records');
+  localStorage.setItem('sr_dummy_purged', 'true');
+  return {
+    removedStudents: studentsBefore.length,
+    removedRecords: medBefore.length
+  };
 }
 
 export const INITIAL_PRAYER_ATTENDANCE: PrayerAttendance[] = [];

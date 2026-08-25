@@ -94,12 +94,12 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
   const [letterNumber, setLetterNumber] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
-  const DRAFT_LEAVES_KEY = 'SANTRI_LEAVES_DRAFT';
+  const DRAFT_LEAVES_KEY = 'SISWA_LEAVES_DRAFT';
 
   // Check saved draft on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_LEAVES_KEY);
+      const saved = localStorage.getItem(DRAFT_LEAVES_KEY) || localStorage.getItem('SANTRI_LEAVES_DRAFT');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.reason || parsed.destinationAddress || parsed.notes)) {
@@ -1234,7 +1234,7 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
                               ? 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                               : 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
                           }`}
-                          title="Klik untuk mengubah status kedatangan santri"
+                          title="Klik untuk mengubah status kedatangan siswa"
                         >
                           {l.status === 'Returned' ? (
                             <>

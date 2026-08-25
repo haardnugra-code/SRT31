@@ -102,7 +102,7 @@ export const RecapTab: React.FC<RecapTabProps> = ({
             Rekapitulasi Laporan Bulanan (Multi-Page PDF)
           </h2>
           <p className="text-xs text-slate-500">
-            Unduh berkas PDF formal komprehensif (Pelanggaran, Konseling, Izin & Rekam Medis UKS) tanpa terpotong untuk dilaporkan ke pihak Sekolah.
+            Unduh berkas PDF formal komprehensif (Pelanggaran, Konseling, Izin & Rekam Medis UKS) tanpa terpotong untuk dilaporkan ke pihak Sekolah atau Kemensos RI.
           </p>
         </div>
         <button

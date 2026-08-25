@@ -141,12 +141,12 @@ export const CounselingTab: React.FC<CounselingTabProps> = ({
   const [status, setStatus] = useState<CounselingStatus>('Open');
   const [referralDetails, setReferralDetails] = useState<string>('');
 
-  const DRAFT_STORAGE_KEY = 'SANTRI_BK_COUNSELING_DRAFT';
+  const DRAFT_STORAGE_KEY = 'SISWA_BK_COUNSELING_DRAFT';
 
   // Check for saved draft on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY) || localStorage.getItem('SANTRI_BK_COUNSELING_DRAFT');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.caseDescription || parsed.notes || parsed.studentCommitment)) {

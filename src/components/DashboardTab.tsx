@@ -346,7 +346,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             onClick={() => onNavigateTab('prayer-attendance')}
             className="flex-1 sm:flex-initial bg-slate-950 text-white font-bold text-xs px-4 py-3 rounded-lg hover:bg-slate-900 transition shadow active:scale-95 text-center flex items-center justify-center gap-1.5 border border-white/20"
           >
-            <QrCode className="w-4 h-4 text-amber-300" /> Absensi Sholat (QR)
+            <QrCode className="w-4 h-4 text-amber-300" /> Absensi
           </button>
           <button
             onClick={onOpenViolationModal}
@@ -402,7 +402,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-[10px] md:text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Santri Izin Keluar
+              Siswa Izin Keluar
             </p>
             <p className="text-xl md:text-2xl font-extrabold text-slate-900 mt-1">
               {activeLeaves}

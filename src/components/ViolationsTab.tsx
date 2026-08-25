@@ -85,7 +85,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
   const [summonsSelectedViolation, setSummonsSelectedViolation] = useState<Violation | null>(null);
   const [summonsSelectedStudentId, setSummonsSelectedStudentId] = useState<string>('');
 
-  const DRAFT_VIOLATIONS_KEY = 'SANTRI_VIOLATIONS_DRAFT';
+  const DRAFT_VIOLATIONS_KEY = 'SISWA_VIOLATIONS_DRAFT';
 
   // Open form automatically if triggered from external
   useEffect(() => {
@@ -97,7 +97,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
   // Check saved draft on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_VIOLATIONS_KEY);
+      const saved = localStorage.getItem(DRAFT_VIOLATIONS_KEY) || localStorage.getItem('SANTRI_VIOLATIONS_DRAFT');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.note || parsed.photo || parsed.urlInput)) {
@@ -486,7 +486,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
                 <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-600" /> Identitas Siswa & Waktu Kejadian
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">Pilih santri yang terlibat dan tanggal pencatatan</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Pilih siswa yang terlibat dan tanggal pencatatan</p>
               </div>
 
               <div>
@@ -648,7 +648,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
                   onChange={(e) => setNote(e.target.value)}
                   rows={3}
                   className="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
-                  placeholder="e.g. Kronologi singkat kejadian, saksi yang melihat, atau komitmen perbaikan langsung dari santri bersangkutan..."
+                  placeholder="e.g. Kronologi singkat kejadian, saksi yang melihat, atau komitmen perbaikan langsung dari siswa bersangkutan..."
                 />
               </div>
 

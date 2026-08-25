@@ -542,7 +542,7 @@ export const PptPrintSlides: React.FC = () => {
 
           {/* Footer Slide */}
           <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-            <span>Sistem Keasramaan • Sekolah Rakyat Kemensos RI</span>
+            <span>Sistem Keasramaan • Sekolah Rakyat Terintegrasi 31 Palembang</span>
             <span>Slide {idx + 1} dari {pptSlides.length}</span>
           </div>
         </div>

@@ -757,6 +757,8 @@ function autoFormatSheets() {
 // 8. REKONSILIASI & PENCEGAHAN DATA SHADOW
 // ==============================================================================
 
+
+// ==============================================================================
 function cleanShadowData() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -768,14 +770,15 @@ function cleanShadowData() {
 
     var studentMap = {};
     for (var i = 1; i < studentData.length; i++) {
-      var id = String(studentData[i][0]).trim();
+      var id = String(studentData[i][0]).trim().toLowerCase();
       var name = String(studentData[i][1]).trim();
       if (id) {
-        studentMap[id.toLowerCase()] = { id: id, name: name };
+        studentMap[id] = { id: id, name: name };
       }
     }
 
     var fixedCount = 0;
+    var deletedCount = 0;
     var targetSheets = [
       { name: 'Violations', idCol: 2, nameCol: 3 },
       { name: 'Counseling', idCol: 3, nameCol: 4 },
@@ -796,36 +799,53 @@ function cleanShadowData() {
       if (rows.length <= 1) continue;
 
       var modified = false;
+      var rowsToDelete = [];
+      
       for (var r = 1; r < rows.length; r++) {
         var rowId = String(rows[r][conf.idCol]).trim().toLowerCase();
         var rowName = String(rows[r][conf.nameCol]).trim();
 
-        if (rowId && studentMap[rowId]) {
-          var masterName = studentMap[rowId].name;
-          if (rowName !== masterName) {
-            rows[r][conf.nameCol] = masterName;
-            fixedCount++;
-            modified = true;
+        if (rowId) {
+          if (studentMap[rowId]) {
+            var masterName = studentMap[rowId].name;
+            if (rowName !== masterName) {
+              rows[r][conf.nameCol] = masterName;
+              fixedCount++;
+              modified = true;
+            }
+          } else {
+            // Orphaned record found
+            rowsToDelete.push(r + 1);
           }
         }
       }
+      
+      // Hapus baris yatim piatu dari bawah ke atas agar indeks tidak bergeser
+      for (var d = rowsToDelete.length - 1; d >= 0; d--) {
+        sh.deleteRow(rowsToDelete[d]);
+        deletedCount++;
+      }
 
       if (modified) {
-        range.setValues(rows);
+        var updatedRows = rows.filter(function(row, index) {
+          return rowsToDelete.indexOf(index + 1) === -1;
+        });
+        sh.clearContents();
+        sh.getRange(1, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
       }
     }
 
     return {
       status: 'success',
-      message: 'Rekonsiliasi Data Shadow Selesai! ' + fixedCount + ' data nama murid berhasil diselaraskan dengan Master Students.',
-      fixedCount: fixedCount
+      message: 'Rekonsiliasi Data Shadow Selesai! ' + fixedCount + ' data nama diselaraskan, ' + deletedCount + ' data yatim (shadow) dihapus.',
+      fixedCount: fixedCount,
+      deletedCount: deletedCount
     };
   } catch (err) {
     return { status: 'error', message: 'Gagal membersihkan data shadow: ' + err.toString() };
   }
 }
 
-// ==============================================================================
 // 9. MENU TOMBOL OTOMATIS DI GOOGLE SPREADSHEET (UI MENU ON OPEN)
 // ==============================================================================
 

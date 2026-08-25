@@ -61,6 +61,7 @@ interface MedicalTabProps {
   config: AppConfig;
   onReconcileShadowData?: (purgeOrphans?: boolean) => Promise<ShadowDataAuditStats>;
   onShowToast?: (title: string, message: string, type?: 'success' | 'warning' | 'error') => void;
+  onAskConfirm?: (title: string, message: string) => Promise<boolean>;
 }
 
 const COMMON_SYMPTOMS = [
@@ -123,7 +124,8 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
   onDeleteRecord,
   config,
   onReconcileShadowData,
-  onShowToast
+  onShowToast,
+  onAskConfirm
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'records' | 'student-history'>('records');
   const [searchTerm, setSearchTerm] = useState('');
@@ -919,8 +921,14 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => {
-                                  if (confirm(`Hapus rekam medis untuk ${rec.studentName}?`)) {
+                                onClick={async () => {
+                                  let confirmed = false;
+                                  if (onAskConfirm) {
+                                    confirmed = await onAskConfirm('Hapus Rekam Medis?', `Apakah Anda yakin ingin menghapus rekam medis UKS atas nama ${rec.studentName}?`);
+                                  } else {
+                                    confirmed = confirm(`Hapus rekam medis untuk ${rec.studentName}?`);
+                                  }
+                                  if (confirmed) {
                                     onDeleteRecord(rec.id);
                                   }
                                 }}

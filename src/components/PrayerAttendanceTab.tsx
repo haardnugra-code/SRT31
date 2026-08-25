@@ -56,7 +56,8 @@ import {
   Coffee,
   Sun,
   Moon,
-  Bookmark
+  Bookmark,
+  Trash2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -436,7 +437,7 @@ const StudentCardBack: React.FC<StudentCardBackProps> = ({
         <h4 className="font-extrabold text-[8.5px] uppercase text-slate-900 leading-tight">
           KETENTUAN & TATA TERTIB KEASRAMAAN
         </h4>
-        <p className="text-[7px] font-bold text-red-700 uppercase">SEKOLAH RAKYAT KEMENSOS RI</p>
+        <p className="text-[7px] font-bold text-red-700 uppercase">SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG</p>
       </div>
 
       <ol className="list-decimal list-inside text-[7.5px] space-y-0.5 font-semibold text-slate-800 leading-tight my-auto">
@@ -448,9 +449,9 @@ const StudentCardBack: React.FC<StudentCardBackProps> = ({
       <div className="pt-1 border-t border-slate-300 flex items-center justify-between">
         <div className="text-[7px] space-y-0.5">
           <p className="font-bold">Palembang, 2026</p>
-          <p className="font-bold text-slate-700">Kepala Pengasuh Asrama,</p>
+          <p className="font-bold text-slate-700">Kepala Wali Asuh,</p>
           <div className="h-2.5" />
-          <p className="font-extrabold underline text-slate-900">Tim Pengasuhan SR</p>
+          <p className="font-extrabold underline text-slate-900">Tim Wali Asuh SR</p>
         </div>
 
         <div className="text-center bg-slate-50 p-1 rounded border border-slate-300">
@@ -1391,6 +1392,68 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Top Switcher Navigation Bar */}
+      <div className="no-print bg-white p-2.5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+          <button
+            onClick={() => setActiveSubTab('scanner')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
+              activeSubTab === 'scanner'
+                ? 'bg-red-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Camera className={`w-4 h-4 ${activeSubTab === 'scanner' ? 'text-red-200' : 'text-slate-400'}`} />
+            <span>QR Scanner Live</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveSubTab('cards')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
+              activeSubTab === 'cards'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <QrCode className={`w-4 h-4 ${activeSubTab === 'cards' ? 'text-indigo-200' : 'text-slate-400'}`} />
+            <span>Generator Kartu QR</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('checklist')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
+              activeSubTab === 'checklist'
+                ? 'bg-teal-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <CheckSquare className={`w-4 h-4 ${activeSubTab === 'checklist' ? 'text-teal-200' : 'text-slate-400'}`} />
+            <span>Ceklist Harian</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('recap')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
+              activeSubTab === 'recap'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <FileSpreadsheet className={`w-4 h-4 ${activeSubTab === 'recap' ? 'text-blue-200' : 'text-slate-400'}`} />
+            <span>Laporan Rekap Hadir</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 pr-2">
+          <button
+            onClick={() => setIsArduinoModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all whitespace-nowrap bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-300 text-xs"
+          >
+            <Cpu className="w-4 h-4 text-amber-600" /> Hardware & Arduino RFID
+          </button>
+        </div>
+      </div>
+
       {/* Hidden File Input for JSON Attendance Import */}
       <input
         type="file"
@@ -1413,56 +1476,6 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
             <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
               Presensi digital terpadu untuk Sholat Berjamaah 5 Waktu, Ruang Makan / Dapur Asrama (Sarapan, Siang, Malam, Sahur), dan Kegiatan Asrama menggunakan Barcode Gun, Webcam QR Scanner, atau Arduino RFID.
             </p>
-          </div>
-
-          {/* Mode Sub-Tab Switcher */}
-          <div className="no-print bg-white/10 p-1.5 rounded-xl border border-white/10 flex items-center gap-1.5 text-xs flex-shrink-0 w-full md:w-auto overflow-x-auto">
-            <button
-              onClick={() => setActiveSubTab('scanner')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-all whitespace-nowrap ${
-                activeSubTab === 'scanner'
-                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Camera className="w-4 h-4" /> QR Scanner Live
-            </button>
-            <button
-              onClick={() => setActiveSubTab('cards')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-all whitespace-nowrap ${
-                activeSubTab === 'cards'
-                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <QrCode className="w-4 h-4" /> Generator Kartu QR
-            </button>
-            <button
-              onClick={() => setActiveSubTab('checklist')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-all whitespace-nowrap ${
-                activeSubTab === 'checklist'
-                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <CheckSquare className="w-4 h-4" /> Ceklist Harian Santri
-            </button>
-            <button
-              onClick={() => setActiveSubTab('recap')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-all whitespace-nowrap ${
-                activeSubTab === 'recap'
-                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <FileSpreadsheet className="w-4 h-4" /> Laporan Rekap Hadir
-            </button>
-            <button
-              onClick={() => setIsArduinoModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg font-bold transition-all whitespace-nowrap bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border border-amber-400/30 text-xs"
-            >
-              <Cpu className="w-4 h-4 text-amber-300" /> Hardware & Arduino RFID
-            </button>
           </div>
         </div>
         <QrCode className="absolute right-4 -bottom-8 w-60 h-60 text-white/5 pointer-events-none" />
@@ -2993,21 +3006,33 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                   <FileSpreadsheet className="w-5 h-5 text-red-600" /> Rekapitulasi & Laporan Presensi Asrama Terpadu
                 </h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Tinjau rekam jejak presensi sholat berjamaah, jadwal makan asrama, dan kegiatan santri, filter berdasarkan tanggal/sesi, dan unduh laporan PDF resmi ber-kop surat.
+                  Tinjau rekam jejak presensi sholat berjamaah, jadwal makan asrama, dan kegiatan harian, filter berdasarkan tanggal/sesi, dan unduh laporan PDF resmi ber-kop surat.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <button
+                  onClick={async () => {
+                    const confirmClear = await onAskConfirm?.('Hapus Cache Data Absensi?', 'Apakah Anda yakin ingin menghapus semua data presensi asrama? Tindakan ini tidak dapat dibatalkan.');
+                    if (confirmClear) {
+                      onSavePrayerAttendance([]);
+                    }
+                  }}
+                  className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-3.5 py-2.5 rounded-xl text-xs shadow-sm transition-all flex items-center gap-1.5 border border-rose-200 active:scale-95"
+                  title="Hapus seluruh cache data presensi"
+                >
+                  <Trash2 className="w-4 h-4" /> Hapus Cache
+                </button>
+                <button
                   onClick={() => handleExportJSON(false)}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 border border-slate-700"
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 border border-slate-700 active:scale-95"
                   title="Simpan & Unduh seluruh data rekap absensi sebagai file JSON"
                 >
                   <Download className="w-4 h-4 text-blue-400" /> Simpan JSON Absensi
                 </button>
                 <button
                   onClick={() => jsonFileInputRef.current?.click()}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 active:scale-95"
                   title="Impor file JSON rekap absensi"
                 >
                   <Code2 className="w-4 h-4 text-indigo-200" /> Impor File JSON
@@ -3181,7 +3206,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
         </div>
       )}
 
-      {/* SUB-TAB 4: CEKLIST & JURNAL RUTINITAS HARIAN SANTRI */}
+      {/* SUB-TAB 4: CEKLIST & JURNAL RUTINITAS HARIAN */}
       {activeSubTab === 'checklist' && (
         <div className="no-print space-y-6">
           <ChecklistTab
@@ -3361,7 +3386,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                     <pre className="bg-slate-950 text-slate-200 p-4 rounded-xl text-xs font-mono overflow-x-auto border border-slate-800 leading-relaxed max-h-56">
 {`/* 
  * SKETSA ARDUINO / ESP32 RFID SCANNER (Web Serial API)
- * Aplikasi: Sistem Absensi Sekolah Rakyat Kemensos RI
+ * Aplikasi: Sistem Absensi Sekolah Rakyat Terintegrasi 31 Palembang
  */
 
 #include <SPI.h>

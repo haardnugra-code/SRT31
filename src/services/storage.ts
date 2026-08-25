@@ -1,6 +1,156 @@
 import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance } from '../types';
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF/exec";
+export interface NewsPost {
+  id: string;
+  title: string;
+  date: string;
+  desc: string;
+  content?: string;
+  category: string;
+  img: string;
+  status: 'draft' | 'published';
+}
+
+export interface OrgMember {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  img: string;
+  color: string;
+}
+
+export interface OrgOverviewConfig {
+  badge: string;
+  titleDark: string;
+  titleHighlight: string;
+  description: string;
+  quote: string;
+  staffCount: string;
+  period: string;
+}
+
+export interface LandingPageData {
+  heroTitle: string;
+  heroSubtitle: string;
+  aboutText: string;
+  news: NewsPost[];
+  vision: string;
+  missions: string[];
+  organization: OrgMember[];
+  orgOverview: OrgOverviewConfig;
+  contact: { address: string; email: string; phone: string; mapUrl: string };
+}
+
+export const DEFAULT_LANDING_DATA: LandingPageData = {
+  heroTitle: "Membangun Generasi <br className=\"hidden md:block\" /><span className=\"text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-500\">Mandiri & Berkarakter</span>",
+  heroSubtitle: "Penerimaan Siswa Baru 2026 Dibuka",
+  aboutText: "Sekolah Rakyat Terintegrasi 31 Palembang  memberikan layanan pendidikan dan keasramaan terbaik untuk mencetak generasi bangsa yang unggul, berakhlak mulia, dan siap menghadapi masa depan.",
+  news: [
+    {
+      id: '1',
+      title: 'Upacara Peringatan Hari Pendidikan Nasional 2026',
+      date: '2 Mei 2026',
+      desc: 'Seluruh civitas akademika Sekolah Rakyat melaksanakan upacara bendera dengan khidmat di lapangan utama.',
+      category: 'Kegiatan',
+      img: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=600&h=400',
+      status: 'published'
+    },
+    {
+      id: '2',
+      title: 'Peluncuran Sistem Digital Keasramaan Terpadu',
+      date: '15 April 2026',
+      desc: 'Inovasi terbaru Sekolah Rakyat Terintegrasi 31 Palembang untuk memantau presensi, pelanggaran, dan kesehatan siswa asrama secara real-time.',
+      category: 'Inovasi',
+      img: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=600&h=400',
+      status: 'published'
+    },
+    {
+      id: '3',
+      title: 'Prestasi Juara Umum Olimpiade Sains Tingkat Provinsi',
+      date: '28 Maret 2026',
+      desc: 'Dua siswa Sekolah Rakyat berhasil membawa pulang medali emas pada ajang bergengsi tahunan.',
+      category: 'Prestasi',
+      img: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=600&h=400',
+      status: 'published'
+    }
+  ],
+  vision: "Menjadi lembaga pendidikan dan keasramaan terdepan yang menghasilkan insan mandiri, berkarakter mulia, cerdas, dan peduli terhadap sesama sesuai dengan nilai-nilai Pancasila.",
+  missions: [
+    "Menyelenggarakan pendidikan formal yang berkualitas, inklusif, dan adaptif terhadap perkembangan teknologi.",
+    "Menerapkan sistem keasramaan yang disiplin, aman, dan berorientasi pada pembentukan karakter.",
+    "Menumbuhkan rasa kepedulian sosial, toleransi, dan kemandirian melalui kegiatan ekstrakurikuler terpadu.",
+    "Memberdayakan pendidik dan tenaga kependidikan secara berkelanjutan demi pelayanan terbaik."
+  ],
+  organization: [
+    {
+      id: "1",
+      name: "Yuni Arsi, M.Pd",
+      role: "Kepala Sekolah",
+      description: "Penanggung Jawab Utama",
+      img: "https://ui-avatars.com/api/?name=Direktur+Utama&background=ef4444&color=fff&size=200",
+      color: "red"
+    },
+    {
+      id: "2",
+      name: "Siti Rahmawati, M.Pd",
+      role: "Wakabid Akademik",
+      description: "Pengelola Kurikulum & Pengajar",
+      img: "https://ui-avatars.com/api/?name=Wakil+Akademik&background=3b82f6&color=fff&size=200",
+      color: "blue"
+    },
+    {
+      id: "3",
+      name: "M. Ardian Nugraha, S.H",
+      role: "Kepala Wali Asuh",
+      description: "Pengelola Keasramaan & Disiplin",
+      img: "https://ui-avatars.com/api/?name=Wakil+Asrama&background=f59e0b&color=fff&size=200",
+      color: "amber"
+    }
+  ],
+  orgOverview: {
+    badge: "Struktur Organisasi",
+    titleDark: "Pimpinan &",
+    titleHighlight: "Tenaga Pendidik",
+    description: "Sekolah Rakyat Terintegrasi 31 Palembang dipimpin oleh tenaga profesional yang berdedikasi tinggi untuk mencetak generasi emas. Kami memiliki tim pengajar yang kompeten dan berpengalaman di bidangnya.",
+    quote: "Pendidikan adalah senjata paling ampuh untuk mengubah dunia. Di Sekolah Rakyat Terintegrasi 31, kami berkomitmen memberikan yang terbaik untuk masa depan anak bangsa.",
+    staffCount: "51 Guru & Staff",
+    period: "Periode 2025/2026"
+  },
+  contact: {
+    address: "Jl. Sosial No. 31, Palembang, Sumatera Selatan",
+    email: "info@sekolahrakyat.go.id",
+    phone: "081352264191",
+    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3984.4449767355026!2d104.743128!3d-2.932029!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e3b74e645904de1%3A0x6b63d91789c9d1df!2sJl.%20Sosial%2C%20Suka%20Bangun%2C%20Kec.%20Sukarami%2C%20Kota%20Palembang%2C%20Sumatera%20Selatan!5e0!3m2!1sid!2sid!4v1716301234567!5m2!1sid!2sid"
+  }
+};
+
+export function loadLandingData(): LandingPageData {
+  const saved = localStorage.getItem('sr_landing_data');
+  if (saved) {
+    try {
+      const parsed = { ...DEFAULT_LANDING_DATA, ...JSON.parse(saved) };
+      if (parsed.organization) {
+        parsed.organization = parsed.organization.map((member: any) => {
+          if (member.name === 'Dr. H. Ahmad Fauzi') {
+            return { ...member, name: 'Yuni Arsi, M.Pd' };
+          }
+          return member;
+        });
+      }
+      return parsed;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return DEFAULT_LANDING_DATA;
+}
+
+export function saveLandingData(data: LandingPageData) {
+  localStorage.setItem('sr_landing_data', JSON.stringify(data));
+}
+
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGMFU1S5xe1BLHB4F1HeRJhfGKFfFmmz6d7yyhoSrhJSN2fwxdIegHxWTZ7c12go8coA/exec";
 
 export const DEFAULT_DISCIPLINE_LEVELS: DisciplineLevelConfig[] = [
   { level: 1, name: 'Tingkat 1 (Pelanggaran Ringan)', pointsDeduction: 5, defaultSanction: 'Teguran lisan & Piket asrama' },
@@ -23,7 +173,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   waliAsrama: "HISNUL HASHIN, SE",
   waliAsramaNip: "NIP. 197406262025211027",
   waliAsramaTitle: "Wali Asrama Mandiri",
-  kepalaSekolah: "YUNI ARSI, S.Pd",
+  kepalaSekolah: "YUNI ARSI, M.Pd",
   kepalaSekolahNip: "197206051999032002",
   kopKiri: "KEMENTERIAN SOSIAL REPUBLIK INDONESIA\nPUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI",
   kopKanan: "SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG\nJl. Komp Sosial Km 5 Sukabangun, Palembang",
@@ -61,73 +211,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   autoResetPointsPerSemester: true
 };
 
-export const INITIAL_STUDENTS: Student[] = [
-  { id: "SR0001", name: "A Rakka Attala", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 142, weight: 36, shirtSize: "M", pantsSize: "28" },
-  { id: "SR0002", name: "Abdul Wahid", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 138, weight: 33, shirtSize: "S", pantsSize: "27" },
-  { id: "SR0003", name: "Ade Rizki Cahya", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 145, weight: 38, shirtSize: "M", pantsSize: "29" },
-  { id: "SR0004", name: "Al Fatih Al Farizi", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 140, weight: 35, shirtSize: "S", pantsSize: "28" },
-  { id: "SR0005", name: "M Fahri", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 146, weight: 40, shirtSize: "M", pantsSize: "29" },
-  { id: "SR0006", name: "M Farrel", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 143, weight: 37, shirtSize: "M", pantsSize: "28" },
-  { id: "SR0007", name: "M Firmansyah", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 148, weight: 41, shirtSize: "L", pantsSize: "30" },
-  { id: "SR0008", name: "M. Alvin", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 139, weight: 34, shirtSize: "S", pantsSize: "27" },
-  { id: "SR0009", name: "M. Fatir Alfareza", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 144, weight: 37, shirtSize: "M", pantsSize: "28" },
-  { id: "SR0010", name: "M. Syahrul Romadon", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 150, weight: 42, shirtSize: "L", pantsSize: "30" },
-  { id: "SR0011", name: "M.Aditya", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 141, weight: 35, shirtSize: "S", pantsSize: "28" },
-  { id: "SR0012", name: "Muhamad Fauzan", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 147, weight: 39, shirtSize: "M", pantsSize: "29" },
-  { id: "SR0013", name: "Muhammad Reza", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 145, weight: 38, shirtSize: "M", pantsSize: "29" },
-  { id: "SR0014", name: "Nur Reva Anugrah Putri", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 137, weight: 32, shirtSize: "S", pantsSize: "S" },
-  { id: "SR0015", name: "Nur Rivi Anugrah Putri", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 136, weight: 31, shirtSize: "S", pantsSize: "S" },
-  { id: "SR0016", name: "Reski Al Farizi", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 143, weight: 36, shirtSize: "M", pantsSize: "28" },
-  { id: "SR0017", name: "Rizki Abdulah", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 149, weight: 40, shirtSize: "M", pantsSize: "29" },
-  { id: "SR0018", name: "Sella Marselina", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 140, weight: 34, shirtSize: "S", pantsSize: "S" },
-  { id: "SR0019", name: "Yeni Inda Sari", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H", height: 142, weight: 35, shirtSize: "M", pantsSize: "M" },
-  { id: "SR0020", name: "SHINTYAH ANGGRAENI", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0021", name: "MUHAMMAD REZKY RAMADHAN", class: "SD", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0022", name: "Adriansya Khoirul Khafi", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0023", name: "Aira Saputri", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0024", name: "Aldo Ardiansyah", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0025", name: "Amel", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0026", name: "Ardiansyah", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0027", name: "Fatma Fauzia", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0028", name: "Imel", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0029", name: "Imelda Susanti", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0030", name: "Lesi", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0031", name: "M. Aqil Abdul Rasyid", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0032", name: "M Badril Munir", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0033", name: "M Jessen Pratama", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0034", name: "M. Richad Rivaldo", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0035", name: "M.Daffa Saputra", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0036", name: "Mirza Mushthafa Mahdi", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0037", name: "Muhamad Ferdiansyah", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0038", name: "Muhamad Vernando Agustian", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0039", name: "Nabilla", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0040", name: "Puspa Lestari", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0041", name: "Puspita Sari", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0042", name: "Putri", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0043", name: "Putri Septiani", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0044", name: "Siti Fadila", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0045", name: "Abdi Putra Anggara", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0046", name: "Achmad Rizky Kurniawan", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0047", name: "An - Anissa Maulidya Ningsih", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0048", name: "Bagus Ramadhan", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0049", name: "Junian Gunhar", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0050", name: "Kevin", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0051", name: "Muhamat Ridhowan", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0052", name: "Muhammad Iqbal", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0053", name: "Muhammad Rava Oktardi", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0054", name: "Muhammad Yogie Prananda", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0055", name: "Purwadi", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0056", name: "Rahman Firly Afriansyah", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0057", name: "Reni Mustika Ratu", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0058", name: "Riki Rikardo", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0059", name: "Rizki Aditia", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0060", name: "Saskiya Amanda", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0061", name: "Syahara Auliyah", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0062", name: "Tirta Pratama", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0063", name: "Uswatun Khasanah", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0064", name: "Yogi Saputra", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" },
-  { id: "SR0065", name: "Yuni Aulia Sari", class: "SMA", dorm: "Asrama Terpadu", caretaker: "M. ARDIAN NUGRAHA, S.H" }
-];
+export const INITIAL_STUDENTS: Student[] = [];
 
 export const ROUTINE_TASKS: TaskItem[] = [
   { id: 1, task: "Membangunkan siswa & Persiapan Sholat Subuh berjamaah" },
@@ -255,12 +339,13 @@ export function loadAppConfig(): AppConfig {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u')) {
+      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u') || parsed.googleScriptUrl.includes('AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF')) {
         parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
       }
       if (!parsed.waliAsuhList || parsed.waliAsuhList.some((w: string) => w.includes('Bp. Hermawan') || w.includes('Ibu Handayani'))) {
         parsed.waliAsuhList = DEFAULT_CONFIG.waliAsuhList;
       }
+      if (parsed.kepalaSekolah === 'YUNI ARSI, S.Pd') { parsed.kepalaSekolah = 'YUNI ARSI, M.Pd'; }
       if (!parsed.dormList || parsed.dormList.includes('Asrama Putra A')) {
         parsed.dormList = DEFAULT_CONFIG.dormList;
       }
@@ -391,108 +476,7 @@ export function saveReports(reports: Record<string, ReportCardData>): void {
   localStorage.setItem('sr_reports', JSON.stringify(reports));
 }
 
-export const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [
-  {
-    id: 'MED-2026-001',
-    studentId: 'SR0001',
-    studentName: 'A Rakka Attala',
-    date: '2026-08-01',
-    time: '08:30',
-    location: 'UKS Asrama',
-    symptoms: 'Demam tinggi 38.5°C, pusing, dan pusing lemas sejak semalam',
-    diagnosis: 'Febris (Demam) e.c. Infeksi Saluran Pernapasan Akut (ISPA)',
-    treatment: 'Paracetamol 500mg (3x1), Vitamin C, Kompres hangat, Istirahat total di UKS',
-    restDays: 2,
-    isSickLeave: true,
-    status: 'Dalam Perawatan',
-    officer: 'Tim Medis UKS / Pembina Asrama',
-    temperature: '38.5°C',
-    vitalSigns: '110/70 mmHg, Nadi 88x/m',
-    height: 142,
-    weight: 36,
-    notes: 'Perlu diminum obat setelah makan. Evaluasi ulang suhu tubuh jam 16:00.'
-  },
-  {
-    id: 'MED-2026-000A',
-    studentId: 'SR0001',
-    studentName: 'A Rakka Attala',
-    date: '2026-05-15',
-    time: '09:00',
-    location: 'Klinik Sekolah',
-    symptoms: 'Pemeriksaan Kesehatan Rutin & Penimbangan Fisik Per Triwulan',
-    diagnosis: 'Kondisi Sehat & Perkembangan Normal',
-    treatment: 'Pemberian Multivitamin & Obat Cacing Rutin',
-    restDays: 0,
-    isSickLeave: false,
-    status: 'Sembuh / Kembali Sekolah',
-    officer: 'Tim UKS Puskesmas Pembantu',
-    temperature: '36.5°C',
-    vitalSigns: '110/70 mmHg',
-    height: 140,
-    weight: 34,
-    notes: 'Pertumbuhan fisik meningkat 2cm dan berat badan naik 2kg dalam 3 bulan.'
-  },
-  {
-    id: 'MED-2026-000B',
-    studentId: 'SR0001',
-    studentName: 'A Rakka Attala',
-    date: '2026-01-10',
-    time: '10:00',
-    location: 'Klinik Sekolah',
-    symptoms: 'Pemeriksaan Kesehatan Awal Semester Ganjil',
-    diagnosis: 'Sehat Bebas Keluhan',
-    treatment: 'Edukasi Kebersihan Diri & Gizi Seimbang',
-    restDays: 0,
-    isSickLeave: false,
-    status: 'Sembuh / Kembali Sekolah',
-    officer: 'Tim Medis UKS',
-    temperature: '36.6°C',
-    vitalSigns: '105/65 mmHg',
-    height: 137,
-    weight: 32,
-    notes: 'Data fisik awal tahun ajaran baru.'
-  },
-  {
-    id: 'MED-2026-002',
-    studentId: 'SR0005',
-    studentName: 'M Fahri',
-    date: '2026-07-28',
-    time: '14:15',
-    location: 'Klinik / RS Rujukan',
-    symptoms: 'Sakit perut melilit bagian ulu hati, mual, muntah 2 kali',
-    diagnosis: 'Gastritis Akut / Dispepsia',
-    treatment: 'Antasida Doen 3x1, Omeprazole 20mg 2x1, Ranitidin, Diet bubur halus',
-    restDays: 3,
-    isSickLeave: true,
-    status: 'Dirujuk ke RS/Klinik',
-    officer: 'dr. Hidayatullah (Klinik Swasta Kemitraan)',
-    temperature: '36.8°C',
-    vitalSigns: '120/80 mmHg',
-    height: 146,
-    weight: 40,
-    notes: 'Dirujuk ke Klinik Kemitraan Palembang untuk infus cairan D5% dan observasi 1x24 jam.'
-  },
-  {
-    id: 'MED-2026-003',
-    studentId: 'SR0022',
-    studentName: 'Adriansya Khoirul Khafi',
-    date: '2026-07-25',
-    time: '10:00',
-    location: 'Istirahat di Kamar',
-    symptoms: 'Terpelintir pergelangan kaki kanan saat olahraga basket',
-    diagnosis: 'Sprain Ankle Dextra (Keseleo Pergelangan Kaki)',
-    treatment: 'Kompres es (RICE method), Perban elastis, Analgesik Mefenamat 500mg',
-    restDays: 1,
-    isSickLeave: true,
-    status: 'Sembuh / Kembali Sekolah',
-    officer: 'Tim Medis UKS',
-    temperature: '36.5°C',
-    vitalSigns: '115/75 mmHg',
-    height: 168,
-    weight: 58,
-    notes: 'Sudah membaik dan disarankan tidak berolahraga berat selama 1 minggu.'
-  }
-];
+export const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [];
 
 export function loadMedicalRecords(): MedicalRecord[] {
   const saved = localStorage.getItem('sr_medical_records');
@@ -511,52 +495,14 @@ export function saveMedicalRecords(records: MedicalRecord[]): void {
   localStorage.setItem('sr_medical_records', JSON.stringify(records));
 }
 
-export const INITIAL_PRAYER_ATTENDANCE: PrayerAttendance[] = [
-  {
-    id: 'PA-001',
-    studentId: 'SR0001',
-    studentName: 'A Rakka Attala',
-    class: 'SD',
-    dorm: 'Asrama Terpadu',
-    prayerTime: 'Subuh',
-    date: new Date().toISOString().split('T')[0],
-    timestamp: '04:45:12',
-    status: 'Hadir',
-    scannedBy: 'M. ARDIAN NUGRAHA, S.H'
-  },
-  {
-    id: 'PA-002',
-    studentId: 'SR0002',
-    studentName: 'Abdul Wahid',
-    class: 'SD',
-    dorm: 'Asrama Terpadu',
-    prayerTime: 'Subuh',
-    date: new Date().toISOString().split('T')[0],
-    timestamp: '04:48:30',
-    status: 'Hadir',
-    scannedBy: 'M. ARDIAN NUGRAHA, S.H'
-  },
-  {
-    id: 'PA-003',
-    studentId: 'SR0022',
-    studentName: 'Adriansya Khoirul Khafi',
-    class: 'SMA',
-    dorm: 'Asrama Terpadu',
-    prayerTime: 'Subuh',
-    date: new Date().toISOString().split('T')[0],
-    timestamp: '04:52:00',
-    status: 'Terlambat',
-    note: 'Masuk shof rakaat kedua',
-    scannedBy: 'M. ARDIAN NUGRAHA, S.H'
-  }
-];
+export const INITIAL_PRAYER_ATTENDANCE: PrayerAttendance[] = [];
 
 export function loadPrayerAttendance(): PrayerAttendance[] {
   const saved = localStorage.getItem('sr_prayer_attendance');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     } catch (e) {
       console.error(e);
     }

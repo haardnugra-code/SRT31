@@ -39,7 +39,7 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
-import { LoginModal } from './components/LoginModal';
+import { LandingPage } from './components/LandingPage';
 
 import { DashboardTab } from './components/DashboardTab';
 import { StudentProfileTab } from './components/StudentProfileTab';
@@ -51,6 +51,7 @@ import { LeavesTab } from './components/LeavesTab';
 import { MedicalTab } from './components/MedicalTab';
 import { ReportAndRecapTab } from './components/ReportAndRecapTab';
 import { GuideTab, PptPrintSlides } from './components/GuideTab';
+import { CmsWebsiteTab } from './components/CmsWebsiteTab';
 import { SettingsTab } from './components/SettingsTab';
 
 export default function App() {
@@ -1078,12 +1079,13 @@ export default function App() {
         onCancel={() => handleConfirmResolve(false)}
       />
 
-      {/* Login Screen Modal */}
-      <LoginModal isLoggedIn={isLoggedIn} onLoginSuccess={handleLoginSuccess} />
-
-      {/* Main Row Container */}
-      <div className="flex flex-col md:flex-row min-h-screen flex-1 relative">
-        {/* Sidebar */}
+      {/* Landing Page (Public Website) & Login Modal */}
+      {!isLoggedIn ? (
+        <LandingPage onLoginSuccess={handleLoginSuccess} />
+      ) : (
+        /* Main Row Container */
+        <div className="flex flex-col md:flex-row min-h-screen flex-1 relative">
+          {/* Sidebar */}
         <Sidebar
           activeTab={activeTab}
           onSelectTab={setActiveTab}
@@ -1233,6 +1235,7 @@ export default function App() {
                 config={config}
                 onReconcileShadowData={handleReconcileShadowData}
                 onShowToast={showToast}
+                onAskConfirm={askConfirm}
               />
             )}
 
@@ -1251,6 +1254,10 @@ export default function App() {
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
               />
+            )}
+            
+            {activeTab === 'cms' && userRole === 'admin' && (
+              <CmsWebsiteTab onShowToast={showToast} />
             )}
 
             {activeTab === 'guide' && <GuideTab onSelectTab={setActiveTab} />}
@@ -1273,9 +1280,10 @@ export default function App() {
           </div>
         </main>
       </div>
+      )}
 
       {/* DEDICATED GLOBAL PRINT PPT SLIDES CONTAINER (PRINT MODE ONLY - GUIDE TAB) */}
-      {activeTab === 'guide' && <PptPrintSlides />}
+      {isLoggedIn && activeTab === 'guide' && <PptPrintSlides />}
     </div>
   );
 }

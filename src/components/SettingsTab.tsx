@@ -218,6 +218,23 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   };
 
+  const handleTriggerAutomatedBackup = async () => {
+    if (!googleScriptUrl.trim()) {
+      onShowToast('Koneksi Gagal', 'Masukkan URL Google Apps Script Web App terlebih dahulu.', 'error');
+      return;
+    }
+    onShowToast('Memproses...', 'Mengaktifkan jadwal backup otomatis harian ke Google Drive...', 'warning');
+    try {
+      await fetch(`${googleScriptUrl.trim()}?action=setupTrigger`, {
+        method: 'GET',
+        mode: 'no-cors'
+      });
+      onShowToast('Jadwal Aktif', 'Jadwal Backup Otomatis Drive Harian (23:00) berhasil diaktifkan.', 'success');
+    } catch (e) {
+      onShowToast('Gagal', 'Gagal menghubungi Google Apps Script. Periksa koneksi atau URL script Anda.', 'error');
+    }
+  };
+
   const handleUnlockSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (unlockPin === '817731') {
@@ -827,7 +844,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   className="text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95"
                   title="Simpan file JSON backup instan ke folder Google Drive (BACKUP_SEKOLAH_RAKYAT_SR31)"
                 >
-                  <Database className="w-3.5 h-3.5 text-amber-600" /> Backup ke Google Drive
+                  <Database className="w-3.5 h-3.5 text-amber-600" /> Backup Instan ke Drive
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTriggerAutomatedBackup}
+                  className="text-xs font-bold text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95"
+                  title="Pasang jadwal backup database ke Drive secara otomatis setiap hari jam 23:00"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 
+                  Set Backup Harian Otomatis
                 </button>
               </div>
             </div>
@@ -1457,7 +1483,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   <li>Klik menu <strong>Ekstensi (Extensions)</strong> → <strong>Apps Script</strong>.</li>
                   <li>Hapus semua isi kode bawaan, lalu tempelkan (paste) seluruh kode script di bawah ini.</li>
                   <li>
-                    Pilih fungsi <strong>setupSheet</strong> di dropdown atas editor Apps Script lalu klik <strong>Jalankan (Run)</strong> untuk membuat seluruh 9 Tab/Sheet resmi & folder Google Drive secara otomatis.
+                    Pilih fungsi <strong>setupSheet</strong> di dropdown atas editor Apps Script lalu klik <strong>Jalankan (Run)</strong> untuk membuat seluruh 13 Tab/Sheet resmi & 7 folder Google Drive secara otomatis.
                   </li>
                   <li>
                     Klik <strong>Terapkan (Deploy)</strong> → <strong>Penerapan baru (New deployment)</strong> → Pilih jenis <strong>Aplikasi Web (Web App)</strong>.

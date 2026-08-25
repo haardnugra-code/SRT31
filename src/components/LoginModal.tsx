@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { GraduationCap, Lock, LogIn, AlertCircle, ShieldCheck, UserCheck } from 'lucide-react';
+
+import { GraduationCap, Lock, LogIn, AlertCircle, ShieldCheck, UserCheck, X } from 'lucide-react';
+
 
 interface LoginModalProps {
   isLoggedIn: boolean;
   onLoginSuccess: (role: 'admin' | 'guru') => void;
+  onCancel?: () => void;
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ isLoggedIn, onLoginSuccess }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({ isLoggedIn, onLoginSuccess, onCancel }) => {
   const [selectedRole, setSelectedRole] = useState<'admin' | 'guru'>('admin');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
@@ -47,10 +50,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isLoggedIn, onLoginSucce
         </h1>
       </div>
       <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-[0_0_40px_rgba(0,0,0,0.5)] relative z-10 flex flex-col items-center">
-        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center text-white text-2xl shadow-[0_0_15px_rgba(220,38,38,0.5)] mb-3">
-          <GraduationCap className="w-8 h-8" />
+        {onCancel && (
+          <button 
+            onClick={onCancel}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-slate-300 hover:text-white hover:bg-white/20 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+        <div className="w-20 h-20 bg-white p-1 rounded-full flex items-center justify-center text-white text-2xl shadow-[0_0_15px_rgba(220,38,38,0.5)] mb-3 overflow-hidden">
+          <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
         </div>
         <h1 className="text-xl font-bold text-white text-center leading-tight">Sekolah Rakyat</h1>
+        <p className="text-[10px] font-bold text-white/80 text-center uppercase tracking-widest mb-1">
+          Terintegrasi 31 Palembang
+        </p>
         <p className="text-xs text-slate-300 text-center font-medium uppercase tracking-wider mb-5">
           Portal Disiplin Asrama & Pengajar
         </p>
@@ -137,12 +151,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isLoggedIn, onLoginSucce
             <LogIn className="w-4 h-4" /> Masuk sebagai {selectedRole === 'admin' ? 'Pengasuh / Admin' : 'Guru / Staf'}
           </button>
         </form>
-
-        <div className="mt-6 text-center border-t border-white/10 pt-4 w-full">
-          <p className="text-[9px] text-slate-400 font-bold tracking-widest">KEMENSOS RI © 2026</p>
-        </div>
       </div>
     </div>
   );
 };
-

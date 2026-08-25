@@ -1,4 +1,4 @@
-import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance } from '../types';
+import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord } from '../types';
 
 export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF/exec";
 
@@ -406,6 +406,149 @@ export function savePrayerAttendance(records: PrayerAttendance[]): void {
   localStorage.setItem('sr_prayer_attendance', JSON.stringify(records));
 }
 
+export const INITIAL_CONNECTING_JOURNALS: ConnectingJournal[] = [
+  {
+    id: 'JP-20260825-001',
+    date: '2026-08-25',
+    targetClass: 'Klasikal (SD)',
+    subject: 'Pend. Agama Islam',
+    teacherName: 'ARI FITRIYANI, S.PD., GR.',
+    teacherNip: '-',
+    learningAchievement: 'tulis menulis',
+    taskOrder: 'Latihan menulis dan menghafal doa harian serta makharijul huruf',
+    deadline: '2026-08-25',
+    followUp: 'Sudah didampingi saat belajar mandiri asrama malam hari, santri mampu menuliskan 5 kalimat dasar.',
+    caretakerName: 'M ARDIAN NUGRAHA',
+    caretakerNip: 'NIP. 199202042026221001',
+    responseDate: '2026-08-25',
+    status: 'Sudah Ditindaklanjuti'
+  },
+  {
+    id: 'JP-20260826-002',
+    date: '2026-08-26',
+    targetClass: 'Klasikal (SD)',
+    subject: 'Matematika',
+    teacherName: 'ARI FITRIYANI, S.PD., GR.',
+    teacherNip: '-',
+    learningAchievement: 'Operasi hitung perkalian dan pembagian dasar',
+    taskOrder: 'Mohon dibantu pendampingan pengerjaan LKS Matematika Halaman 14 No. 1-10',
+    deadline: '2026-08-26',
+    followUp: '',
+    caretakerName: '',
+    status: 'Menunggu Respon'
+  }
+];
+
+export function loadConnectingJournals(): ConnectingJournal[] {
+  const saved = localStorage.getItem('sr_connecting_journals');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return INITIAL_CONNECTING_JOURNALS;
+}
+
+export function saveConnectingJournals(journals: ConnectingJournal[]): void {
+  localStorage.setItem('sr_connecting_journals', JSON.stringify(journals));
+}
+
+export const INITIAL_MENSTRUATION_RECORDS: MenstruationRecord[] = [
+  {
+    id: 'MENS-20260824-001',
+    studentId: 'SR001',
+    studentName: 'NUR REVA ANUGRAH PUTRI',
+    class: 'SMA',
+    dorm: 'Asrama Cut Nyak Dien',
+    startDate: '2026-08-24',
+    startTime: '06:30',
+    status: 'Sedang Haid',
+    symptoms: ['Nyeri Perut / Disminore', 'Pusing / Lemas'],
+    painLevel: 3,
+    medicineOrCare: 'Kompres air hangat di perut & Istirahat di Kamar Asrama',
+    sanitaryPadsProvided: 4,
+    notes: 'Hari ke-2 haid. Diberikan pembalut asrama & izin tidak mengikuti sholat berjamaah.',
+    recordedBy: 'ULPA JAYANTI'
+  },
+  {
+    id: 'MENS-20260821-002',
+    studentId: 'SR002',
+    studentName: 'SELLA MARSELINA',
+    class: 'SMP',
+    dorm: 'Asrama RA Kartini',
+    startDate: '2026-08-20',
+    startTime: '14:15',
+    endDate: '2026-08-25',
+    endTime: '15:30',
+    durationDays: 5.05,
+    durationText: '5 Hari 1 Jam',
+    status: 'Masa Bersuci',
+    symptoms: ['Kram Ringan'],
+    painLevel: 1,
+    notes: 'Darah haid sudah bersih (tanda suci qasshah baidha’). Sedang persiapan mandi wajib bersuci.',
+    recordedBy: 'SRI AGUSTINA'
+  },
+  {
+    id: 'MENS-20260818-003',
+    studentId: 'SR003',
+    studentName: 'AIRA SAPUTRI',
+    class: 'SD',
+    dorm: 'Asrama Dewi Sartika',
+    startDate: '2026-08-18',
+    startTime: '08:00',
+    endDate: '2026-08-24',
+    endTime: '16:00',
+    durationDays: 6.33,
+    durationText: '6 Hari 8 Jam',
+    purificationDate: '2026-08-24',
+    purificationTime: '17:00',
+    purificationVerifiedBy: 'Yuniarti Anggraini',
+    readyForWorshipDate: '2026-08-24T17:30',
+    status: 'Suci / Siap Beribadah',
+    symptoms: ['Sakit Pinggang'],
+    painLevel: 2,
+    sanitaryPadsProvided: 6,
+    notes: 'Telah selesai mandi wajib thaharah dipandu pembina. Sudah suci dan aktif kembali sholat berjamaah serta tadarus Al-Qur\'an.',
+    recordedBy: 'Yuniarti Anggraini'
+  }
+];
+
+export function loadMenstruationRecords(): MenstruationRecord[] {
+  const saved = localStorage.getItem('sr_menstruation_records');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return INITIAL_MENSTRUATION_RECORDS;
+}
+
+export function saveMenstruationRecords(records: MenstruationRecord[]): void {
+  localStorage.setItem('sr_menstruation_records', JSON.stringify(records));
+}
+
+export function loadLastPushTime(): string | null {
+  return localStorage.getItem('sr_last_push_time');
+}
+
+export function saveLastPushTime(timestamp?: string): void {
+  const timeStr = timestamp || new Date().toLocaleString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+  localStorage.setItem('sr_last_push_time', timeStr);
+}
+
 export function loadLastSyncTime(): string | null {
   return localStorage.getItem('sr_last_sync_time');
 }
@@ -481,6 +624,9 @@ export function clearStorageCache(): { clearedSize: string; keyCount: number } {
     'sr_reports',
     'sr_medical_records',
     'sr_prayer_attendance',
+    'sr_connecting_journals',
+    'sr_menstruation_records',
+    'sr_last_push_time',
     'sr_last_sync_time',
     'sr_auth_status'
   ];

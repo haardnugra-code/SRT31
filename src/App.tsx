@@ -9,7 +9,9 @@ import {
   ReportCardData,
   AppConfig,
   MedicalRecord,
-  PrayerAttendance
+  PrayerAttendance,
+  ConnectingJournal,
+  MenstruationRecord
 } from './types';
 import {
   loadAppConfig,
@@ -24,14 +26,20 @@ import {
   saveLeaves,
   loadDailyJournals,
   saveDailyJournals,
+  loadConnectingJournals,
+  saveConnectingJournals,
   loadReports,
   saveReports,
   loadMedicalRecords,
   saveMedicalRecords,
   loadPrayerAttendance,
   savePrayerAttendance,
+  loadMenstruationRecords,
+  saveMenstruationRecords,
   loadLastSyncTime,
   saveLastSyncTime,
+  loadLastPushTime,
+  saveLastPushTime,
   purgeAllDummyData
 } from './services/storage';
 import { reconcileAndSanitizeShadowData, ShadowDataAuditStats } from './utils/dataSanitizer';
@@ -50,6 +58,8 @@ import { StudentsTab } from './components/StudentsTab';
 import { DisciplineAndCounselingTab } from './components/DisciplineAndCounselingTab';
 import { LeavesTab } from './components/LeavesTab';
 import { MedicalTab } from './components/MedicalTab';
+import { ConnectingJournalTab } from './components/ConnectingJournalTab';
+import { MenstruationTrackingTab } from './components/MenstruationTrackingTab';
 import { ReportAndRecapTab } from './components/ReportAndRecapTab';
 import { SettingsTab } from './components/SettingsTab';
 
@@ -73,8 +83,10 @@ export default function App() {
   const [counseling, setCounseling] = useState<Counseling[]>(loadCounseling);
   const [leaves, setLeaves] = useState<Leave[]>(loadLeaves);
   const [dailyJournals, setDailyJournals] = useState<DailyJournal[]>(loadDailyJournals);
+  const [connectingJournals, setConnectingJournals] = useState<ConnectingJournal[]>(loadConnectingJournals);
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>(loadMedicalRecords);
   const [prayerAttendance, setPrayerAttendance] = useState<PrayerAttendance[]>(loadPrayerAttendance);
+  const [menstruationRecords, setMenstruationRecords] = useState<MenstruationRecord[]>(loadMenstruationRecords);
   const [reports, setReports] = useState<Record<string, ReportCardData>>(loadReports);
 
   const [announcement, setAnnouncement] = useState<string>(() => {
@@ -84,6 +96,7 @@ export default function App() {
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => loadLastSyncTime());
+  const [lastPushTime, setLastPushTime] = useState<string | null>(() => loadLastPushTime());
 
   // Real-time Connection Status State
   const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'checking'>('checking');
@@ -216,12 +229,26 @@ export default function App() {
     });
   }, [students, violations]);
 
+  // Record successful cloud push timestamp
+  const recordDataPushSuccess = useCallback(() => {
+    const now = new Date();
+    const formatted =
+      now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      ', ' +
+      now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
+      ' WIB';
+    setLastPushTime(formatted);
+    saveLastPushTime(formatted);
+  }, []);
+
   // Tab Titles
   const tabTitles: Record<string, string> = {
     dashboard: 'Dashboard Ringkasan Asrama',
     profile: 'Profil & Portofolio Siswa Terpadu',
+    'connecting-journal': 'Jurnal Penghubung Materi & Task Order',
     'prayer-attendance': 'Absensi Presensi Asrama (Sholat, Makan & Kegiatan)',
     checklist: 'Jurnal & Ceklist Anak Asuh',
+    menstruation: 'Tracking Menstruasi, Masa Bersuci & Ibadah Asrama Putri',
     students: 'Data Induk Murid Sekolah Rakyat',
     violations: 'Pelanggaran & Konseling',
     counseling: 'Pendampingan BK & Konseling',
@@ -270,10 +297,12 @@ export default function App() {
             action: isEdit ? 'updateStudent' : 'addStudent',
             data: cleanedStudent
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteStudent = useCallback(
@@ -359,10 +388,12 @@ export default function App() {
             action: 'deleteStudent',
             data: { id: trimmedId }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [students, config.googleScriptUrl]
+    [students, config.googleScriptUrl, recordDataPushSuccess]
   );
 
   // 2. Violation CRUD
@@ -386,10 +417,12 @@ export default function App() {
             action: 'addViolation',
             data: violation
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteViolation = useCallback(
@@ -407,10 +440,12 @@ export default function App() {
             action: 'deleteViolation',
             data: { id }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   // 3. Counseling CRUD
@@ -434,10 +469,12 @@ export default function App() {
             action: 'addCounseling',
             data: item
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteCounseling = useCallback(
@@ -455,10 +492,12 @@ export default function App() {
             action: 'deleteCounseling',
             data: { id }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleUpdateCounselingStatus = useCallback(
@@ -477,10 +516,12 @@ export default function App() {
             action: 'addCounseling',
             data: { ...updatedItem, status }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [counseling, config.googleScriptUrl]
+    [counseling, config.googleScriptUrl, recordDataPushSuccess]
   );
 
   // 4. Leave CRUD
@@ -504,10 +545,12 @@ export default function App() {
             action: 'addLeave',
             data: leave
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteLeave = useCallback(
@@ -525,10 +568,12 @@ export default function App() {
             action: 'deleteLeave',
             data: { id }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleUpdateLeaveStatus = useCallback(
@@ -547,10 +592,12 @@ export default function App() {
             action: 'addLeave',
             data: { ...updatedItem, status }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [leaves, config.googleScriptUrl]
+    [leaves, config.googleScriptUrl, recordDataPushSuccess]
   );
 
   // 5. Daily Journal CRUD
@@ -569,10 +616,12 @@ export default function App() {
             action: 'addJournal',
             data: journal
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteJournal = useCallback(
@@ -590,10 +639,111 @@ export default function App() {
             action: 'deleteJournal',
             data: { id }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
+  );
+
+  // 5b. Jurnal Penghubung & Task Order Guru-Wali Asuh CRUD
+  const handleSaveConnectingJournal = useCallback(
+    (journal: ConnectingJournal, isEdit: boolean) => {
+      setConnectingJournals((prev) => {
+        let updated: ConnectingJournal[];
+        if (isEdit) {
+          updated = prev.map((j) => (j.id === journal.id ? journal : j));
+        } else {
+          updated = [journal, ...prev];
+        }
+        saveConnectingJournals(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: isEdit ? 'updateConnectingJournal' : 'addConnectingJournal',
+            data: journal
+          })
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
+      }
+      showToast(
+        isEdit ? 'Jurnal Diperbarui' : 'Task Order Dikirim',
+        isEdit
+          ? 'Data capaian pembelajaran berhasil diubah.'
+          : 'Capaian materi dan task order berhasil disimpan & siap ditindaklanjuti wali asuh.',
+        'success'
+      );
+    },
+    [config.googleScriptUrl, recordDataPushSuccess, showToast]
+  );
+
+  const handleDeleteConnectingJournal = useCallback(
+    (id: string) => {
+      setConnectingJournals((prev) => {
+        const updated = prev.filter((j) => j.id !== id);
+        saveConnectingJournals(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteConnectingJournal',
+            data: { id }
+          })
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
+      }
+      showToast('Jurnal Dihapus', 'Entri jurnal materi berhasil dihapus.', 'success');
+    },
+    [config.googleScriptUrl, recordDataPushSuccess, showToast]
+  );
+
+  const handleRespondConnectingJournal = useCallback(
+    (id: string, responseNotes: string, caretakerName: string, caretakerNip?: string) => {
+      const responseDate = new Date().toISOString().split('T')[0];
+      let updatedItem: ConnectingJournal | undefined;
+
+      setConnectingJournals((prev) => {
+        const updated = prev.map((j) => {
+          if (j.id === id) {
+            updatedItem = {
+              ...j,
+              followUp: responseNotes,
+              caretakerName,
+              caretakerNip: caretakerNip || '-',
+              responseDate,
+              status: 'Sudah Ditindaklanjuti' as const
+            };
+            return updatedItem;
+          }
+          return j;
+        });
+        saveConnectingJournals(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl && updatedItem) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'updateConnectingJournal',
+            data: updatedItem
+          })
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   // 6. Medical Record CRUD
@@ -618,10 +768,12 @@ export default function App() {
             action: 'addMedicalRecord',
             data: record
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteMedicalRecord = useCallback(
@@ -639,10 +791,12 @@ export default function App() {
             action: 'deleteMedicalRecord',
             data: { id }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   // 7. Prayer Attendance Handler
@@ -670,13 +824,67 @@ export default function App() {
             action: 'deletePrayerAttendance',
             data: { id }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
-  // 8. Report Card CRUD
+  // 8. Menstruation Record CRUD
+  const handleSaveMenstruationRecord = useCallback(
+    (record: MenstruationRecord, isEdit: boolean) => {
+      setMenstruationRecords((prev) => {
+        let updated: MenstruationRecord[];
+        if (isEdit) {
+          updated = prev.map((m) => (m.id === record.id ? record : m));
+        } else {
+          updated = [record, ...prev];
+        }
+        saveMenstruationRecords(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'addMenstruationRecord',
+            data: record
+          })
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl, recordDataPushSuccess]
+  );
+
+  const handleDeleteMenstruationRecord = useCallback(
+    (id: string) => {
+      setMenstruationRecords((prev) => {
+        const updated = prev.filter((m) => String(m.id).trim() !== String(id).trim());
+        saveMenstruationRecords(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteMenstruationRecord',
+            data: { id }
+          })
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
+      }
+    },
+    [config.googleScriptUrl, recordDataPushSuccess]
+  );
+
+  // 9. Report Card CRUD
   const handleSaveReport = useCallback(
     (studentId: string, data: ReportCardData) => {
       setReports((prev) => {
@@ -692,10 +900,12 @@ export default function App() {
             action: 'saveReportCard',
             data: { studentId, report: data }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteReport = useCallback(
@@ -714,10 +924,12 @@ export default function App() {
             action: 'deleteReportCard',
             data: { studentId, id: studentId }
           })
-        }).catch((err) => console.error(err));
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
       }
     },
-    [config.googleScriptUrl]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   // 7. App Config Save
@@ -982,6 +1194,30 @@ export default function App() {
             }));
           }
 
+          if (resJson.connectingJournals) {
+            const fetchedConnecting: ConnectingJournal[] = resJson.connectingJournals.map((cj: any) => ({
+              id: cj['ID Jurnal'] || cj['id'] || '',
+              date: cj['Tanggal'] || cj['date'] || '',
+              targetClass: cj['Target/Kelas'] || cj['targetClass'] || 'Klasikal (SD)',
+              studentId: cj['NISN/ID'] || cj['studentId'] || undefined,
+              studentName: cj['Nama Siswa'] || cj['studentName'] || undefined,
+              subject: cj['Mata Pelajaran'] || cj['subject'] || '',
+              teacherName: cj['Nama Guru'] || cj['teacherName'] || '',
+              teacherNip: cj['NIP Guru'] || cj['teacherNip'] || '-',
+              learningAchievement: cj['Capaian Materi'] || cj['learningAchievement'] || '',
+              taskOrder: cj['Task Order'] || cj['taskOrder'] || '',
+              deadline: cj['Batas Waktu'] || cj['deadline'] || '',
+              followUp: cj['Tindak Lanjut'] || cj['followUp'] || '',
+              caretakerName: cj['Wali Asuh'] || cj['caretakerName'] || '',
+              caretakerNip: cj['NIP Wali Asuh'] || cj['caretakerNip'] || '',
+              responseDate: cj['Tgl Respon'] || cj['responseDate'] || '',
+              status: cj['Status'] || cj['status'] || 'Menunggu Respon',
+              notes: cj['Catatan Tambahan'] || cj['notes'] || ''
+            }));
+            setConnectingJournals(fetchedConnecting);
+            saveConnectingJournals(fetchedConnecting);
+          }
+
           // AUTOMATIC SHADOW DATA PREVENTION RECONCILIATION
           const reconciled = reconcileAndSanitizeShadowData(
             activeStudentsList,
@@ -1041,7 +1277,7 @@ export default function App() {
         setIsSyncing(false);
       }
     },
-    [config.googleScriptUrl, showToast, students, violations, counseling, leaves, dailyJournals, medicalRecords, prayerAttendance, reports]
+    [config.googleScriptUrl, showToast, students, violations, counseling, leaves, dailyJournals, medicalRecords, prayerAttendance, reports, connectingJournals]
   );
 
   // --- Real-Time Connection Ping Check ---
@@ -1160,6 +1396,8 @@ export default function App() {
             userRole={userRole}
             connectionStatus={connectionStatus}
             lastPingTime={lastPingTime}
+            lastPushTime={lastPushTime}
+            lastSyncTime={lastSyncTime}
             onCheckConnection={checkConnection}
           />
 
@@ -1171,6 +1409,7 @@ export default function App() {
                 counseling={counseling}
                 leaves={leaves}
                 medicalRecords={medicalRecords}
+                connectingJournals={connectingJournals}
                 announcement={announcement}
                 onOpenViolationModal={() => {
                   setActiveTab('violations');
@@ -1194,6 +1433,7 @@ export default function App() {
                 medicalRecords={medicalRecords}
                 leaves={leaves}
                 prayerAttendance={prayerAttendance}
+                menstruationRecords={menstruationRecords}
                 config={config}
                 initialStudentId={profileStudentId}
                 onSaveStudent={handleSaveStudent}
@@ -1217,6 +1457,19 @@ export default function App() {
                 medicalRecords={medicalRecords}
                 config={config}
                 initialSubTab={activeTab === 'checklist' ? 'checklist' : 'scanner'}
+                onShowToast={showToast}
+                onAskConfirm={askConfirm}
+              />
+            )}
+
+            {activeTab === 'menstruation' && (
+              <MenstruationTrackingTab
+                students={studentsWithViolationCounts}
+                records={menstruationRecords}
+                config={config}
+                userRole={userRole}
+                onSaveRecord={handleSaveMenstruationRecord}
+                onDeleteRecord={handleDeleteMenstruationRecord}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
               />
@@ -1289,6 +1542,20 @@ export default function App() {
                 config={config}
                 onReconcileShadowData={handleReconcileShadowData}
                 onShowToast={showToast}
+              />
+            )}
+
+            {activeTab === 'connecting-journal' && (
+              <ConnectingJournalTab
+                connectingJournals={connectingJournals}
+                students={studentsWithViolationCounts}
+                config={config}
+                userRole={userRole}
+                onSaveJournal={handleSaveConnectingJournal}
+                onDeleteJournal={handleDeleteConnectingJournal}
+                onRespondJournal={handleRespondConnectingJournal}
+                onShowToast={showToast}
+                onAskConfirm={askConfirm}
               />
             )}
 

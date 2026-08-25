@@ -38,6 +38,7 @@ import {
   MedicalRecord,
   Leave,
   PrayerAttendance,
+  MenstruationRecord,
   AppConfig,
   ClassLevel
 } from '../types';
@@ -51,6 +52,7 @@ import {
   printJournalPDF,
   printSickLeavePDF,
   printLeavePassPDF,
+  generateSingleStudentMenstruationCardPDF,
   RAPOR_STRUCTURE
 } from '../services/pdfGenerator';
 import { ParentSummonsModal } from './ParentSummonsModal';
@@ -64,6 +66,7 @@ interface StudentProfileTabProps {
   medicalRecords: MedicalRecord[];
   leaves: Leave[];
   prayerAttendance: PrayerAttendance[];
+  menstruationRecords?: MenstruationRecord[];
   config: AppConfig;
   initialStudentId?: string;
   onBackToTable?: () => void;
@@ -84,6 +87,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
   medicalRecords,
   leaves,
   prayerAttendance,
+  menstruationRecords = [],
   config,
   initialStudentId,
   onBackToTable,
@@ -304,6 +308,13 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
       .filter((p) => String(p.studentId).trim() === String(currentStudent.id).trim())
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [prayerAttendance, currentStudent]);
+
+  const studentMenstruation = useMemo(() => {
+    if (!currentStudent) return [];
+    return menstruationRecords
+      .filter((m) => String(m.studentId).trim() === String(currentStudent.id).trim())
+      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+  }, [menstruationRecords, currentStudent]);
 
   // Overall Statistics
   const journalStats = useMemo(() => {
@@ -1194,6 +1205,57 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                       </div>
                     </div>
                   </div>
+
+                  {/* Menstruation Records Snapshot (For Female Students) */}
+                  {currentStudent?.gender === 'Perempuan' && (
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <HeartPulse className="w-5 h-5 text-rose-500" />
+                          <h3 className="font-bold text-slate-800 text-sm">Rekam Menstruasi</h3>
+                        </div>
+                        {studentMenstruation.length > 0 && (
+                          <button
+                            onClick={() =>
+                              generateSingleStudentMenstruationCardPDF(currentStudent, studentMenstruation, config)
+                            }
+                            className="p-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition-colors"
+                            title="Cetak Kartu Rekam PDF"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {studentMenstruation.length > 0 ? (
+                        <div className="space-y-3">
+                          {studentMenstruation.slice(0, 3).map((m) => (
+                            <div key={m.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center text-xs">
+                              <div className="space-y-0.5">
+                                <span className={`font-bold ${
+                                  m.status === 'Suci / Siap Beribadah' ? 'text-emerald-700' :
+                                  m.status === 'Masa Bersuci' ? 'text-amber-700' : 'text-rose-700'
+                                }`}>
+                                  {m.status}
+                                </span>
+                                <span className="block text-[11px] text-slate-500">
+                                  {formatDateIndonesian(m.startDate)} - {m.endDate ? formatDateIndonesian(m.endDate) : 'Sekarang'}
+                                </span>
+                              </div>
+                              <span className="font-bold text-slate-700 text-[10px] bg-white px-2 py-1 rounded border border-slate-200">
+                                {m.durationText || (m.durationDays ? `${m.durationDays} Hari` : '-')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-xs text-center space-y-2">
+                          <p>Belum ada riwayat menstruasi.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </div>
               </div>
             )}

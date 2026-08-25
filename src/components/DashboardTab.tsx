@@ -16,9 +16,10 @@ import {
   UserCheck,
   FileText,
   ChevronRight,
-  QrCode
+  QrCode,
+  BookOpen
 } from 'lucide-react';
-import { Student, Violation, Counseling, Leave, MedicalRecord } from '../types';
+import { Student, Violation, Counseling, Leave, MedicalRecord, ConnectingJournal } from '../types';
 import { formatDateIndonesian, parseLocalDate } from '../utils/dateFormatter';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
@@ -50,6 +51,7 @@ interface DashboardTabProps {
   counseling: Counseling[];
   leaves: Leave[];
   medicalRecords?: MedicalRecord[];
+  connectingJournals?: ConnectingJournal[];
   announcement: string;
   onOpenViolationModal: () => void;
   onOpenLeaveModal: () => void;
@@ -62,6 +64,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   counseling,
   leaves,
   medicalRecords = [],
+  connectingJournals = [],
   announcement,
   onOpenViolationModal,
   onOpenLeaveModal,
@@ -71,6 +74,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const activeCounseling = counseling.filter((c) => c.status !== 'Resolved').length;
   const activeLeaves = leaves.filter((l) => l.status === 'Active').length;
   const severeCases = violations.filter((v) => v.level >= 4).length;
+  const pendingTaskOrders = (connectingJournals || []).filter((j) => j.status === 'Menunggu Respon');
 
   // Leave Return Urgency / Warning logic
   const getLeaveUrgency = (returnDateStr: string) => {
@@ -349,6 +353,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <QrCode className="w-4 h-4 text-amber-300" /> Absensi
           </button>
           <button
+            onClick={() => onNavigateTab('connecting-journal')}
+            className="flex-1 sm:flex-initial bg-white/20 text-white font-bold text-xs px-4 py-3 rounded-lg hover:bg-white/30 transition backdrop-blur-md border border-white/20 active:scale-95 text-center flex items-center justify-center gap-1.5"
+          >
+            <BookOpen className="w-4 h-4 text-amber-200" /> Jurnal & Task Order
+          </button>
+          <button
             onClick={onOpenViolationModal}
             className="flex-1 sm:flex-initial bg-white text-slate-900 font-bold text-xs px-4 py-3 rounded-lg hover:bg-slate-100 transition shadow active:scale-95 text-center flex items-center justify-center gap-1.5"
           >
@@ -362,6 +372,33 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Task Order Alert Banner (if pending) */}
+      {pendingTaskOrders.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between gap-3 text-amber-900">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500 text-white rounded-lg flex-shrink-0 animate-pulse">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-xs sm:text-sm">
+                Ada {pendingTaskOrders.length} Instruksi Task Order Guru Menunggu Respon Wali Asuh!
+              </p>
+              <p className="text-[11px] text-amber-800/80">
+                Wali asuh asrama diharapkan mendampingi santri dan mengonfirmasi tindak lanjut belajar malam ini.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab('connecting-journal')}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg transition-colors whitespace-nowrap flex items-center gap-1 shadow-xs"
+          >
+            <span>Buka Jurnal</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

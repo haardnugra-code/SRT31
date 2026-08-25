@@ -130,6 +130,57 @@ export interface Leave {
   notes?: string;
 }
 
+export interface ConnectingJournal {
+  id: string;
+  date: string; // YYYY-MM-DD
+  targetClass: string; // e.g. "Klasikal (SD)", "Kelas 5 SD", "Asrama Dewantara"
+  studentId?: string;
+  studentName?: string;
+  subject: string; // e.g. "Pend. Agama Islam", "Matematika", "Bahasa Indonesia"
+  teacherName: string; // e.g. "ARI FITRIYANI, S.PD., GR."
+  teacherNip?: string;
+  learningAchievement: string; // Capaian materi / Instruksi tugas pembelajaran
+  taskOrder?: string; // Penugasan khusus pendampingan asrama
+  deadline?: string;
+  followUp?: string; // Respon / Tindak lanjut dari Wali Asuh di asrama
+  caretakerName?: string; // Nama Wali Asuh yang merespon
+  caretakerNip?: string;
+  responseDate?: string;
+  status: 'Menunggu Respon' | 'Sudah Ditindaklanjuti';
+  notes?: string;
+}
+
+export type MenstruationStatus =
+  | 'Sedang Haid'
+  | 'Masa Bersuci'
+  | 'Suci / Siap Beribadah'
+  | 'Istihadhah (Perlu Perhatian)';
+
+export interface MenstruationRecord {
+  id: string;
+  studentId: string;
+  studentName: string;
+  class?: ClassLevel;
+  dorm?: string;
+  startDate: string; // YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endDate?: string; // YYYY-MM-DD (saat darah berhenti)
+  endTime?: string; // HH:mm
+  durationDays?: number; // Jumlah total hari haid (misal: 6 atau 6.5)
+  durationText?: string; // Keterangan waktu (misal: "6 Hari 4 Jam")
+  purificationDate?: string; // Tanggal Mandi Wajib / Bersuci (YYYY-MM-DD)
+  purificationTime?: string; // Jam Mandi Wajib (HH:mm)
+  purificationVerifiedBy?: string; // Nama Pembina Asrama Putri / Guru Pembina
+  status: MenstruationStatus;
+  symptoms?: string[]; // Keluhan (Disminore, Pusing, Mual, Moody, dll)
+  painLevel?: number; // 1-5 (Skala Nyeri)
+  medicineOrCare?: string; // Tindakan/Obat UKS (Kompres hangat, Istirahat, Paracetamol, dll)
+  sanitaryPadsProvided?: number; // Jumlah pembalut yang diberikan
+  readyForWorshipDate?: string; // Waktu konfirmasi siap sholat & mengaji
+  notes?: string; // Catatan tambahan pembina/wali asuh
+  recordedBy?: string; // Nama Pencatat / Pembina
+}
+
 export interface TaskItem {
   id: number;
   task: string;

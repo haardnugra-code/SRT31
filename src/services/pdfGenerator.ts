@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
-import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord, PrayerAttendance, ParentSummonsOptions } from '../types';
+import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord, PrayerAttendance, ParentSummonsOptions, ConnectingJournal, MenstruationRecord } from '../types';
 import { formatDateIndonesian, formatDateShort } from '../utils/dateFormatter';
 import { calculateStudentDisciplineScore } from './storage';
 
@@ -3598,6 +3598,1230 @@ export async function generateParentSummonsPDF(
   const safeFileName = `Surat_Panggilan_Ortu_Legal_${violation.studentName.replace(/\s+/g, '_')}_${options.summonsLevel ? options.summonsLevel.replace(/[^a-zA-Z0-9]/g, '_') : 'SP'}.pdf`;
   doc.save(safeFileName);
 }
+
+// --- 14. GENERATOR JURNAL PENGHUBUNG MATERI / TASK ORDER (A4 LANDSCAPE - FORMAT RESMI KEMENSOS) ---
+export async function generateConnectingJournalPDF(
+  journals: ConnectingJournal[],
+  config: AppConfig,
+  options?: {
+    teacherName?: string;
+    teacherNip?: string;
+    printDate?: string;
+    title?: string;
+    targetClassFilter?: string;
+    statusFilter?: string;
+  }
+) {
+  if (!journals || journals.length === 0) {
+    throw new Error('Tidak ada data jurnal yang dipilih untuk dicetak.');
+  }
+
+  // A4 Landscape: 297 mm x 210 mm
+  const doc = new jsPDF({
+    orientation: 'l',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth(); // 297 mm
+  const pageHeight = doc.internal.pageSize.getHeight(); // 210 mm
+  const centerX = pageWidth / 2; // 148.5 mm
+  const leftMargin = 15;
+  const rightMargin = 15;
+  const rightX = pageWidth - rightMargin; // 282 mm
+
+  let leftLogoBase64 = '';
+  let rightLogoBase64 = '';
+  let watermarkBase64 = '';
+
+  try {
+    leftLogoBase64 = await loadLogoImage(config?.logoKiriUrl || '', 'left');
+    rightLogoBase64 = await loadLogoImage(config?.logoKananUrl || '', 'right');
+    if (leftLogoBase64) {
+      watermarkBase64 = await generateWatermarkBase64(leftLogoBase64, config?.watermarkOpacity || 0.04);
+    }
+  } catch (e) {
+    console.warn('Gagal memuat aset gambar logo untuk PDF Jurnal:', e);
+  }
+
+  // 1. Logos
+  if (leftLogoBase64) {
+    try {
+      doc.addImage(leftLogoBase64, 'PNG', leftMargin, 8, 21, 21);
+    } catch (e) {
+      console.warn('Error rendering left logo:', e);
+    }
+  }
+  if (rightLogoBase64) {
+    try {
+      doc.addImage(rightLogoBase64, 'PNG', rightX - 21, 8, 21, 21);
+    } catch (e) {
+      console.warn('Error rendering right logo:', e);
+    }
+  }
+
+  // 2. Kop Surat
+  doc.setFont('Helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+
+  // Top header text lines
+  const kopLines = [
+    'KEMENTERIAN SOSIAL REPUBLIK INDONESIA',
+    'SEKRETARIAT JENDERAL',
+    'PUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI',
+    'SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG'
+  ];
+
+  let yKop = 10;
+  kopLines.forEach((line, index) => {
+    doc.setFontSize(index === 3 ? 11 : 10);
+    doc.text(line, centerX, yKop, { align: 'center' });
+    yKop += 4.5;
+  });
+
+  // Sub-kop address line
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  const addressLine =
+    config?.kopKanan?.replace(/\n/g, ' | ') ||
+    'Jl. Komp. Sosial, Km. 5, Kel. Sukabangun, Kec. Sukarami, Kota Palembang, Prov. Sumatera Selatan, Kode Pos 30151, email: srt31palembang@gmail.com';
+  doc.text(addressLine, centerX, yKop, { align: 'center' });
+
+  // Double line divider
+  const lineY = yKop + 2.5;
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.8);
+  doc.line(leftMargin, lineY, rightX, lineY);
+  doc.setLineWidth(0.2);
+  doc.line(leftMargin, lineY + 1.2, rightX, lineY + 1.2);
+
+  // 3. Document Title
+  let currentY = lineY + 7;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  const titleText = options?.title || 'JURNAL PENGHUBUNG MATERI';
+  doc.text(titleText, centerX, currentY, { align: 'center' });
+  
+  // Underline for title
+  const titleWidth = doc.getTextWidth(titleText);
+  doc.setLineWidth(0.4);
+  doc.line(centerX - titleWidth / 2, currentY + 1, centerX + titleWidth / 2, currentY + 1);
+
+  // 4. Subheader Meta (Nama Guru on Left, Tanggal Cetak on Right)
+  currentY += 6.5;
+  const activeTeacher = options?.teacherName || (journals.length > 0 ? journals[0].teacherName : 'ARI FITRIYANI, S.PD., GR.');
+  const rawPrintDate = options?.printDate || new Date().toISOString().split('T')[0];
+  const formattedPrintDate = formatDateIndonesian(rawPrintDate, false);
+
+  doc.setFontSize(8.5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(30, 41, 59);
+
+  // Left: Nama Guru
+  doc.text('Nama Guru : ', leftMargin, currentY);
+  const labelTeacherWidth = doc.getTextWidth('Nama Guru : ');
+  doc.setFont('Helvetica', 'bold');
+  doc.text(activeTeacher, leftMargin + labelTeacherWidth, currentY);
+  const teacherValWidth = doc.getTextWidth(activeTeacher);
+  doc.setLineWidth(0.2);
+  doc.line(leftMargin + labelTeacherWidth, currentY + 0.8, leftMargin + labelTeacherWidth + teacherValWidth, currentY + 0.8);
+
+  // Right: Tanggal Cetak
+  doc.setFont('Helvetica', 'normal');
+  const printDateLabel = 'Tanggal Cetak : ';
+  const printDateVal = formattedPrintDate;
+  doc.text(printDateLabel, rightX - 60, currentY);
+  const labelPrintWidth = doc.getTextWidth(printDateLabel);
+  doc.setFont('Helvetica', 'bold');
+  doc.text(printDateVal, rightX - 60 + labelPrintWidth, currentY);
+  const dateValWidth = doc.getTextWidth(printDateVal);
+  doc.line(rightX - 60 + labelPrintWidth, currentY + 0.8, rightX - 60 + labelPrintWidth + dateValWidth, currentY + 0.8);
+
+  currentY += 4.5;
+
+  // 5. Table matching user sample structure
+  const tableHead = [
+    ['No', 'Tanggal', 'Target/Kelas', 'Mapel', 'Capaian Materi', 'Tindak Lanjut', 'Wali Asuh']
+  ];
+
+  const tableBody = journals.map((j, idx) => {
+    const formattedDate = formatDateShort(j.date) || j.date;
+    const mapelCell = `${j.subject || '-'}\nGuru: ${j.teacherName || '-'}`;
+    
+    let materiCell = j.learningAchievement || '-';
+    if (j.taskOrder) {
+      materiCell += `\n[Tugas Asrama]: ${j.taskOrder}`;
+    }
+
+    let tindakLanjutCell = j.followUp || '-';
+    if (j.status === 'Menunggu Respon' && !j.followUp) {
+      tindakLanjutCell = '(Menunggu tindak lanjut asrama)';
+    }
+
+    const waliCell = j.caretakerName || '-';
+
+    return [
+      idx + 1,
+      formattedDate,
+      j.targetClass || 'Klasikal (SD)',
+      mapelCell,
+      materiCell,
+      tindakLanjutCell,
+      waliCell
+    ];
+  });
+
+  autoTable(doc, {
+    startY: currentY,
+    head: tableHead,
+    body: tableBody,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [241, 245, 249], // Soft slate/neutral light gray
+      textColor: [15, 23, 42],
+      fontSize: 8,
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle',
+      lineWidth: 0.2,
+      lineColor: [148, 163, 184]
+    },
+    styles: {
+      fontSize: 7.5,
+      cellPadding: 2.5,
+      textColor: [30, 41, 59],
+      lineWidth: 0.2,
+      lineColor: [203, 213, 225],
+      valign: 'middle'
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: 'center' },
+      1: { cellWidth: 22, halign: 'center' },
+      2: { cellWidth: 30, halign: 'center' },
+      3: { cellWidth: 42 },
+      4: { cellWidth: 88 },
+      5: { cellWidth: 50 },
+      6: { cellWidth: 25, halign: 'center' }
+    },
+    margin: { left: leftMargin, right: rightMargin },
+    didDrawPage: function () {
+      if (watermarkBase64) {
+        try {
+          doc.addImage(watermarkBase64, 'PNG', centerX - 50, 60, 100, 100);
+        } catch (e) {
+          // ignore watermark error
+        }
+      }
+    }
+  });
+
+  // 6. Signatures Section
+  let finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 6 : currentY + 40;
+  if (finalY + 36 > pageHeight - 12) {
+    doc.addPage('a4', 'landscape');
+    if (watermarkBase64) {
+      try {
+        doc.addImage(watermarkBase64, 'PNG', centerX - 50, 60, 100, 100);
+      } catch (e) {}
+    }
+    finalY = 16;
+  }
+
+  doc.setFontSize(8.5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(30, 41, 59);
+
+  // Left Signature: Kepala Sekolah
+  doc.text('Mengetahui,', 25, finalY);
+  doc.text('Kepala Sekolah', 25, finalY + 4);
+
+  // Right Signature: Guru / Pembuat Laporan
+  doc.text(`Palembang, ${formattedPrintDate}`, rightX - 70, finalY);
+  doc.text('Pembuat Laporan,', rightX - 70, finalY + 4);
+
+  // Names after space
+  const nameY = finalY + 22;
+  const kepsekName = config?.kepalaSekolah || 'Yuni Arsi, S.Pd';
+  const kepsekNip = config?.kepalaSekolahNip || '197206051999032002';
+  const teacherNip = options?.teacherNip || (journals.length > 0 && journals[0].teacherNip ? journals[0].teacherNip : '-');
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text(kepsekName, 25, nameY);
+  const kepsekWidth = doc.getTextWidth(kepsekName);
+  doc.setLineWidth(0.2);
+  doc.line(25, nameY + 0.8, 25 + kepsekWidth, nameY + 0.8);
+
+  doc.text(activeTeacher, rightX - 70, nameY);
+  const teacherWidth = doc.getTextWidth(activeTeacher);
+  doc.line(rightX - 70, nameY + 0.8, rightX - 70 + teacherWidth, nameY + 0.8);
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  const nipPrefix = kepsekNip.startsWith('NIP') ? kepsekNip : `NIP. ${kepsekNip}`;
+  doc.text(nipPrefix, 25, nameY + 4.2);
+
+  const tNipStr = teacherNip && teacherNip !== '-' ? (teacherNip.startsWith('NIP') || teacherNip.startsWith('NRK') ? teacherNip : `NIP/NRK. ${teacherNip}`) : 'NIP/NRK. -';
+  doc.text(tNipStr, rightX - 70, nameY + 4.2);
+
+  // 7. Page numbering
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFontSize(7.5);
+    doc.setFont('Helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      'Jurnal Penghubung Materi Sekolah Rakyat 31 Palembang - Dokumen Kurikulum & Keasramaan Terpadu',
+      leftMargin,
+      pageHeight - 6.5
+    );
+    doc.text(`Halaman ${p} dari ${totalPages}`, rightX, pageHeight - 6.5, { align: 'right' });
+  }
+
+  const sanitizedTeacher = activeTeacher.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  doc.save(`Laporan_Jurnal_${sanitizedTeacher}_${rawPrintDate}.pdf`);
+}
+
+// --- 15. GENERATOR LEMBAR DISPOSISI RESMI PER TASK ORDER & CAPAIAN BELAJAR (A4 PORTRAIT) ---
+export async function generateSingleConnectingJournalDispositionPDF(
+  journal: ConnectingJournal,
+  config: AppConfig,
+  options?: {
+    printDate?: string;
+  }
+) {
+  if (!journal) {
+    throw new Error('Data task order tidak ditemukan untuk dicetak.');
+  }
+
+  // A4 Portrait: 210 mm x 297 mm
+  const doc = new jsPDF({
+    orientation: 'p',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth(); // 210 mm
+  const pageHeight = doc.internal.pageSize.getHeight(); // 297 mm
+  const centerX = pageWidth / 2; // 105 mm
+  const leftMargin = 15;
+  const rightMargin = 15;
+  const rightX = pageWidth - rightMargin; // 195 mm
+  const contentWidth = rightX - leftMargin; // 180 mm
+
+  let leftLogoBase64 = '';
+  let rightLogoBase64 = '';
+  let watermarkBase64 = '';
+
+  try {
+    leftLogoBase64 = await loadLogoImage(config?.logoKiriUrl || '', 'left');
+    rightLogoBase64 = await loadLogoImage(config?.logoKananUrl || '', 'right');
+    if (leftLogoBase64) {
+      watermarkBase64 = await generateWatermarkBase64(leftLogoBase64, config?.watermarkOpacity || 0.04);
+    }
+  } catch (e) {
+    console.warn('Gagal memuat logo disposisi PDF:', e);
+  }
+
+  // 1. Logos
+  if (leftLogoBase64) {
+    try {
+      doc.addImage(leftLogoBase64, 'PNG', leftMargin, 8, 18, 18);
+    } catch (e) {}
+  }
+  if (rightLogoBase64) {
+    try {
+      doc.addImage(rightLogoBase64, 'PNG', rightX - 18, 8, 18, 18);
+    } catch (e) {}
+  }
+
+  // 2. Kop Surat Kemensos
+  doc.setFont('Helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+
+  const kopLines = [
+    'KEMENTERIAN SOSIAL REPUBLIK INDONESIA',
+    'SEKRETARIAT JENDERAL',
+    'PUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI',
+    'SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG'
+  ];
+
+  let yKop = 10;
+  kopLines.forEach((line, index) => {
+    doc.setFontSize(index === 3 ? 10.5 : 9);
+    doc.text(line, centerX, yKop, { align: 'center' });
+    yKop += 4.2;
+  });
+
+  // Sub-kop address line
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  const addressLine =
+    config?.kopKanan?.replace(/\n/g, ' | ') ||
+    'Jl. Komp. Sosial, Km. 5, Kel. Sukabangun, Kec. Sukarami, Kota Palembang, Prov. Sumatera Selatan, Kode Pos 30151, email: srt31palembang@gmail.com';
+  doc.text(addressLine, centerX, yKop, { align: 'center' });
+
+  // Double line divider
+  const lineY = yKop + 2.5;
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.8);
+  doc.line(leftMargin, lineY, rightX, lineY);
+  doc.setLineWidth(0.2);
+  doc.line(leftMargin, lineY + 1.1, rightX, lineY + 1.1);
+
+  // Watermark
+  if (watermarkBase64) {
+    try {
+      doc.addImage(watermarkBase64, 'PNG', centerX - 45, 95, 90, 90);
+    } catch (e) {}
+  }
+
+  // 3. Document Title & QR Code
+  let currentY = lineY + 6.5;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  const titleText = 'LEMBAR DISPOSISI TASK ORDER & CAPAIAN PEMBELAJARAN';
+  doc.text(titleText, centerX, currentY, { align: 'center' });
+
+  const titleWidth = doc.getTextWidth(titleText);
+  doc.setLineWidth(0.3);
+  doc.line(centerX - titleWidth / 2, currentY + 1, centerX + titleWidth / 2, currentY + 1);
+
+  currentY += 4.5;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  const docNumber = `No. Berkas: SR31/JP/${journal.id || 'DOC'}/${new Date().getFullYear()}`;
+  doc.text(docNumber, centerX, currentY, { align: 'center' });
+
+  // Generate Verification QR Code
+  try {
+    const qrData = `SR31-DISPOSISI|ID:${journal.id}|Tgl:${journal.date}|Mapel:${journal.subject}|Guru:${journal.teacherName}|Target:${journal.targetClass}|Status:${journal.status}|Wali:${journal.caretakerName || '-'}`;
+    const qrDataUrl = await QRCode.toDataURL(qrData, { width: 100, margin: 1 });
+    doc.addImage(qrDataUrl, 'PNG', rightX - 22, currentY - 7, 20, 20);
+  } catch (e) {
+    console.error('QR Code Generation Error:', e);
+  }
+
+  currentY += 6;
+
+  // 4. Meta Information Grid (Identity Table)
+  const formattedDate = formatDateIndonesian(journal.date, false);
+  const formattedDeadline = journal.deadline ? formatDateIndonesian(journal.deadline, false) : formattedDate;
+  const isPending = journal.status === 'Menunggu Respon';
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(leftMargin, currentY, contentWidth, 34, 2, 2, 'FD');
+
+  const metaStartY = currentY + 5;
+  doc.setFontSize(8);
+
+  // Column 1
+  doc.setFont('Helvetica', 'bold');
+  doc.setTextColor(51, 65, 85);
+  doc.text('Tanggal Pembelajaran', leftMargin + 4, metaStartY);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(`:  ${formattedDate}`, leftMargin + 38, metaStartY);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Target / Jenjang', leftMargin + 4, metaStartY + 6);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(`:  ${journal.targetClass || 'Klasikal (SD)'}`, leftMargin + 38, metaStartY + 6);
+
+  if (journal.studentName) {
+    doc.setFont('Helvetica', 'bold');
+    doc.text('Siswa Khusus', leftMargin + 4, metaStartY + 12);
+    doc.setFont('Helvetica', 'normal');
+    doc.text(`:  ${journal.studentName} (${journal.studentId || '-'})`, leftMargin + 38, metaStartY + 12);
+  } else {
+    doc.setFont('Helvetica', 'bold');
+    doc.text('Cakupan Peserta', leftMargin + 4, metaStartY + 12);
+    doc.setFont('Helvetica', 'normal');
+    doc.text(':  Seluruh Siswa Rombel Asrama Terkait', leftMargin + 38, metaStartY + 12);
+  }
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Status Task Order', leftMargin + 4, metaStartY + 18);
+  doc.setFont('Helvetica', 'bold');
+  if (isPending) {
+    doc.setTextColor(180, 83, 9);
+    doc.text(':  MENUNGGU RESPON ASRAMA', leftMargin + 38, metaStartY + 18);
+  } else {
+    doc.setTextColor(22, 101, 52);
+    doc.text(':  SUDAH DITINDAKLANJUTI WALI ASUH', leftMargin + 38, metaStartY + 18);
+  }
+
+  // Column 2
+  doc.setTextColor(51, 65, 85);
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Mata Pelajaran', leftMargin + 96, metaStartY);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(`:  ${journal.subject || '-'}`, leftMargin + 128, metaStartY);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Guru Pengampu', leftMargin + 96, metaStartY + 6);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(`:  ${journal.teacherName || '-'}`, leftMargin + 128, metaStartY + 6);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text('NIP/NRK Guru', leftMargin + 96, metaStartY + 12);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(`:  ${journal.teacherNip || '-'}`, leftMargin + 128, metaStartY + 12);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Batas Waktu (Deadline)', leftMargin + 96, metaStartY + 18);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(`:  ${formattedDeadline}`, leftMargin + 128, metaStartY + 18);
+
+  currentY += 38;
+
+  // 5. Section I: Capaian Materi Belajar
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text('I. CAPAIAN MATERI PEMBELAJARAN (KURIKULUM SEKOLAH)', leftMargin, currentY);
+
+  currentY += 3;
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineWidth(0.2);
+
+  const materiLines = doc.splitTextToSize(journal.learningAchievement || '-', contentWidth - 8);
+  const materiBoxHeight = Math.max(24, materiLines.length * 4.2 + 8);
+  doc.roundedRect(leftMargin, currentY, contentWidth, materiBoxHeight, 1.5, 1.5, 'FD');
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text(materiLines, leftMargin + 4, currentY + 5.5);
+
+  currentY += materiBoxHeight + 5;
+
+  // 6. Section II: Instruksi Penugasan / Task Order Asrama
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text('II. INSTRUKSI PENUGASAN ASRAMA (TASK ORDER GURU KEPADA WALI ASUH)', leftMargin, currentY);
+
+  currentY += 3;
+  doc.setFillColor(254, 243, 199, 0.35); // subtle amber
+  doc.setDrawColor(245, 158, 11);
+  doc.setLineWidth(0.3);
+
+  const taskText = journal.taskOrder || '(Tidak ada instruksi tugas tertulis khusus)';
+  const taskLines = doc.splitTextToSize(taskText, contentWidth - 8);
+  const taskBoxHeight = Math.max(22, taskLines.length * 4.2 + 8);
+  doc.roundedRect(leftMargin, currentY, contentWidth, taskBoxHeight, 1.5, 1.5, 'FD');
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(120, 53, 15);
+  doc.text(taskLines, leftMargin + 4, currentY + 5.5);
+
+  currentY += taskBoxHeight + 5;
+
+  // 7. Section III: Respon & Tindak Lanjut Pendampingan Wali Asuh
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text('III. LAPORAN TINDAK LANJUT & BIMBINGAN WALI ASUH DI ASRAMA', leftMargin, currentY);
+
+  currentY += 3;
+  doc.setFillColor(240, 253, 244, 0.4); // subtle emerald
+  doc.setDrawColor(34, 197, 94);
+  doc.setLineWidth(0.3);
+
+  let followUpText = journal.followUp || '';
+  if (!followUpText) {
+    followUpText = isPending
+      ? '[BELUM DIRESPON] Menunggu pelaksanaan tindak lanjut pendampingan belajar asrama pada malam evaluasi.'
+      : '-';
+  }
+  const followUpLines = doc.splitTextToSize(followUpText, contentWidth - 8);
+  const followUpBoxHeight = Math.max(26, followUpLines.length * 4.2 + 12);
+  doc.roundedRect(leftMargin, currentY, contentWidth, followUpBoxHeight, 1.5, 1.5, 'FD');
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(20, 83, 45);
+  doc.text(followUpLines, leftMargin + 4, currentY + 5.5);
+
+  // Caretaker info inside bottom of box
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(22, 101, 52);
+  const caretakerLabel = `Wali Asuh Pendamping: ${journal.caretakerName || '-'} | NIP/NRK: ${journal.caretakerNip || '-'} | Tanggal Respon: ${journal.responseDate ? formatDateIndonesian(journal.responseDate, false) : '-'}`;
+  doc.text(caretakerLabel, leftMargin + 4, currentY + followUpBoxHeight - 3);
+
+  currentY += followUpBoxHeight + 8;
+
+  // 8. Signatures Section (3 Columns: Guru Pengampu, Wali Asuh, Kepala Sekolah)
+  const rawPrintDate = options?.printDate || new Date().toISOString().split('T')[0];
+  const formattedPrintDate = formatDateIndonesian(rawPrintDate, false);
+
+  if (currentY + 40 > pageHeight - 12) {
+    doc.addPage('a4', 'portrait');
+    if (watermarkBase64) {
+      try {
+        doc.addImage(watermarkBase64, 'PNG', centerX - 45, 95, 90, 90);
+      } catch (e) {}
+    }
+    currentY = 20;
+  }
+
+  doc.setFontSize(8);
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(30, 41, 59);
+
+  const colWidth = contentWidth / 3;
+  const col1X = leftMargin;
+  const col2X = leftMargin + colWidth;
+  const col3X = leftMargin + colWidth * 2;
+
+  // Col 1: Guru Pengampu
+  doc.text('Pembuat Task Order,', col1X + 4, currentY);
+  doc.text('Guru Mata Pelajaran', col1X + 4, currentY + 4);
+
+  // Col 2: Wali Asuh
+  doc.text('Pelaksana Tindak Lanjut,', col2X + 4, currentY);
+  doc.text('Wali Asuh / Pengasuh', col2X + 4, currentY + 4);
+
+  // Col 3: Kepala Sekolah
+  doc.text(`Palembang, ${formattedPrintDate}`, col3X + 4, currentY);
+  doc.text('Kepala Sekolah', col3X + 4, currentY + 4);
+
+  const nameY = currentY + 22;
+  const kepsekName = config?.kepalaSekolah || 'Yuni Arsi, S.Pd';
+  const kepsekNip = config?.kepalaSekolahNip || '197206051999032002';
+  const teacherName = journal.teacherName || 'ARI FITRIYANI, S.PD., GR.';
+  const teacherNip = journal.teacherNip || '-';
+  const caretakerName = journal.caretakerName || 'M ARDIAN NUGRAHA';
+  const caretakerNip = journal.caretakerNip || '-';
+
+  // Guru
+  doc.setFont('Helvetica', 'bold');
+  doc.text(teacherName, col1X + 4, nameY);
+  const tW = doc.getTextWidth(teacherName);
+  doc.setLineWidth(0.2);
+  doc.line(col1X + 4, nameY + 0.8, col1X + 4 + tW, nameY + 0.8);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`NIP/NRK. ${teacherNip}`, col1X + 4, nameY + 4.2);
+
+  // Wali Asuh
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(caretakerName, col2X + 4, nameY);
+  const cW = doc.getTextWidth(caretakerName);
+  doc.setLineWidth(0.2);
+  doc.line(col2X + 4, nameY + 0.8, col2X + 4 + cW, nameY + 0.8);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`NIP/NRK. ${caretakerNip}`, col2X + 4, nameY + 4.2);
+
+  // Kepsek
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(kepsekName, col3X + 4, nameY);
+  const kW = doc.getTextWidth(kepsekName);
+  doc.setLineWidth(0.2);
+  doc.line(col3X + 4, nameY + 0.8, col3X + 4 + kW, nameY + 0.8);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text(kepsekNip.startsWith('NIP') ? kepsekNip : `NIP. ${kepsekNip}`, col3X + 4, nameY + 4.2);
+
+  // Footer Note
+  doc.setFontSize(7);
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    'Dokumen Disposisi Resmi Terintegrasi Sekolah Rakyat 31 Palembang - Sah Dicetak & Divalidasi Sistem Digital',
+    leftMargin,
+    pageHeight - 6.5
+  );
+  doc.text('Halaman 1 dari 1', rightX, pageHeight - 6.5, { align: 'right' });
+
+  const sanitizedMapel = (journal.subject || 'Mapel').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  doc.save(`Disposisi_TaskOrder_${sanitizedMapel}_${journal.id || 'item'}.pdf`);
+}
+
+/**
+ * Generate A4 Landscape PDF: Laporan Rekapitulasi Tracking Menstruasi, Masa Bersuci & Kesiapan Ibadah
+ */
+export async function generateMenstruationRecapPDF(
+  records: MenstruationRecord[],
+  config?: AppConfig,
+  options?: {
+    title?: string;
+    filterDorm?: string;
+    filterStatus?: string;
+    printDate?: string;
+    pembinaName?: string;
+    pembinaNip?: string;
+  }
+) {
+  if (!records || records.length === 0) {
+    throw new Error('Tidak ada data menstruasi yang dipilih untuk dicetak.');
+  }
+
+  // A4 Landscape: 297 mm x 210 mm
+  const doc = new jsPDF({
+    orientation: 'l',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = 297;
+  const pageHeight = 210;
+  const centerX = pageWidth / 2;
+  const leftMargin = 15;
+  const rightMargin = 15;
+  const rightX = pageWidth - rightMargin;
+
+  let leftLogoBase64 = '';
+  let rightLogoBase64 = '';
+  let watermarkBase64 = '';
+
+  try {
+    leftLogoBase64 = await loadLogoImage(config?.logoKiriUrl || '', 'left');
+    rightLogoBase64 = await loadLogoImage(config?.logoKananUrl || '', 'right');
+    if (leftLogoBase64) {
+      watermarkBase64 = await generateWatermarkBase64(leftLogoBase64, config?.watermarkOpacity || 0.04);
+    }
+  } catch (e) {
+    console.warn('Gagal memuat logo PDF Menstruasi:', e);
+  }
+
+  // 1. Logos
+  if (leftLogoBase64) {
+    try {
+      doc.addImage(leftLogoBase64, 'PNG', leftMargin, 8, 20, 20);
+    } catch (e) {}
+  }
+  if (rightLogoBase64) {
+    try {
+      doc.addImage(rightLogoBase64, 'PNG', rightX - 20, 8, 20, 20);
+    } catch (e) {}
+  }
+
+  // 2. Kop Surat Kemensos
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(30, 41, 59);
+  doc.text('KEMENTERIAN SOSIAL REPUBLIK INDONESIA', centerX, 12, { align: 'center' });
+
+  doc.setFontSize(10);
+  doc.text('PUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI', centerX, 16.5, { align: 'center' });
+
+  doc.setFontSize(11);
+  doc.setTextColor(185, 28, 28);
+  doc.text('SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG', centerX, 21, { align: 'center' });
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Jl. Komp Sosial Km 5 Sukabangun, Palembang | Asrama Pembinaan Siswi & Pendampingan Ibadah', centerX, 25, { align: 'center' });
+
+  // Divider Line
+  doc.setDrawColor(185, 28, 28);
+  doc.setLineWidth(0.8);
+  doc.line(leftMargin, 27.5, rightX, 27.5);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.line(leftMargin, 28.5, rightX, 28.5);
+
+  // 3. Document Title
+  let currentY = 35;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(30, 41, 59);
+  const docTitle = options?.title || 'REKAPITULASI TRACKING MENSTRUASI, MASA BERSUCI & KESIAPAN IBADAH SISWI';
+  doc.text(docTitle, centerX, currentY, { align: 'center' });
+
+  currentY += 4.5;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  const subtitle = `Tahun Ajaran: ${config?.academicYear || '2025/2026'} (Semester ${config?.semester || 'Genap'}) | Unit: Asrama Putri`;
+  doc.text(subtitle, centerX, currentY, { align: 'center' });
+
+  // 4. Summary Badges Section
+  currentY += 4;
+  const sedangHaidCount = records.filter(r => r.status === 'Sedang Haid').length;
+  const bersuciCount = records.filter(r => r.status === 'Masa Bersuci').length;
+  const siapIbadahCount = records.filter(r => r.status === 'Suci / Siap Beribadah').length;
+  const totalDaysCalc = records.filter(r => r.durationDays && r.durationDays > 0);
+  const avgDays = totalDaysCalc.length > 0
+    ? (totalDaysCalc.reduce((acc, curr) => acc + (curr.durationDays || 0), 0) / totalDaysCalc.length).toFixed(1)
+    : '0';
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(leftMargin, currentY, rightX - leftMargin, 11, 2, 2, 'FD');
+
+  doc.setFontSize(7.5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Total Catatan: ${records.length} Siswi`, leftMargin + 4, currentY + 7);
+  doc.text(`|  Sedang Haid (Udzur): ${sedangHaidCount}`, leftMargin + 45, currentY + 7);
+  doc.text(`|  Masa Bersuci (Mandi): ${bersuciCount}`, leftMargin + 95, currentY + 7);
+  doc.text(`|  Suci Siap Sholat: ${siapIbadahCount}`, leftMargin + 145, currentY + 7);
+  doc.text(`|  Rata-rata Durasi: ${avgDays} Hari`, leftMargin + 195, currentY + 7);
+
+  // 5. Table of Menstruation Records
+  const tableData = records.map((record, index) => {
+    // Format start
+    const startStr = record.startDate
+      ? `${formatDateShort(record.startDate)}${record.startTime ? ' ' + record.startTime : ''}`
+      : '-';
+
+    // Format end
+    const endStr = record.endDate
+      ? `${formatDateShort(record.endDate)}${record.endTime ? ' ' + record.endTime : ''}`
+      : (record.status === 'Sedang Haid' ? 'Masih Berlangsung' : '-');
+
+    // Duration text
+    let durStr = '-';
+    if (record.durationText) {
+      durStr = record.durationText;
+    } else if (record.durationDays) {
+      durStr = `${record.durationDays} Hari`;
+    } else if (record.status === 'Sedang Haid' && record.startDate) {
+      const sDate = new Date(record.startDate).getTime();
+      const nDate = new Date().getTime();
+      const days = Math.max(1, Math.ceil((nDate - sDate) / (1000 * 60 * 60 * 24)));
+      durStr = `Hari ke-${days}`;
+    }
+
+    // Purification details
+    const thaharahStr = record.purificationDate
+      ? `${formatDateShort(record.purificationDate)} (${record.purificationTime || '-'})`
+      : (record.status === 'Masa Bersuci' ? 'Dalam Persiapan Mandi' : '-');
+
+    // Status label
+    let statusLabel = record.status;
+    if (record.status === 'Suci / Siap Beribadah') {
+      statusLabel = 'SUCI - SIAP SHOLAT';
+    } else if (record.status === 'Sedang Haid') {
+      statusLabel = 'SEDANG HAID (UDZUR)';
+    } else if (record.status === 'Masa Bersuci') {
+      statusLabel = 'MASA BERSUCI (THAHARAH)';
+    }
+
+    // Symptoms / Notes
+    let notesCombined = '';
+    if (record.symptoms && record.symptoms.length > 0) {
+      notesCombined += `[Gejala: ${record.symptoms.join(', ')}] `;
+    }
+    if (record.medicineOrCare) {
+      notesCombined += `[Care: ${record.medicineOrCare}] `;
+    }
+    if (record.notes) {
+      notesCombined += record.notes;
+    }
+    if (!notesCombined) notesCombined = '-';
+
+    return [
+      (index + 1).toString(),
+      record.studentName || '-',
+      `${record.class || '-'} / ${record.dorm || 'Asrama Putri'}`,
+      startStr,
+      endStr,
+      durStr,
+      thaharahStr,
+      statusLabel,
+      notesCombined
+    ];
+  });
+
+  autoTable(doc, {
+    startY: currentY + 14,
+    head: [[
+      'No',
+      'Nama Siswi',
+      'Kelas / Asrama',
+      'Mulai Haid',
+      'Selesai Haid',
+      'Catatan Durasi',
+      'Mandi Bersuci',
+      'Status Ibadah',
+      'Keluhan / Penanganan / Catatan'
+    ]],
+    body: tableData,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [185, 28, 28], // Red-700
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7.5,
+      halign: 'center',
+      valign: 'middle'
+    },
+    bodyStyles: {
+      fontSize: 7,
+      textColor: [30, 41, 59],
+      cellPadding: 1.8,
+      valign: 'middle'
+    },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' },
+      1: { cellWidth: 38, fontStyle: 'bold' },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 24, halign: 'center' },
+      4: { cellWidth: 24, halign: 'center' },
+      5: { cellWidth: 24, halign: 'center', fontStyle: 'bold' },
+      6: { cellWidth: 26, halign: 'center' },
+      7: { cellWidth: 30, halign: 'center', fontStyle: 'bold' },
+      8: { cellWidth: 'auto' }
+    },
+    margin: { left: leftMargin, right: rightMargin },
+    didDrawPage: function () {
+      if (watermarkBase64) {
+        try {
+          doc.addImage(watermarkBase64, 'PNG', centerX - 50, 60, 100, 100);
+        } catch (e) {}
+      }
+    }
+  });
+
+  // 6. Signatures Section
+  let finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 8 : currentY + 50;
+  if (finalY + 36 > pageHeight - 12) {
+    doc.addPage('a4', 'landscape');
+    if (watermarkBase64) {
+      try {
+        doc.addImage(watermarkBase64, 'PNG', centerX - 50, 60, 100, 100);
+      } catch (e) {}
+    }
+    finalY = 18;
+  }
+
+  const printDateStr = options?.printDate ? formatDateIndonesian(options.printDate) : formatDateIndonesian(new Date().toISOString().split('T')[0]);
+  const colWidth = (rightX - leftMargin) / 3;
+  const col1X = leftMargin;
+  const col2X = leftMargin + colWidth;
+  const col3X = leftMargin + colWidth * 2;
+
+  doc.setFontSize(8);
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(30, 41, 59);
+
+  // Col 1: Pembina Asrama Putri
+  doc.text('Mengetahui / Pencatat,', col1X + 4, finalY);
+  doc.text('Pembina Asrama Putri / Guru Fiqih', col1X + 4, finalY + 4);
+
+  // Col 2: Wali Asrama Mandiri
+  doc.text('Menyetujui,', col2X + 4, finalY);
+  doc.text('Wali Asrama Mandiri', col2X + 4, finalY + 4);
+
+  // Col 3: Kepala Sekolah
+  doc.text(`Palembang, ${printDateStr}`, col3X + 4, finalY);
+  doc.text('Kepala Sekolah', col3X + 4, finalY + 4);
+
+  const nameY = finalY + 22;
+  const kepsekName = config?.kepalaSekolah || 'Yuni Arsi, S.Pd';
+  const kepsekNip = config?.kepalaSekolahNip || '197206051999032002';
+  const waliAsramaName = config?.waliAsrama || 'Hisnul Hashin, SE';
+  const waliAsramaNip = config?.waliAsramaNip || 'NIP. 197406262025211027';
+  const pembinaName = options?.pembinaName || 'ULPA JAYANTI';
+  const pembinaNip = options?.pembinaNip || 'NIP. 199412032026222001';
+
+  // Pembina
+  doc.setFont('Helvetica', 'bold');
+  doc.text(pembinaName, col1X + 4, nameY);
+  const pW = doc.getTextWidth(pembinaName);
+  doc.setLineWidth(0.2);
+  doc.line(col1X + 4, nameY + 0.8, col1X + 4 + pW, nameY + 0.8);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`NIP. ${pembinaNip.replace(/^NIP\.?\s*/i, '')}`, col1X + 4, nameY + 4.2);
+
+  // Wali Asrama
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(waliAsramaName, col2X + 4, nameY);
+  const wW = doc.getTextWidth(waliAsramaName);
+  doc.setLineWidth(0.2);
+  doc.line(col2X + 4, nameY + 0.8, col2X + 4 + wW, nameY + 0.8);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text(waliAsramaNip.startsWith('NIP') ? waliAsramaNip : `NIP. ${waliAsramaNip}`, col2X + 4, nameY + 4.2);
+
+  // Kepsek
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(kepsekName, col3X + 4, nameY);
+  const kW = doc.getTextWidth(kepsekName);
+  doc.setLineWidth(0.2);
+  doc.line(col3X + 4, nameY + 0.8, col3X + 4 + kW, nameY + 0.8);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text(kepsekNip.startsWith('NIP') ? kepsekNip : `NIP. ${kepsekNip}`, col3X + 4, nameY + 4.2);
+
+  // Footer Note
+  doc.setFontSize(7);
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    'Dokumen Tracking Menstruasi & Kesiapan Ibadah - Sistem Terintegrasi Sekolah Rakyat 31 Palembang',
+    leftMargin,
+    pageHeight - 6.5
+  );
+  doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, rightX, pageHeight - 6.5, { align: 'right' });
+
+  doc.save(`Rekapitulasi_Tracking_Menstruasi_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+/**
+ * Generate Single Student Menstruation & Worship Card (A4 Portrait)
+ */
+export async function generateSingleStudentMenstruationCardPDF(
+  student: Student,
+  records: MenstruationRecord[],
+  config?: AppConfig,
+  options?: {
+    printDate?: string;
+  }
+) {
+  // A4 Portrait: 210 mm x 297 mm
+  const doc = new jsPDF({
+    orientation: 'p',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const centerX = pageWidth / 2;
+  const leftMargin = 15;
+  const rightMargin = 15;
+  const rightX = pageWidth - rightMargin;
+  const contentWidth = rightX - leftMargin;
+
+  let leftLogoBase64 = '';
+  let rightLogoBase64 = '';
+  let watermarkBase64 = '';
+
+  try {
+    leftLogoBase64 = await loadLogoImage(config?.logoKiriUrl || '', 'left');
+    rightLogoBase64 = await loadLogoImage(config?.logoKananUrl || '', 'right');
+    if (leftLogoBase64) {
+      watermarkBase64 = await generateWatermarkBase64(leftLogoBase64, config?.watermarkOpacity || 0.04);
+    }
+  } catch (e) {
+    console.warn('Gagal memuat logo kartu siswi PDF:', e);
+  }
+
+  // 1. Logos
+  if (leftLogoBase64) {
+    try {
+      doc.addImage(leftLogoBase64, 'PNG', leftMargin, 8, 18, 18);
+    } catch (e) {}
+  }
+  if (rightLogoBase64) {
+    try {
+      doc.addImage(rightLogoBase64, 'PNG', rightX - 18, 8, 18, 18);
+    } catch (e) {}
+  }
+
+  // 2. Kop Surat Kemensos
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(30, 41, 59);
+  doc.text('KEMENTERIAN SOSIAL REPUBLIK INDONESIA', centerX, 12, { align: 'center' });
+
+  doc.setFontSize(9);
+  doc.text('PUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI', centerX, 16, { align: 'center' });
+
+  doc.setFontSize(10);
+  doc.setTextColor(185, 28, 28);
+  doc.text('SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG', centerX, 20.5, { align: 'center' });
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Komp Sosial Km 5 Sukabangun, Palembang | Kartu Kontrol Menstruasi & Kesiapan Ibadah', centerX, 24.5, { align: 'center' });
+
+  // Divider Line
+  doc.setDrawColor(185, 28, 28);
+  doc.setLineWidth(0.8);
+  doc.line(leftMargin, 26.5, rightX, 26.5);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.line(leftMargin, 27.5, rightX, 27.5);
+
+  let currentY = 34;
+
+  // Title
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(30, 41, 59);
+  doc.text('KARTU KONTROL MENSTRUASI & KESIAPAN IBADAH SISWI', centerX, currentY, { align: 'center' });
+
+  currentY += 4;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`ID Berkas: KM-${student.id}-${new Date().getFullYear()}`, centerX, currentY, { align: 'center' });
+
+  // Student Identity Box
+  currentY += 4;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(leftMargin, currentY, contentWidth, 22, 2, 2, 'FD');
+
+  doc.setFontSize(8);
+  doc.setFont('Helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text(`Nama Siswi : ${student.name.toUpperCase()}`, leftMargin + 4, currentY + 6);
+  doc.text(`NISN / ID  : ${student.id}`, leftMargin + 4, currentY + 11.5);
+  doc.text(`Tingkat    : Kelas ${student.class}`, leftMargin + 4, currentY + 17);
+
+  doc.text(`Asrama      : ${student.dorm || 'Asrama Putri'}`, leftMargin + 95, currentY + 6);
+  doc.text(`Wali Asuh   : ${student.caretaker || '-'}`, leftMargin + 95, currentY + 11.5);
+  const latestRec = records[0];
+  const activeStatus = latestRec ? latestRec.status : 'Suci / Siap Beribadah';
+  doc.text(`Status Saat Ini: ${activeStatus}`, leftMargin + 95, currentY + 17);
+
+  // Table of Cycles
+  const tableRows = records.map((r, i) => {
+    const start = r.startDate ? `${formatDateShort(r.startDate)} ${r.startTime || ''}` : '-';
+    const end = r.endDate ? `${formatDateShort(r.endDate)} ${r.endTime || ''}` : (r.status === 'Sedang Haid' ? 'Berlangsung' : '-');
+    const dur = r.durationText || (r.durationDays ? `${r.durationDays} Hari` : '-');
+    const mandi = r.purificationDate ? `${formatDateShort(r.purificationDate)} ${r.purificationTime || ''}` : '-';
+    return [
+      (i + 1).toString(),
+      start,
+      end,
+      dur,
+      mandi,
+      r.status === 'Suci / Siap Beribadah' ? 'SIAP SHOLAT' : r.status,
+      r.notes || (r.symptoms ? r.symptoms.join(', ') : '-')
+    ];
+  });
+
+  autoTable(doc, {
+    startY: currentY + 26,
+    head: [[
+      'No',
+      'Mulai Haid',
+      'Selesai Haid',
+      'Durasi Waktu',
+      'Mandi Bersuci',
+      'Status Ibadah',
+      'Catatan / Penanganan'
+    ]],
+    body: tableRows.length > 0 ? tableRows : [['-', 'Belum ada catatan siklus tersimpan', '-', '-', '-', '-', '-']],
+    theme: 'grid',
+    headStyles: {
+      fillColor: [185, 28, 28],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7.5,
+      halign: 'center'
+    },
+    bodyStyles: {
+      fontSize: 7,
+      textColor: [30, 41, 59],
+      cellPadding: 2,
+      valign: 'middle'
+    },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' },
+      1: { cellWidth: 26, halign: 'center' },
+      2: { cellWidth: 26, halign: 'center' },
+      3: { cellWidth: 24, halign: 'center', fontStyle: 'bold' },
+      4: { cellWidth: 26, halign: 'center' },
+      5: { cellWidth: 26, halign: 'center', fontStyle: 'bold' },
+      6: { cellWidth: 'auto' }
+    },
+    margin: { left: leftMargin, right: rightMargin },
+    didDrawPage: function () {
+      if (watermarkBase64) {
+        try {
+          doc.addImage(watermarkBase64, 'PNG', centerX - 45, 95, 90, 90);
+        } catch (e) {}
+      }
+    }
+  });
+
+  // Fiqih Education Note Box
+  let finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 6 : 140;
+  if (finalY + 55 > pageHeight - 15) {
+    doc.addPage('a4', 'portrait');
+    finalY = 20;
+  }
+
+  doc.setFillColor(254, 242, 242);
+  doc.setDrawColor(254, 202, 202);
+  doc.roundedRect(leftMargin, finalY, contentWidth, 22, 2, 2, 'FD');
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(153, 27, 27);
+  doc.text('KETENTUAN FIQIH HAID & THAHARAH (BERSUCI) ASRAMA PUTRI:', leftMargin + 4, finalY + 5);
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('1. Masa Haid: Minimal 24 jam (1 hari 1 malam), umumnya 6-7 hari, dan maksimal 15 hari 15 malam.', leftMargin + 4, finalY + 9.5);
+  doc.text('2. Tanda Suci: Berhentinya darah ditandai dengan cairan putih bening (qasshah baidha\') atau kering (jafaf).', leftMargin + 4, finalY + 13.5);
+  doc.text('3. Kewajiban Mandi Wajib: Setelah suci, siswi wajib segera mandi thaharah dan kembali melaksanakan sholat & puasa.', leftMargin + 4, finalY + 17.5);
+
+  // Signatures
+  const signY = finalY + 28;
+  const printDateStr = options?.printDate ? formatDateIndonesian(options.printDate) : formatDateIndonesian(new Date().toISOString().split('T')[0]);
+
+  doc.setFontSize(7.5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(30, 41, 59);
+
+  const colW = contentWidth / 2;
+  // Col 1: Pembina
+  doc.text('Mengetahui / Memvalidasi,', leftMargin + 6, signY);
+  doc.text('Pembina Asrama Putri / Guru Pendamping', leftMargin + 6, signY + 4);
+
+  // Col 2: Kepala Sekolah
+  doc.text(`Palembang, ${printDateStr}`, leftMargin + colW + 6, signY);
+  doc.text('Kepala Sekolah', leftMargin + colW + 6, signY + 4);
+
+  const nameYPos = signY + 20;
+  const kepsekName = config?.kepalaSekolah || 'Yuni Arsi, S.Pd';
+  const kepsekNip = config?.kepalaSekolahNip || '197206051999032002';
+  const pembinaName = student.caretaker || 'ULPA JAYANTI';
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text(pembinaName, leftMargin + 6, nameYPos);
+  doc.text(kepsekName, leftMargin + colW + 6, nameYPos);
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Pembina Asrama Putri', leftMargin + 6, nameYPos + 4);
+  doc.text(kepsekNip.startsWith('NIP') ? kepsekNip : `NIP. ${kepsekNip}`, leftMargin + colW + 6, nameYPos + 4);
+
+  doc.save(`Kartu_Menstruasi_${student.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+}
+
+
+
 
 
 

@@ -13,7 +13,9 @@ import {
   FileText,
   Sliders,
   X,
-  QrCode
+  QrCode,
+  BookOpen,
+  CalendarHeart
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -34,7 +36,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
     { id: 'students', label: 'Data Siswa & Profil', icon: Users },
+    { id: 'connecting-journal', label: 'Jurnal Penghubung', icon: BookOpen },
     { id: 'prayer-attendance', label: 'Absensi & Ceklist', icon: QrCode },
+    { id: 'menstruation', label: 'Tracking Menstruasi', icon: CalendarHeart },
     { id: 'violations', label: 'Pelanggaran & Konseling', icon: AlertTriangle },
     { id: 'leaves', label: 'Surat Izin Keluar', icon: DoorOpen },
     { id: 'medical', label: 'UKS & Rekam Medis', icon: HeartPulse },
@@ -115,7 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-center space-y-1">
           <div className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1 bg-slate-800 text-slate-300 border border-slate-700">
-            Role: <span className={userRole === 'guru' ? 'text-amber-400' : 'text-red-400'}>{userRole === 'guru' ? 'Guru / Staf' : 'Admin / Pengasuh'}</span>
+            Role: <span className={userRole === 'guru' ? 'text-amber-400' : 'text-red-400'}>{userRole === 'guru' ? 'Guru Pengampu' : 'Pengampu / Wali Asuh'}</span>
           </div>
           <p className="text-[11px] text-slate-500 font-semibold tracking-wide">
             CERDAS BERSAMA

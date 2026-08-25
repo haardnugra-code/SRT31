@@ -71,9 +71,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isLoggedIn, onLoginSucce
           >
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4" />
-              <span>Pengasuh / Admin</span>
+              <span>Pengampu / Wali Asuh</span>
             </div>
-            <span className="text-[9px] font-normal opacity-80 mt-0.5">Akses Lengkap</span>
+            <span className="text-[9px] font-normal opacity-80 mt-0.5">Admin & Respon Asrama</span>
           </button>
 
           <button
@@ -90,9 +90,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isLoggedIn, onLoginSucce
           >
             <div className="flex items-center gap-1.5">
               <UserCheck className="w-4 h-4" />
-              <span>Guru / Staf</span>
+              <span>Guru Pengampu</span>
             </div>
-            <span className="text-[9px] font-normal opacity-80 mt-0.5">Akses Khusus</span>
+            <span className="text-[9px] font-normal opacity-80 mt-0.5">Input Capaian Belajar</span>
           </button>
         </div>
 

@@ -279,6 +279,91 @@ function doPost(e) {
       return responseJSON({ status: 'success', message: 'Rekam medis dihapus.' });
     }
     
+
+    // 8. JURNAL PENGHUBUNG (CONNECTING JOURNALS)
+    if (action === 'addConnectingJournal' || action === 'updateConnectingJournal') {
+      saveOrUpdateRow('ConnectingJournals', 0, data.id, [
+        data.id,
+        data.date,
+        data.targetClass || '',
+        data.studentId || '',
+        data.studentName || '',
+        data.subject || '',
+        data.teacherName || '',
+        data.teacherNip || '',
+        data.learningAchievement || '',
+        data.taskOrder || '',
+        data.deadline || '',
+        data.followUp || '',
+        data.caretakerName || '',
+        data.caretakerNip || '',
+        data.responseDate || '',
+        data.status || 'Menunggu Respon',
+        data.notes || '',
+        new Date().toISOString()
+      ]);
+      return responseJSON({ status: 'success', message: 'Jurnal Penghubung tersimpan ke Sheet ConnectingJournals.' });
+    }
+    if (action === 'deleteConnectingJournal') {
+      deleteRowById('ConnectingJournals', 0, data.id);
+      return responseJSON({ status: 'success', message: 'Jurnal Penghubung dihapus.' });
+    }
+
+    // 9. REKAM MENSTRUASI (MENSTRUATION RECORDS)
+    if (action === 'addMenstruationRecord' || action === 'updateMenstruationRecord') {
+      saveOrUpdateRow('MenstruationRecords', 0, data.id, [
+        data.id,
+        data.studentId || '',
+        data.studentName || '',
+        data.class || '',
+        data.dorm || '',
+        data.startDate || '',
+        data.startTime || '',
+        data.endDate || '',
+        data.endTime || '',
+        data.durationText || (data.durationDays ? data.durationDays + ' Hari' : ''),
+        data.purificationDate || '',
+        data.purificationTime || '',
+        data.purificationVerifiedBy || '',
+        data.status || '',
+        (data.symptoms || []).join(', '),
+        data.painLevel || '',
+        data.medicineOrCare || '',
+        data.sanitaryPadsProvided || '',
+        data.readyForWorshipDate || '',
+        new Date().toISOString()
+      ]);
+      return responseJSON({ status: 'success', message: 'Rekam Menstruasi tersimpan ke Sheet MenstruationRecords.' });
+    }
+    if (action === 'deleteMenstruationRecord') {
+      deleteRowById('MenstruationRecords', 0, data.id);
+      return responseJSON({ status: 'success', message: 'Rekam Menstruasi dihapus.' });
+    }
+
+    // 10. PRESENSI SHOLAT (PRAYER ATTENDANCE)
+    if (action === 'addPrayerAttendance' || action === 'updatePrayerAttendance') {
+      saveOrUpdateRow('PrayerAttendance', 0, data.id, [
+        data.id,
+        data.date,
+        data.studentId,
+        data.studentName,
+        data.class || '',
+        data.dorm || '',
+        data.session || '',
+        data.status || '',
+        data.time || '',
+        data.officer || '',
+        data.notes || '',
+        data.rfidTag || '',
+        new Date().toISOString()
+      ]);
+      return responseJSON({ status: 'success', message: 'Presensi Sholat tersimpan ke Sheet.' });
+    }
+    if (action === 'deletePrayerAttendance') {
+      deleteRowById('PrayerAttendance', 0, data.id);
+      return responseJSON({ status: 'success', message: 'Presensi Sholat dihapus.' });
+    }
+
     // 7. RAPOR PERKEMBANGAN ASRAMA (REPORT CARDS)
     if (action === 'saveReportCard') {
       var studentId = data.studentId;
@@ -365,7 +450,9 @@ function getAllData() {
     medicalRecords: getSheetDataAsObjects(ss, 'MedicalRecords'),
     reportCards: getSheetDataAsObjects(ss, 'ReportCards'),
     announcements: getSheetDataAsObjects(ss, 'Announcements'),
-    prayerAttendance: getSheetDataAsObjects(ss, 'PrayerAttendance')
+    prayerAttendance: getSheetDataAsObjects(ss, 'PrayerAttendance'),
+    connectingJournals: getSheetDataAsObjects(ss, 'ConnectingJournals'),
+    menstruationRecords: getSheetDataAsObjects(ss, 'MenstruationRecords')
   };
 }
 
@@ -484,6 +571,14 @@ function setupSheet() {
       color: '#475569', // Slate Presensi
       headers: ['ID Presensi', 'Tanggal', 'NISN/ID', 'Nama Siswa', 'Kelas', 'Gedung Asrama', 'Sesi Presensi', 'Status Kehadiran', 'Waktu Scan', 'Petugas / Scan By', 'Catatan', 'RFID UID Tag', 'Terakhir Diperbarui']
     },
+    'ConnectingJournals': {
+      color: '#8b5cf6', // Violet Jurnal Penghubung
+      headers: ['ID Jurnal', 'Tanggal', 'Target Kelas', 'NISN/ID Siswa', 'Nama Siswa', 'Mata Pelajaran', 'Nama Guru', 'NIP Guru', 'Capaian Materi', 'Task Order Asrama', 'Batas Waktu', 'Tindak Lanjut', 'Wali Asuh', 'NIP Wali Asuh', 'Tanggal Respon', 'Status', 'Catatan Tambahan', 'Terakhir Diperbarui']
+    },
+    'MenstruationRecords': {
+      color: '#ec4899', // Pink Menstruasi
+      headers: ['ID Rekam', 'NISN/ID', 'Nama Siswa', 'Kelas', 'Asrama', 'Mulai Tgl', 'Mulai Jam', 'Selesai Tgl', 'Selesai Jam', 'Durasi Haid', 'Tgl Bersuci', 'Jam Bersuci', 'Diverifikasi Oleh', 'Status Siklus', 'Keluhan / Gejala', 'Skala Nyeri', 'Tindakan UKS', 'Jml Pembalut', 'Siap Ibadah Tgl', 'Terakhir Diperbarui']
+    },
     'BackupLogs': {
       color: '#334155', // Log Backup
       headers: ['ID Log', 'Waktu Backup', 'Nama File Backup', 'Tipe Backup', 'URL File Google Drive', 'URL Folder Drive', 'Total Siswa', 'Total Rekam Data', 'Status']
@@ -601,7 +696,9 @@ function autoBackupToDrive() {
                        (allData.leaves ? allData.leaves.length : 0) +
                        (allData.dailyJournals ? allData.dailyJournals.length : 0) +
                        (allData.medicalRecords ? allData.medicalRecords.length : 0) +
-                       (allData.prayerAttendance ? allData.prayerAttendance.length : 0);
+                       (allData.prayerAttendance ? allData.prayerAttendance.length : 0) +
+                       (allData.connectingJournals ? allData.connectingJournals.length : 0) +
+                       (allData.menstruationRecords ? allData.menstruationRecords.length : 0);
 
     // Catat ke Sheet BackupLogs
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -783,7 +880,9 @@ function cleanShadowData() {
       { name: 'DailyJournals', idCol: 2, nameCol: 3 },
       { name: 'MedicalRecords', idCol: 1, nameCol: 2 },
       { name: 'ReportCards', idCol: 0, nameCol: 1 },
-      { name: 'PrayerAttendance', idCol: 2, nameCol: 3 }
+      { name: 'PrayerAttendance', idCol: 2, nameCol: 3 },
+      { name: 'ConnectingJournals', idCol: 3, nameCol: 4 },
+      { name: 'MenstruationRecords', idCol: 1, nameCol: 2 }
     ];
 
     for (var s = 0; s < targetSheets.length; s++) {

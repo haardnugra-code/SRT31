@@ -1,6 +1,6 @@
 import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord } from '../types';
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOscEltpKZ3aZP7h7-ZyzZHb-DUgZ5ZD9LxCrIMRQTscJ9cP0WKKWu5cFtOrISJXGuNA/exec";
 
 export const DEFAULT_DISCIPLINE_LEVELS: DisciplineLevelConfig[] = [
   { level: 1, name: 'Tingkat 1 (Pelanggaran Ringan)', pointsDeduction: 5, defaultSanction: 'Teguran lisan & Piket asrama' },
@@ -189,7 +189,7 @@ export function loadAppConfig(): AppConfig {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u')) {
+      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u') || parsed.googleScriptUrl.includes('AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF')) {
         parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
       }
       if (!parsed.waliAsuhList || parsed.waliAsuhList.some((w: string) => w.includes('Bp. Hermawan') || w.includes('Ibu Handayani'))) {
@@ -219,39 +219,7 @@ export function loadStudents(): Student[] {
     try {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const legacyDummyNames = [
-          "a rakka attala", "abdul wahid", "ade rizki cahya", "al fatih al farizi",
-          "m fahri", "m farrel", "m firmansyah", "m. alvin", "m. fatir alfareza",
-          "m. syahrul romadon", "m.aditya", "muhamad fauzan", "muhammad reza",
-          "nur reva anugrah putri", "nur rivi anugrah putri", "reski al farizi",
-          "rizki abdulah", "sella marselina", "yeni inda sari", "shintyah anggraeni",
-          "muhammad rezky ramadhan", "adriansya khoirul khafi", "aira saputri",
-          "aldo ardiansyah", "amel", "ardiansyah", "fatma fauzia", "imel",
-          "imelda susanti", "lesi", "m. aqil abdul rasyid", "m badril munir",
-          "m jessen pratama", "m. richad rivaldo", "m.daffa saputra",
-          "mirza mushthafa mahdi", "muhamad ferdiansyah", "muhamad vernando agustian",
-          "nabilla", "puspa lestari", "puspita sari", "putri", "putri septiani",
-          "siti fadila", "abdi putra anggara", "achmad rizky kurniawan",
-          "an - anissa maulidya ningsih", "bagus ramadhan", "junian gunhar",
-          "kevin", "muhamat ridhowan", "muhammad iqbal", "muhammad rava oktardi",
-          "muhammad yogie prananda", "purwadi", "rahman firly afriansyah",
-          "reni mustika ratu", "riki rikardo", "rizki aditia", "saskiya amanda",
-          "syahara auliyah", "tirta pratama", "uswatun khasanah", "yogi saputra",
-          "yuni aulia sari"
-        ];
-        const uniqueMap = new Map<string, Student>();
-        parsed.forEach((s: Student) => {
-          if (s && s.id && s.name) {
-            const cleanedId = String(s.id).trim();
-            const normName = String(s.name).trim().toLowerCase();
-            // Discard legacy template dummy items so pure Google Sheet database is utilized
-            if (cleanedId.startsWith('SR00') && legacyDummyNames.includes(normName)) {
-              return;
-            }
-            uniqueMap.set(cleanedId, { ...s, id: cleanedId, name: String(s.name).trim() });
-          }
-        });
-        return Array.from(uniqueMap.values());
+        return parsed.filter(s => s && s.id);
       }
     } catch (e) {
       console.error(e);
@@ -357,9 +325,7 @@ export function loadMedicalRecords(): MedicalRecord[] {
     try {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const legacyDummyMedIds = ['MED-2026-001', 'MED-2026-000A', 'MED-2026-000B', 'MED-2026-002', 'MED-2026-003'];
-        const cleaned = parsed.filter(m => m && m.id && !legacyDummyMedIds.includes(m.id));
-        return cleaned;
+        return parsed.filter(m => m && m.id);
       }
     } catch (e) {
       console.error(e);

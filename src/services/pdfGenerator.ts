@@ -3711,7 +3711,7 @@ export async function generateConnectingJournalPDF(
 
   // 4. Subheader Meta (Nama Guru on Left, Tanggal Cetak on Right)
   currentY += 6.5;
-  const activeTeacher = options?.teacherName || (journals.length > 0 ? journals[0].teacherName : 'ARI FITRIYANI, S.PD., GR.');
+  const activeTeacher = options?.teacherName || (journals.length > 0 && journals[0].teacherName ? journals[0].teacherName : 'Guru Mata Pelajaran');
   const rawPrintDate = options?.printDate || new Date().toISOString().split('T')[0];
   const formattedPrintDate = formatDateIndonesian(rawPrintDate, false);
 
@@ -4111,7 +4111,7 @@ export async function generateSingleConnectingJournalDispositionPDF(
   doc.text('II. INSTRUKSI PENUGASAN ASRAMA (TASK ORDER GURU KEPADA WALI ASUH)', leftMargin, currentY);
 
   currentY += 3;
-  doc.setFillColor(254, 243, 199, 0.35); // subtle amber
+  doc.setFillColor(254, 243, 199); // subtle amber
   doc.setDrawColor(245, 158, 11);
   doc.setLineWidth(0.3);
 
@@ -4134,7 +4134,7 @@ export async function generateSingleConnectingJournalDispositionPDF(
   doc.text('III. LAPORAN TINDAK LANJUT & BIMBINGAN WALI ASUH DI ASRAMA', leftMargin, currentY);
 
   currentY += 3;
-  doc.setFillColor(240, 253, 244, 0.4); // subtle emerald
+  doc.setFillColor(240, 253, 244); // subtle emerald
   doc.setDrawColor(34, 197, 94);
   doc.setLineWidth(0.3);
 
@@ -4180,26 +4180,20 @@ export async function generateSingleConnectingJournalDispositionPDF(
   doc.setFont('Helvetica', 'normal');
   doc.setTextColor(30, 41, 59);
 
-  const colWidth = contentWidth / 3;
+  const colWidth = contentWidth / 2;
   const col1X = leftMargin;
   const col2X = leftMargin + colWidth;
-  const col3X = leftMargin + colWidth * 2;
 
   // Col 1: Guru Pengampu
   doc.text('Pembuat Task Order,', col1X + 4, currentY);
   doc.text('Guru Mata Pelajaran', col1X + 4, currentY + 4);
 
   // Col 2: Wali Asuh
-  doc.text('Pelaksana Tindak Lanjut,', col2X + 4, currentY);
-  doc.text('Wali Asuh / Pengasuh', col2X + 4, currentY + 4);
-
-  // Col 3: Kepala Sekolah
-  doc.text(`Palembang, ${formattedPrintDate}`, col3X + 4, currentY);
-  doc.text('Kepala Sekolah', col3X + 4, currentY + 4);
+  doc.text(`Palembang, ${formattedPrintDate}`, col2X + 4, currentY);
+  doc.text('Pelaksana Tindak Lanjut,', col2X + 4, currentY + 4);
+  doc.text('Wali Asuh / Pengasuh', col2X + 4, currentY + 8);
 
   const nameY = currentY + 22;
-  const kepsekName = config?.kepalaSekolah || 'Yuni Arsi, S.Pd';
-  const kepsekNip = config?.kepalaSekolahNip || '197206051999032002';
   const teacherName = journal.teacherName || 'ARI FITRIYANI, S.PD., GR.';
   const teacherNip = journal.teacherNip || '-';
   const caretakerName = journal.caretakerName || 'M ARDIAN NUGRAHA';
@@ -4229,18 +4223,29 @@ export async function generateSingleConnectingJournalDispositionPDF(
   doc.setTextColor(71, 85, 105);
   doc.text(`NIP/NRK. ${caretakerNip}`, col2X + 4, nameY + 4.2);
 
-  // Kepsek
-  doc.setFont('Helvetica', 'bold');
+  // Bottom Center: Kepala Sekolah
+  const kepsekY = nameY + 16;
+  const kepsekName = config?.kepalaSekolah || 'Yuni Arsi, S.Pd';
+  const kepsekNip = config?.kepalaSekolahNip || '197206051999032002';
+  
+  doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(30, 41, 59);
-  doc.text(kepsekName, col3X + 4, nameY);
+  doc.text('Mengetahui,', centerX, kepsekY, { align: 'center' });
+  doc.text('Kepala Sekolah', centerX, kepsekY + 4, { align: 'center' });
+  
+  const kepsekNameY = kepsekY + 22;
+  doc.setFont('Helvetica', 'bold');
+  doc.text(kepsekName, centerX, kepsekNameY, { align: 'center' });
   const kW = doc.getTextWidth(kepsekName);
   doc.setLineWidth(0.2);
-  doc.line(col3X + 4, nameY + 0.8, col3X + 4 + kW, nameY + 0.8);
+  doc.line(centerX - (kW / 2), kepsekNameY + 0.8, centerX + (kW / 2), kepsekNameY + 0.8);
+  
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(71, 85, 105);
-  doc.text(kepsekNip.startsWith('NIP') ? kepsekNip : `NIP. ${kepsekNip}`, col3X + 4, nameY + 4.2);
+  const formattedKepsekNip = kepsekNip.startsWith('NIP') ? kepsekNip : `NIP. ${kepsekNip}`;
+  doc.text(formattedKepsekNip, centerX, kepsekNameY + 4.2, { align: 'center' });
 
   // Footer Note
   doc.setFontSize(7);

@@ -805,8 +805,21 @@ export default function App() {
       setPrayerAttendance(records);
       savePrayerAttendance(records);
       showToast('Presensi Disimpan', 'Data presensi sholat & QR code berhasil diperbarui.', 'success');
+      
+      // Batch update to Google Apps Script if possible, or just individual
+      if (config.googleScriptUrl) {
+        records.forEach(record => {
+          fetch(config.googleScriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'addPrayerAttendance',
+              data: record
+            })
+          }).catch(e => console.error(e));
+        });
+      }
     },
-    [showToast]
+    [showToast, config.googleScriptUrl]
   );
 
   const handleDeletePrayerAttendanceItem = useCallback(
@@ -1554,8 +1567,8 @@ export default function App() {
                 onSaveJournal={handleSaveConnectingJournal}
                 onDeleteJournal={handleDeleteConnectingJournal}
                 onRespondJournal={handleRespondConnectingJournal}
-                onShowToast={showToast}
-                onAskConfirm={askConfirm}
+                showToast={showToast}
+                askConfirm={askConfirm}
               />
             )}
 

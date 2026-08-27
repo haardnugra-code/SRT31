@@ -1218,7 +1218,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
 
       {/* MODAL FORM: ADD / EDIT REKAM MEDIS */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
               <div className="flex items-center gap-2">
@@ -1645,7 +1645,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
 
       {/* Unsaved Changes Close Confirmation Dialog */}
       {isClosePromptOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center shrink-0">
@@ -1726,7 +1726,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
 
       {/* MODAL PRINT SURAT IZIN SAKIT UKS & REKAM MEDIS */}
       {printRecord && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl my-8 relative">
             <div className="no-print flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
               <span className="text-xs font-bold text-slate-500 uppercase">

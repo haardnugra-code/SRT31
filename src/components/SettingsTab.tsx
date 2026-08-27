@@ -64,6 +64,9 @@ interface SettingsTabProps {
   recordsCount?: number;
   announcement?: string;
   onUpdateAnnouncement?: (msg: string) => void;
+  meetingMinutes?: any[];
+  onSaveMinute?: (minute: any, isEdit: boolean) => void;
+  onDeleteMinute?: (id: string) => void;
 
   // CRUD Database Props
   students?: Student[];
@@ -1532,7 +1535,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
       {/* Unlock PIN Modal */}
       {isUnlockModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-sm overflow-hidden flex flex-col p-6 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-lg flex-shrink-0">
@@ -1586,8 +1589,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
       {/* Apps Script Code Modal */}
       {isScriptModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[160] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col my-4 sm:my-8 animate-in fade-in zoom-in-95">
             {/* Modal Header */}
             <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
               <div className="flex items-center gap-3">

@@ -1,4 +1,4 @@
-import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord } from '../types';
+import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord, MeetingMinute } from '../types';
 
 export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOscEltpKZ3aZP7h7-ZyzZHb-DUgZ5ZD9LxCrIMRQTscJ9cP0WKKWu5cFtOrISJXGuNA/exec";
 
@@ -621,4 +621,18 @@ export function clearStorageCache(): { clearedSize: string; keyCount: number } {
 
   const clearedKb = (totalBytes / 1024).toFixed(1);
   return { clearedSize: `${clearedKb} KB`, keyCount: count };
+}
+
+export function loadMeetingMinutes(): MeetingMinute[] {
+  try {
+    const saved = localStorage.getItem('sr_meeting_minutes');
+    return saved ? JSON.parse(saved) : [];
+  } catch (error) {
+    console.error('Failed to load meeting minutes', error);
+    return [];
+  }
+}
+
+export function saveMeetingMinutes(minutes: MeetingMinute[]): void {
+  localStorage.setItem('sr_meeting_minutes', JSON.stringify(minutes));
 }

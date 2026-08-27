@@ -4831,3 +4831,179 @@ export async function generateSingleStudentMenstruationCardPDF(
 
 
 
+
+// --- NOTULENSI RAPAT PDF ---
+export async function printMeetingMinutePDF(minute: MeetingMinute, config: AppConfig) {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.width;
+  
+  const leftLogoBase64 = await loadLogoImage(config.logoKiriUrl, 'left');
+  const rightLogoBase64 = await loadLogoImage(config.logoKananUrl, 'right');
+  
+  let startY = 15;
+  const kopKiriLines = config.kopKiri.split('\n');
+  const kopKananLines = config.kopKanan.split('\n');
+  
+  doc.setTextColor(30, 41, 59);
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(11);
+  if (kopKiriLines.length > 0) {
+    doc.text(kopKiriLines[0] || "", pageWidth / 2, startY, { align: "center" });
+    startY += 4.5;
+  }
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(9);
+  for (let i = 1; i < kopKiriLines.length; i++) {
+    doc.text(kopKiriLines[i] || "", pageWidth / 2, startY, { align: "center" });
+    startY += 4;
+  }
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(9.5);
+  if (kopKananLines.length > 0) {
+    doc.text(kopKananLines[0] || "", pageWidth / 2, startY, { align: "center" });
+    startY += 4;
+  }
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(8);
+  for (let i = 1; i < kopKananLines.length; i++) {
+    doc.text(kopKananLines[i] || "", pageWidth / 2, startY, { align: "center" });
+    startY += 3.5;
+  }
+  
+  if (leftLogoBase64) doc.addImage(leftLogoBase64, 'PNG', 15, 12, 18, 18);
+  if (rightLogoBase64) doc.addImage(rightLogoBase64, 'PNG', pageWidth - 33, 12, 18, 18);
+  
+  const lineY = Math.max(startY + 2, 35);
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.5);
+  doc.line(15, lineY, pageWidth - 15, lineY);
+  doc.setLineWidth(0.15);
+  doc.line(15, lineY + 1, pageWidth - 15, lineY + 1);
+  
+  let currentY = lineY + 8;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('NOTULENSI RAPAT', pageWidth / 2, currentY, { align: 'center' });
+  
+  currentY += 12;
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Agenda`, 15, currentY); doc.text(`: ${minute.agenda}`, 45, currentY); currentY += 7;
+  doc.text(`Tanggal`, 15, currentY); doc.text(`: ${minute.date}`, 45, currentY); currentY += 7;
+  doc.text(`Waktu`, 15, currentY); doc.text(`: ${minute.time}`, 45, currentY); currentY += 7;
+  doc.text(`Tempat`, 15, currentY); doc.text(`: ${minute.location}`, 45, currentY); currentY += 7;
+  doc.text(`Pimpinan Rapat`, 15, currentY); doc.text(`: ${minute.leader}`, 45, currentY); currentY += 7;
+  
+  const presentCount = minute.attendees.filter(a => a.isPresent).length;
+  doc.text(`Jumlah Kehadiran`, 15, currentY); doc.text(`: ${presentCount} / ${minute.attendees.length} Hadir`, 45, currentY); currentY += 10;
+  
+  doc.line(15, currentY, pageWidth - 15, currentY);
+  currentY += 8;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('KEPUTUSAN & HASIL RAPAT', 15, currentY);
+  currentY += 8;
+  
+  doc.setFont('helvetica', 'normal');
+  const splitDecisions = doc.splitTextToSize(minute.decisions || 'Belum ada keputusan tertulis.', pageWidth - 30);
+  doc.text(splitDecisions, 15, currentY);
+  
+  let finalY = Math.max(currentY + (splitDecisions.length * 6) + 25, currentY + 30);
+  
+  if (finalY + 40 > doc.internal.pageSize.height) {
+    doc.addPage();
+    finalY = 30;
+  }
+  
+  const signatureX = pageWidth - 60;
+  doc.text('Pimpinan Rapat,', signatureX, finalY, { align: 'center' });
+  doc.text(`(${minute.leader || '___________________'})`, signatureX, finalY + 25, { align: 'center' });
+  
+  doc.save(`Notulensi_${minute.agenda.replace(/\s+/g, '_')}_${minute.date}.pdf`);
+}
+
+export async function printMeetingAttendancePDF(minute: MeetingMinute, config: AppConfig) {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.width;
+  
+  const leftLogoBase64 = await loadLogoImage(config.logoKiriUrl, 'left');
+  const rightLogoBase64 = await loadLogoImage(config.logoKananUrl, 'right');
+  
+  let startY = 15;
+  const kopKiriLines = config.kopKiri.split('\n');
+  const kopKananLines = config.kopKanan.split('\n');
+  
+  doc.setTextColor(30, 41, 59);
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(11);
+  if (kopKiriLines.length > 0) {
+    doc.text(kopKiriLines[0] || "", pageWidth / 2, startY, { align: "center" });
+    startY += 4.5;
+  }
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(9);
+  for (let i = 1; i < kopKiriLines.length; i++) {
+    doc.text(kopKiriLines[i] || "", pageWidth / 2, startY, { align: "center" });
+    startY += 4;
+  }
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(9.5);
+  if (kopKananLines.length > 0) {
+    doc.text(kopKananLines[0] || "", pageWidth / 2, startY, { align: "center" });
+    startY += 4;
+  }
+  doc.setFont("Helvetica", "normal");
+  doc.setFontSize(8);
+  for (let i = 1; i < kopKananLines.length; i++) {
+    doc.text(kopKananLines[i] || "", pageWidth / 2, startY, { align: "center" });
+    startY += 3.5;
+  }
+  
+  if (leftLogoBase64) doc.addImage(leftLogoBase64, 'PNG', 15, 12, 18, 18);
+  if (rightLogoBase64) doc.addImage(rightLogoBase64, 'PNG', pageWidth - 33, 12, 18, 18);
+  
+  const lineY = Math.max(startY + 2, 35);
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.5);
+  doc.line(15, lineY, pageWidth - 15, lineY);
+  doc.setLineWidth(0.15);
+  doc.line(15, lineY + 1, pageWidth - 15, lineY + 1);
+  
+  let currentY = lineY + 8;
+  
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DAFTAR HADIR RAPAT', pageWidth / 2, currentY, { align: 'center' });
+  currentY += 10;
+  
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Agenda`, 15, currentY); doc.text(`: ${minute.agenda}`, 45, currentY); currentY += 7;
+  doc.text(`Tanggal`, 15, currentY); doc.text(`: ${minute.date}`, 45, currentY); currentY += 7;
+  doc.text(`Waktu`, 15, currentY); doc.text(`: ${minute.time}`, 45, currentY); currentY += 7;
+  doc.text(`Tempat`, 15, currentY); doc.text(`: ${minute.location}`, 45, currentY); currentY += 5;
+  
+  const tableData = minute.attendees.map((attendee, index) => [
+    index + 1,
+    attendee.name,
+    attendee.isPresent ? 'Hadir' : 'Tidak Hadir',
+    ''
+  ]);
+  
+  autoTable(doc, {
+    startY: currentY,
+    head: [['No', 'Nama Peserta', 'Kehadiran', 'Tanda Tangan']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185] },
+    columnStyles: {
+      0: { cellWidth: 15, halign: 'center' },
+      1: { cellWidth: 80 },
+      2: { cellWidth: 35, halign: 'center' },
+      3: { cellWidth: 50 }
+    },
+    styles: { fontSize: 10, cellPadding: 4, minCellHeight: 12 },
+  });
+  
+  doc.save(`Daftar_Hadir_${minute.agenda.replace(/\s+/g, '_')}_${minute.date}.pdf`);
+}

@@ -1762,8 +1762,8 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
       {/* 6. MODAL QUICK CEKLIST HARIAN (INPUT LANGSUNG DARI PROFIL) */}
       {/* ========================================================================= */}
       {isQuickChecklistOpen && currentStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-200 my-4 sm:my-8 flex flex-col">
             <div className="px-6 py-4 bg-emerald-700 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <CheckSquare className="w-5 h-5" />
@@ -1887,8 +1887,8 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
       {/* 8. MODAL EDIT BIODATA SISWA (DILENGKAPI FOTO & BIO LENGKAP) */}
       {/* ========================================================================= */}
       {isEditModalOpen && currentStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-200 my-4 sm:my-8 flex flex-col">
             <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Edit2 className="w-5 h-5 text-red-500" />

@@ -97,7 +97,7 @@ export const DisciplineAndCounselingTab: React.FC<DisciplineAndCounselingTabProp
 
         <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium pr-2">
           <ShieldAlert className="w-4 h-4 text-slate-400" />
-          <span>Pelanggaran & Konseling Terpadu</span>
+          <span>Pelanggaran</span>
         </div>
       </div>
 

@@ -305,7 +305,7 @@ export const RecapTab: React.FC<RecapTabProps> = ({
 
       {/* Signatory Customization Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden space-y-0 my-8">
             <div className="bg-slate-900 px-6 py-4 flex items-center justify-between text-white">
               <div className="flex items-center gap-2">
@@ -325,7 +325,7 @@ export const RecapTab: React.FC<RecapTabProps> = ({
               </button>
             </div>
 
-            <div className="p-6 space-y-5 text-xs text-slate-700 max-h-[80vh] overflow-y-auto">
+            <div className="p-6 space-y-5 text-xs text-slate-700 my-4 sm:my-8 overflow-y-auto">
               {/* Preset Selector */}
               {config.waliAsuhList && config.waliAsuhList.length > 0 && (
                 <div className="bg-blue-50/70 p-3.5 rounded-xl border border-blue-100 space-y-1.5">

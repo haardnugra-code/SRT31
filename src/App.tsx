@@ -11,7 +11,8 @@ import {
   MedicalRecord,
   PrayerAttendance,
   ConnectingJournal,
-  MenstruationRecord
+  MenstruationRecord,
+  MeetingMinute
 } from './types';
 import {
   loadAppConfig,
@@ -28,6 +29,8 @@ import {
   saveDailyJournals,
   loadConnectingJournals,
   saveConnectingJournals,
+  loadMeetingMinutes,
+  saveMeetingMinutes,
   loadReports,
   saveReports,
   loadMedicalRecords,
@@ -62,6 +65,7 @@ import { ConnectingJournalTab } from './components/ConnectingJournalTab';
 import { MenstruationTrackingTab } from './components/MenstruationTrackingTab';
 import { ReportAndRecapTab } from './components/ReportAndRecapTab';
 import { SettingsTab } from './components/SettingsTab';
+import { MeetingMinutesTab } from './components/MeetingMinutesTab';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -84,6 +88,7 @@ export default function App() {
   const [leaves, setLeaves] = useState<Leave[]>(loadLeaves);
   const [dailyJournals, setDailyJournals] = useState<DailyJournal[]>(loadDailyJournals);
   const [connectingJournals, setConnectingJournals] = useState<ConnectingJournal[]>(loadConnectingJournals);
+  const [meetingMinutes, setMeetingMinutes] = useState<MeetingMinute[]>(loadMeetingMinutes);
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>(loadMedicalRecords);
   const [prayerAttendance, setPrayerAttendance] = useState<PrayerAttendance[]>(loadPrayerAttendance);
   const [menstruationRecords, setMenstruationRecords] = useState<MenstruationRecord[]>(loadMenstruationRecords);
@@ -246,11 +251,12 @@ export default function App() {
     dashboard: 'Dashboard Ringkasan Asrama',
     profile: 'Profil & Portofolio Siswa Terpadu',
     'connecting-journal': 'Jurnal Penghubung Materi & Task Order',
+    'meeting-minutes': 'Notulensi Rapat',
     'prayer-attendance': 'Absensi Presensi Asrama (Sholat, Makan & Kegiatan)',
     checklist: 'Jurnal & Ceklist Anak Asuh',
     menstruation: 'Tracking Menstruasi, Masa Bersuci & Ibadah Asrama Putri',
     students: 'Data Induk Murid Sekolah Rakyat',
-    violations: 'Pelanggaran & Konseling',
+    violations: 'Pelanggaran',
     counseling: 'Pendampingan BK & Konseling',
     leaves: 'Surat Izin Keluar & Kepulangan Asrama (Pesiar, Berobat & Pulang)',
     medical: 'Klinik UKS & Rekam Medis Keasramaan',
@@ -658,6 +664,60 @@ export default function App() {
           updated = [journal, ...prev];
         }
         saveConnectingJournals(updated);
+    },
+    [config.googleScriptUrl, recordDataPushSuccess]
+  );
+
+  const handleSaveMeetingMinute = useCallback(
+    (minute: MeetingMinute, isEdit: boolean) => {
+      setMeetingMinutes((prev) => {
+        let updated: MeetingMinute[];
+        if (isEdit) {
+          updated = prev.map((m) => (m.id === minute.id ? minute : m));
+        } else {
+          updated = [minute, ...prev];
+        }
+        saveMeetingMinutes(updated);
+
+        // Sync to cloud
+        if (config.googleScriptUrl) {
+          fetch(config.googleScriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'updateData',
+              type: 'meetingMinutes',
+              data: updated,
+            }),
+          })
+            .then(() => recordDataPushSuccess('meetingMinutes'))
+            .catch((err) => console.error(err));
+        }
+        return updated;
+      });
+    },
+    [config.googleScriptUrl, recordDataPushSuccess]
+  );
+
+  const handleDeleteMeetingMinute = useCallback(
+    (id: string) => {
+      setMeetingMinutes((prev) => {
+        const updated = prev.filter((m) => m.id !== id);
+        saveMeetingMinutes(updated);
+        // Sync to cloud
+        if (config.googleScriptUrl) {
+          fetch(config.googleScriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'updateData',
+              type: 'meetingMinutes',
+              data: updated,
+            }),
+          })
+            .then(() => recordDataPushSuccess('meetingMinutes'))
+            .catch((err) => console.error(err));
+        }
+        return updated;
+      });
         return updated;
       });
 
@@ -1230,6 +1290,10 @@ export default function App() {
             setConnectingJournals(fetchedConnecting);
             saveConnectingJournals(fetchedConnecting);
           }
+          if (resJson.meetingMinutes) {
+            setMeetingMinutes(resJson.meetingMinutes);
+            saveMeetingMinutes(resJson.meetingMinutes);
+          }
 
           // AUTOMATIC SHADOW DATA PREVENTION RECONCILIATION
           const reconciled = reconcileAndSanitizeShadowData(
@@ -1290,7 +1354,7 @@ export default function App() {
         setIsSyncing(false);
       }
     },
-    [config.googleScriptUrl, showToast, students, violations, counseling, leaves, dailyJournals, medicalRecords, prayerAttendance, reports, connectingJournals]
+    [config.googleScriptUrl, showToast, students, violations, counseling, leaves, dailyJournals, medicalRecords, prayerAttendance, reports, connectingJournals, meetingMinutes]
   );
 
   // --- Real-Time Connection Ping Check ---
@@ -1569,6 +1633,17 @@ export default function App() {
                 onRespondJournal={handleRespondConnectingJournal}
                 showToast={showToast}
                 askConfirm={askConfirm}
+              />
+            )}
+
+            {activeTab === 'meeting-minutes' && (
+              <MeetingMinutesTab 
+                showToast={showToast} 
+                askConfirm={askConfirm} 
+                config={config}
+                meetingMinutes={meetingMinutes}
+                onSaveMinute={handleSaveMeetingMinute}
+                onDeleteMinute={handleDeleteMeetingMinute}
               />
             )}
 

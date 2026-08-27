@@ -1204,7 +1204,7 @@ export const MenstruationTrackingTab: React.FC<MenstruationTrackingTabProps> = (
       {/* MODAL 1: CATAT MULAI HAID (NEW RECORD) */}
       {/* ========================================================================= */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 my-8">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-5">
               <div className="flex items-center gap-2.5">
@@ -1387,7 +1387,7 @@ export const MenstruationTrackingTab: React.FC<MenstruationTrackingTabProps> = (
       {/* MODAL 2: CATAT DARAH BERHENTI (MASUK MASA BERSUCI) */}
       {/* ========================================================================= */}
       {isStopBleedingModalOpen && selectedRecord && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 my-8">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-5">
               <div className="flex items-center gap-2.5">
@@ -1508,7 +1508,7 @@ export const MenstruationTrackingTab: React.FC<MenstruationTrackingTabProps> = (
       {/* MODAL 3: KONFIRMASI MANDI WAJIB (SIAP BERIBADAH) */}
       {/* ========================================================================= */}
       {isPurificationModalOpen && selectedRecord && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 my-8">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-5">
               <div className="flex items-center gap-2.5">
@@ -1637,7 +1637,7 @@ export const MenstruationTrackingTab: React.FC<MenstruationTrackingTabProps> = (
       {/* MODAL 4: EDIT RECORD MODAL */}
       {/* ========================================================================= */}
       {isEditModalOpen && selectedRecord && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 my-8">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-5">
               <div className="flex items-center gap-2.5">
@@ -1813,7 +1813,7 @@ export const MenstruationTrackingTab: React.FC<MenstruationTrackingTabProps> = (
       {/* MODAL 5: PRINT RECAP PDF CONFIGURATION MODAL */}
       {/* ========================================================================= */}
       {isPrintModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 my-8">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-5">
               <div className="flex items-center gap-2.5">
@@ -1923,8 +1923,8 @@ export const MenstruationTrackingTab: React.FC<MenstruationTrackingTabProps> = (
       {/* MODAL 6: FIQIH GUIDE POPUP */}
       {/* ========================================================================= */}
       {isFiqihModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-slate-100 my-8 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-slate-100 my-8 my-4 sm:my-8 overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-5">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold">

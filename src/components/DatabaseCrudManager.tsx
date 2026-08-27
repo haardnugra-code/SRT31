@@ -48,7 +48,8 @@ export type DatabaseTableKey =
   | 'medicalRecords'
   | 'prayerAttendance'
   | 'reportCards'
-  | 'announcements';
+  | 'announcements'
+  | 'meetingMinutes';
 
 interface DatabaseCrudManagerProps {
   students: Student[];
@@ -282,6 +283,21 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
         { key: 'semester', label: 'Semester' },
         { key: 'academicYear', label: 'Tahun Ajaran' },
         { key: 'customCaretaker', label: 'Wali Asuh' }
+      ]
+    },
+    meetingMinutes: {
+      label: 'Notulensi Rapat',
+      sheetName: 'MeetingMinutes',
+      icon: Users,
+      color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+      count: meetingMinutes.length,
+      idField: 'id',
+      displayColumns: [
+        { key: 'id', label: 'ID Rapat' },
+        { key: 'agenda', label: 'Agenda Rapat' },
+        { key: 'date', label: 'Tanggal' },
+        { key: 'leader', label: 'Pimpinan' },
+        { key: 'status', label: 'Status' }
       ]
     },
     announcements: {
@@ -1048,7 +1064,7 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
 
       {/* --- MODAL: CREATE / UPDATE RECORD FORM --- */}
       {isFormModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full p-5 sm:p-6 space-y-4 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
@@ -1073,7 +1089,7 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveFormData} className="space-y-3.5 max-h-[65vh] overflow-y-auto pr-1">
+            <form onSubmit={handleSaveFormData} className="space-y-3.5 my-4 sm:my-8 overflow-y-auto pr-1">
               {/* Dynamic Form Generation based on table */}
               {activeTable === 'students' && (
                 <>
@@ -1295,7 +1311,7 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
 
       {/* --- MODAL: VIEW RAW RECORD / JSON DETAILS --- */}
       {viewingRecord && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -1340,7 +1356,7 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
 
       {/* --- MODAL: CONFIRM DELETE --- */}
       {deleteConfirmTarget && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-sm w-full p-5 space-y-4 text-center">
             <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
@@ -1373,7 +1389,7 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
 
       {/* --- MODAL: IMPORT JSON --- */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">

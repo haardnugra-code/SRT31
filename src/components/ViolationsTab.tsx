@@ -1012,7 +1012,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
       {/* Photo / Link Preview Modal */}
       {previewPhotoUrl && (
         <div
-          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+          className="fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4"
           onClick={() => setPreviewPhotoUrl(null)}
         >
           <div
@@ -1099,7 +1099,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
                   <img
                     src={previewPhotoUrl}
                     alt="Bukti Kejadian"
-                    className="max-h-[60vh] w-auto mx-auto rounded-lg object-contain"
+                    className="my-4 sm:my-8 w-auto mx-auto rounded-lg object-contain"
                     onError={(e) => {
                       (e.target as HTMLElement).setAttribute(
                         'src',

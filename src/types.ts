@@ -342,3 +342,25 @@ export interface ParentSummonsOptions {
   headNip?: string;
   includeViolationHistory?: boolean;
 }
+
+export type MeetingStatus = 'draft' | 'published';
+
+export interface MeetingAttendee {
+  id: string;
+  name: string;
+  isPresent: boolean;
+}
+
+export interface MeetingMinute {
+  id: string;
+  agenda: string;
+  date: string;
+  time: string;
+  location: string;
+  leader: string;
+  attendees: MeetingAttendee[];
+  decisions: string;
+  status: MeetingStatus;
+  createdAt: number;
+  updatedAt: number;
+}

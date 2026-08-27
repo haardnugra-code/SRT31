@@ -2282,8 +2282,8 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
           {/* INTERACTIVE MODAL CHECKLIST FOR SELECTING ABSENT STUDENTS */}
           {showChecklistModal && (
-            <div className="no-print fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
-              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+            <div className="no-print fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
+              <div className="bg-white rounded-2xl max-w-4xl w-full my-4 sm:my-8 flex flex-col shadow-2xl overflow-hidden border border-slate-200">
                 {/* Modal Header */}
                 <div className="bg-slate-900 text-white p-5 flex items-start justify-between relative">
                   <div>
@@ -2859,7 +2859,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
           {/* Single Card Modal Preview HD */}
           {singleCardPreviewStudent && (
-            <div className="no-print fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="no-print fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
               <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative">
                 <button
                   onClick={() => setSingleCardPreviewStudent(null)}
@@ -3223,8 +3223,8 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
       {/* ARDUINO & RFID HARDWARE CONFIGURATION MODAL */}
       {isArduinoModalOpen && (
-        <div className="no-print fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-3 md:p-6 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+        <div className="no-print fixed inset-0 md:left-64 z-[40] bg-slate-50 overflow-y-auto p-4 sm:p-8 flex items-start justify-center pb-24 animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full my-4 sm:my-8 flex flex-col shadow-2xl overflow-hidden border border-slate-200">
             {/* Modal Header */}
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
               <div className="flex items-center gap-2.5">

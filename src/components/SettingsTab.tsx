@@ -115,6 +115,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   recordsCount = 0,
   announcement = '',
   onUpdateAnnouncement,
+  meetingMinutes = [],
+  onSaveMinute = () => {},
+  onDeleteMinute = () => {},
   students = [],
   onSaveStudent = () => {},
   onDeleteStudent = () => {},
@@ -691,6 +694,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             onDeletePrayerAttendance={onDeletePrayerAttendance}
             announcement={announcement}
             onUpdateAnnouncement={onUpdateAnnouncement || (() => {})}
+            meetingMinutes={meetingMinutes}
+            onSaveMinute={onSaveMinute}
+            onDeleteMinute={onDeleteMinute}
             config={config}
             onShowToast={onShowToast}
             onSync={onSync}

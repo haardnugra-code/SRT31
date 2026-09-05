@@ -86,6 +86,9 @@ interface DatabaseCrudManagerProps {
 
   announcement: string;
   onUpdateAnnouncement: (msg: string) => void;
+  meetingMinutes?: any[];
+  onSaveMinute?: (minute: any, isEdit: boolean) => void;
+  onDeleteMinute?: (id: string) => void;
 
   config: AppConfig;
   onShowToast: (title: string, message: string, type?: 'success' | 'warning' | 'error') => void;
@@ -120,6 +123,9 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
   onDeletePrayerAttendance,
   announcement,
   onUpdateAnnouncement,
+  meetingMinutes = [],
+  onSaveMinute,
+  onDeleteMinute,
   config,
   onShowToast,
   onSync,
@@ -290,7 +296,7 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
       sheetName: 'MeetingMinutes',
       icon: Users,
       color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
-      count: meetingMinutes.length,
+      count: meetingMinutes?.length || 0,
       idField: 'id',
       displayColumns: [
         { key: 'id', label: 'ID Rapat' },
@@ -545,6 +551,9 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
           break;
         case 'announcements':
           onUpdateAnnouncement(formData.message || '');
+          break;
+        case 'meetingMinutes':
+          if (onSaveMinute) onSaveMinute(formData as any, isEditing);
           break;
       }
       setIsFormModalOpen(false);

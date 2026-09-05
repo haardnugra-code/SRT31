@@ -26,6 +26,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { Student, Violation, AppConfig } from '../types';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatDateIndonesian } from '../utils/dateFormatter';
 import { getViolationTemplates, compressImageFile } from '../services/storage';
 import { generateViolationNoticePDF, generateStudentViolationHistoryPDF } from '../services/pdfGenerator';
@@ -381,6 +382,32 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
       return matchName && matchLevel && matchStudent;
     });
   }, [violations, searchQuery, levelFilter, studentFilter]);
+
+  const monthlyData = useMemo(() => {
+    const dataMap: Record<string, { label: string, count: number }> = {};
+    filteredViolations.forEach(v => {
+      if (!v.date) return;
+      const parts = v.date.split('-');
+      if (parts.length < 2) return;
+      const year = parts[0];
+      const month = parts[1];
+      const key = `${year}-${month}`;
+      
+      if (!dataMap[key]) {
+        const dateObj = new Date(Number(year), Number(month) - 1, 1);
+        dataMap[key] = {
+          label: dateObj.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
+          count: 0
+        };
+      }
+      dataMap[key].count += 1;
+    });
+    
+    return Object.entries(dataMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(entry => ({ name: entry[1].label, Pelanggaran: entry[1].count }));
+  }, [filteredViolations]);
+
 
   const getBadgeClass = (l: number) => {
     switch (l) {
@@ -847,6 +874,31 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
           </button>
         </div>
       </div>
+
+      
+      {/* Chart Section */}
+      {viewMode === 'list' && monthlyData.length > 0 && (
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            Tren Pelanggaran per Bulan
+          </h3>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
+                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  cursor={{ fill: '#F1F5F9' }}
+                />
+                <Bar dataKey="Pelanggaran" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={50} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3">

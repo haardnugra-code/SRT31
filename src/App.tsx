@@ -664,8 +664,29 @@ export default function App() {
           updated = [journal, ...prev];
         }
         saveConnectingJournals(updated);
+        return updated;
+      });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: isEdit ? 'updateConnectingJournal' : 'addConnectingJournal',
+            data: journal
+          })
+        })
+        .then(() => recordDataPushSuccess())
+        .catch((err) => console.error(err));
+      }
+      showToast(
+        isEdit ? 'Jurnal Diperbarui' : 'Task Order Dikirim',
+        isEdit
+          ? 'Data capaian pembelajaran berhasil diubah.'
+          : 'Capaian materi dan task order berhasil disimpan & siap ditindaklanjuti wali asuh.',
+        'success'
+      );
     },
-    [config.googleScriptUrl, recordDataPushSuccess]
+    [config.googleScriptUrl, recordDataPushSuccess, showToast]
   );
 
   const handleSaveMeetingMinute = useCallback(
@@ -718,29 +739,8 @@ export default function App() {
         }
         return updated;
       });
-        return updated;
-      });
-
-      if (config.googleScriptUrl) {
-        fetch(config.googleScriptUrl, {
-          method: 'POST',
-          body: JSON.stringify({
-            action: isEdit ? 'updateConnectingJournal' : 'addConnectingJournal',
-            data: journal
-          })
-        })
-        .then(() => recordDataPushSuccess())
-        .catch((err) => console.error(err));
-      }
-      showToast(
-        isEdit ? 'Jurnal Diperbarui' : 'Task Order Dikirim',
-        isEdit
-          ? 'Data capaian pembelajaran berhasil diubah.'
-          : 'Capaian materi dan task order berhasil disimpan & siap ditindaklanjuti wali asuh.',
-        'success'
-      );
     },
-    [config.googleScriptUrl, recordDataPushSuccess, showToast]
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteConnectingJournal = useCallback(

@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
-import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord, PrayerAttendance, ParentSummonsOptions, ConnectingJournal, MenstruationRecord } from '../types';
+import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord, PrayerAttendance, ParentSummonsOptions, ConnectingJournal, MenstruationRecord, MeetingMinute } from '../types';
 import { formatDateIndonesian, formatDateShort } from '../utils/dateFormatter';
 import { calculateStudentDisciplineScore } from './storage';
 
@@ -4416,7 +4416,7 @@ export async function generateMenstruationRecapPDF(
       : (record.status === 'Masa Bersuci' ? 'Dalam Persiapan Mandi' : '-');
 
     // Status label
-    let statusLabel = record.status;
+    let statusLabel: string = record.status;
     if (record.status === 'Suci / Siap Beribadah') {
       statusLabel = 'SUCI - SIAP SHOLAT';
     } else if (record.status === 'Sedang Haid') {

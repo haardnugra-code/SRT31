@@ -1226,7 +1226,7 @@ export const ConnectingJournalTab: React.FC<ConnectingJournalTabProps> = ({
                   rows={2}
                   value={formData.taskOrder}
                   onChange={(e) => setFormData({ ...formData, taskOrder: e.target.value })}
-                  placeholder="misal: Mohon wali asuh mendampingi santri menghafal doa sehari-hari saat jam belajar malam dan memeriksa LKS no 1-10"
+                  placeholder="misal: Mohon wali asuh mendampingi siswa belajar mandiri saat jam belajar malam dan memeriksa tugas no 1-10"
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
                 />
               </div>
@@ -1349,7 +1349,7 @@ export const ConnectingJournalTab: React.FC<ConnectingJournalTabProps> = ({
                   rows={4}
                   value={responseData.followUp}
                   onChange={(e) => setResponseData({ ...responseData, followUp: e.target.value })}
-                  placeholder="misal: Santri telah didampingi saat belajar mandiri asrama malam hari. Santri mampu menuliskan 5 kalimat dasar dan menyelesaikan hafalan doa harian."
+                  placeholder="misal: Siswa telah didampingi saat belajar mandiri asrama malam hari. Siswa mampu memahami materi dan menyelesaikan tugas harian dengan baik."
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
               </div>

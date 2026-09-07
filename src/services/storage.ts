@@ -383,7 +383,7 @@ export const INITIAL_CONNECTING_JOURNALS: ConnectingJournal[] = [
     learningAchievement: 'tulis menulis',
     taskOrder: 'Latihan menulis dan menghafal doa harian serta makharijul huruf',
     deadline: '2026-08-25',
-    followUp: 'Sudah didampingi saat belajar mandiri asrama malam hari, santri mampu menuliskan 5 kalimat dasar.',
+    followUp: 'Sudah didampingi saat belajar mandiri asrama malam hari, siswa mampu menuliskan 5 kalimat dasar.',
     caretakerName: 'M ARDIAN NUGRAHA',
     caretakerNip: 'NIP. 199202042026221001',
     responseDate: '2026-08-25',

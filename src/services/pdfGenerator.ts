@@ -2493,40 +2493,75 @@ export async function generatePrayerAttendanceReportPDF(
   // Summary KPI stats box (for non-blank reports)
   if (!isBlank && records.length > 0) {
     const total = records.length;
-    const hadir = records.filter((r) => r.status === 'Hadir').length;
-    const terlambat = records.filter((r) => r.status === 'Terlambat').length;
-    const izinSakit = records.filter((r) => r.status === 'Izin Sakit').length;
-    const izinPulang = records.filter((r) => r.status === 'Izin Pulang').length;
-    const alpa = records.filter((r) => r.status === 'Alpa / Tanpa Keterangan').length;
+    const hadir = records.filter((r) => r.status && r.status.toLowerCase().includes('hadir')).length;
+    const terlambat = records.filter((r) => r.status && (r.status.toLowerCase().includes('terlambat') || r.status.toLowerCase().includes('telat'))).length;
+    const izinSakit = records.filter((r) => r.status && r.status.toLowerCase().includes('sakit')).length;
+    const izinPulang = records.filter((r) => r.status && r.status.toLowerCase().includes('pulang')).length;
+    const alpa = records.filter((r) => r.status && (r.status.toLowerCase().includes('alpa') || r.status.toLowerCase().includes('alpha'))).length;
 
+    // Draw KPI Summary Box with rounded rectangle
     doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(15, currentY, pageWidth - 30, 8, 1.5, 1.5, 'FD');
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.35);
+    doc.roundedRect(15, currentY, pageWidth - 30, 8.5, 1.8, 1.8, 'FD');
 
     doc.setFontSize(8);
     doc.setFont('Helvetica', 'bold');
+
+    const textBaselineY = currentY + 5.5;
+    const dotCenterY = currentY + 4.25;
+
+    // 1. Total Siswa
+    doc.setFillColor(51, 65, 85); // slate-700
+    doc.circle(20, dotCenterY, 1.2, 'F');
     doc.setTextColor(30, 41, 59);
-    doc.text(`Total Siswa Terdata: ${total}`, 22, currentY + 5.2);
+    doc.text(`Total Siswa: ${total}`, 23, textBaselineY);
 
-    doc.setTextColor(22, 101, 52); // emerald
-    doc.text(`✓ Hadir: ${hadir}`, 78, currentY + 5.2);
+    // 2. Hadir
+    doc.setFillColor(22, 101, 52); // emerald-700
+    doc.circle(68, dotCenterY, 1.2, 'F');
+    doc.setTextColor(22, 101, 52);
+    doc.text(`Hadir: ${hadir}`, 71, textBaselineY);
 
-    doc.setTextColor(180, 83, 9); // amber
-    doc.text(`⏱ Telat: ${terlambat}`, 122, currentY + 5.2);
+    // 3. Telat
+    doc.setFillColor(180, 83, 9); // amber-700
+    doc.circle(110, dotCenterY, 1.2, 'F');
+    doc.setTextColor(180, 83, 9);
+    doc.text(`Telat: ${terlambat}`, 113, textBaselineY);
 
-    doc.setTextColor(109, 40, 217); // purple
-    doc.text(`🏖 Izin Pulang: ${izinPulang}`, 162, currentY + 5.2);
+    // 4. Izin Pulang
+    doc.setFillColor(109, 40, 217); // purple-700
+    doc.circle(150, dotCenterY, 1.2, 'F');
+    doc.setTextColor(109, 40, 217);
+    doc.text(`Izin Pulang: ${izinPulang}`, 153, textBaselineY);
 
-    doc.setTextColor(13, 148, 136); // teal
-    doc.text(`🤒 Sakit: ${izinSakit}`, 212, currentY + 5.2);
+    // 5. Sakit
+    doc.setFillColor(13, 148, 136); // teal-600
+    doc.circle(200, dotCenterY, 1.2, 'F');
+    doc.setTextColor(13, 148, 136);
+    doc.text(`Sakit: ${izinSakit}`, 203, textBaselineY);
 
-    doc.setTextColor(190, 18, 60); // rose
-    doc.text(`❌ Alpa: ${alpa}`, 254, currentY + 5.2);
+    // 6. Alpha
+    doc.setFillColor(190, 18, 60); // rose-700
+    doc.circle(245, dotCenterY, 1.2, 'F');
+    doc.setTextColor(190, 18, 60);
+    doc.text(`Alpha: ${alpa}`, 248, textBaselineY);
 
-    currentY += 11;
+    currentY += 11.5;
   } else {
     currentY += 2;
   }
+
+  // Helper function to normalize status label for PDF printing without emojis or wrap issues
+  const formatStatusForPDF = (status: string) => {
+    const s = (status || '').trim();
+    if (s.toLowerCase().includes('hadir')) return 'Hadir';
+    if (s.toLowerCase().includes('terlambat') || s.toLowerCase().includes('telat')) return 'Telat';
+    if (s.toLowerCase().includes('pulang')) return 'Izin Pulang';
+    if (s.toLowerCase().includes('sakit')) return 'Izin Sakit';
+    if (s.toLowerCase().includes('alpa') || s.toLowerCase().includes('alpha')) return 'Alpha';
+    return s || '-';
+  };
 
   // Construct table
   let tableHead: string[][];
@@ -2536,7 +2571,7 @@ export async function generatePrayerAttendanceReportPDF(
   if (isBlank) {
     // Blank template for manual checking at the mosque/dining hall (Landscape)
     const studentList = allStudents && allStudents.length > 0 ? allStudents : [];
-    tableHead = [['No', 'NISN', 'Nama Lengkap Murid', 'Kelas / Rombel', 'Gedung Asrama', 'Hadir', 'Telat', 'Sakit', 'Izin', 'Alpa', 'Paraf / Keterangan Petugas']];
+    tableHead = [['No', 'NISN', 'Nama Lengkap Murid', 'Kelas / Rombel', 'Gedung Asrama', 'Hadir', 'Telat', 'Sakit', 'Izin', 'Alpha', 'Paraf / Keterangan Petugas']];
     tableBody = studentList.map((s, idx) => [
       idx + 1,
       s.id,
@@ -2574,7 +2609,7 @@ export async function generatePrayerAttendanceReportPDF(
       r.dorm,
       r.prayerTime,
       r.timestamp || '-',
-      r.status,
+      formatStatusForPDF(r.status),
       r.scannedBy || r.note || '-'
     ]);
     columnStyles = {
@@ -2611,13 +2646,15 @@ export async function generatePrayerAttendanceReportPDF(
     margin: { left: 15, right: 15 },
     didParseCell: function (data) {
       if (!isBlank && data.section === 'body' && data.column.index === 7) {
-        const val = String(data.cell.raw);
-        if (val === 'Hadir') {
+        const val = String(data.cell.raw).toLowerCase();
+        if (val.includes('hadir')) {
           data.cell.styles.textColor = [22, 101, 52];
-        } else if (val === 'Terlambat') {
+        } else if (val.includes('telat') || val.includes('terlambat')) {
           data.cell.styles.textColor = [180, 83, 9];
-        } else if (val === 'Izin Sakit' || val === 'Izin Pulang') {
+        } else if (val.includes('pulang')) {
           data.cell.styles.textColor = [109, 40, 217];
+        } else if (val.includes('sakit')) {
+          data.cell.styles.textColor = [13, 148, 136];
         } else {
           data.cell.styles.textColor = [190, 18, 60];
         }

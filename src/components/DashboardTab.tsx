@@ -385,7 +385,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 Ada {pendingTaskOrders.length} Instruksi Task Order Guru Menunggu Respon Wali Asuh!
               </p>
               <p className="text-[11px] text-amber-800/80">
-                Wali asuh asrama diharapkan mendampingi santri dan mengonfirmasi tindak lanjut belajar malam ini.
+                Wali asuh asrama diharapkan mendampingi siswa dan mengonfirmasi tindak lanjut belajar malam ini.
               </p>
             </div>
           </div>

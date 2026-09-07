@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { Html5Qrcode, Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
 import {
@@ -10,6 +10,7 @@ import {
   AppConfig
 } from '../types';
 import { ChecklistTab } from './ChecklistTab';
+import { playAttendanceVoice, playChimeBeep, primeAttendanceAudio } from '../utils/attendanceAudio';
 import {
   QrCode,
   Camera,
@@ -63,6 +64,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { generateAllStudentCardsPDF, generateStudentCardSheetA4PDF, generatePrayerAttendanceReportPDF } from '../services/pdfGenerator';
 import { downloadStudentCardPNG, downloadMultipleCardsPNG } from '../services/pngGenerator';
+import { getCanonicalDormName, getDormKey } from '../utils/dormHelper';
 
 export interface AttendanceSessionItem {
   id: string;
@@ -180,6 +182,8 @@ interface PrayerAttendanceTabProps {
   initialSubTab?: 'scanner' | 'cards' | 'checklist' | 'recap';
   onShowToast?: (title: string, message: string, type: 'success' | 'warning' | 'error' | 'info') => void;
   onAskConfirm?: (title: string, message: string) => Promise<boolean>;
+  onSync?: () => void;
+  isSyncing?: boolean;
 }
 
 interface StudentQRCodeProps {
@@ -481,7 +485,9 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   config,
   initialSubTab = 'scanner',
   onShowToast,
-  onAskConfirm
+  onAskConfirm,
+  onSync,
+  isSyncing
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'scanner' | 'cards' | 'checklist' | 'recap'>(initialSubTab);
 
@@ -561,9 +567,11 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   const [checklistStatusFilter, setChecklistStatusFilter] = useState<string>('Semua');
   const [selectedChecklistIds, setSelectedChecklistIds] = useState<string[]>([]);
 
-  // Live Log View States
+  // Live Log View States & Fast Attendance Features
   const [liveLogSearch, setLiveLogSearch] = useState<string>('');
-  const [liveLogViewMode, setLiveLogViewMode] = useState<'scanned' | 'all'>('scanned');
+  const [liveLogViewMode, setLiveLogViewMode] = useState<'scanned' | 'all'>('all');
+  const [liveFilterTab, setLiveFilterTab] = useState<'ALL' | 'SD' | 'SMP' | 'SMA' | 'BELUM_SCAN' | 'ALPA'>('ALL');
+  const [fastAlphaMode, setFastAlphaMode] = useState<boolean>(false);
 
   // Recap Filter States
   const [recapDateFilter, setRecapDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -571,41 +579,26 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   const [recapClassFilter, setRecapClassFilter] = useState<string>('Semua');
   const [recapSearch, setRecapSearch] = useState<string>('');
 
-  // Audio Beep Generator using Web Audio API
-  const playBeep = (type: 'success' | 'warning' | 'error') => {
-    if (!soundEnabled) return;
-    try {
-      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+  // Audio Beep Generator using high-performance dual-tone chime
+  const playBeep = useCallback(
+    (type: 'success' | 'warning' | 'error') => {
+      if (!soundEnabled) return;
+      playChimeBeep(type, soundEnabled);
+    },
+    [soundEnabled]
+  );
 
-      if (type === 'success') {
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // A5
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 0.3);
-      } else if (type === 'warning') {
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(349.23, audioCtx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 0.4);
-      } else {
-        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 0.5);
-      }
-    } catch {
-      // Audio context fallbacks handled silently
-    }
-  };
+  // Audio Voice Announcement: Loud Studio Audio ("Hadir", "Terlambat", "Sakit", dll.) + Nama Siswa
+  const speakAttendance = useCallback(
+    (
+      studentName: string,
+      statusType: 'Hadir' | 'Telat' | 'Sakit' | 'Izin Pulang' | 'Alpa' | 'Tidak Terdaftar' = 'Hadir'
+    ) => {
+      if (!soundEnabled) return;
+      playAttendanceVoice(statusType, studentName, soundEnabled);
+    },
+    [soundEnabled]
+  );
 
   // Generate QR Code data URL for each student in parallel
   useEffect(() => {
@@ -814,6 +807,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
     if (!foundStudent) {
       playBeep('error');
+      speakAttendance(cleanId, 'Tidak Terdaftar');
       setLastScannedResult({
         student: { id: cleanId, name: 'ID Tidak Terdaftar', class: 'SD', dorm: '-', caretaker: '-' },
         status: 'Tidak Ditemukan',
@@ -848,12 +842,15 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
       defaultStatus = 'Izin Pulang';
       statusMessage = 'Siswa terdeteksi sedang Izin Pulang (Presensi Otomatis Disesuaikan).';
       playBeep('warning');
+      speakAttendance(foundStudent.name, 'Izin Pulang');
     } else if (inUks) {
       defaultStatus = 'Izin Sakit';
       statusMessage = 'Siswa terdeteksi sedang Perawatan / Sakit UKS (Presensi Otomatis Disesuaikan).';
       playBeep('warning');
+      speakAttendance(foundStudent.name, 'Sakit');
     } else {
       playBeep('success');
+      speakAttendance(foundStudent.name, 'Hadir');
     }
 
     const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -891,6 +888,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
       updatedList = [newRecord, ...updatedList];
     }
 
+    prayerAttendanceRef.current = updatedList;
     onSavePrayerAttendanceRef.current(updatedList);
     setLastScannedResult({
       student: foundStudent,
@@ -955,24 +953,22 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     }
   }, [activeSubTab, isScannerActive, cameraFacingMode, selectedCameraId, selectedDate, selectedPrayerTime, officerName]);
 
-  // Bulk Mark Unscanned as Alpa
-  const handleBulkMarkUnscannedAsAlpa = () => {
-    if (!window.confirm(`Yakin ingin menandai seluruh murid yang belum scan pada sholat ${selectedPrayerTime} tanggal ${selectedDate} sebagai Alpa (Tanpa Keterangan)?`)) {
-      return;
-    }
-
+  // Bulk Mark Unscanned as Alpa (Fast Session Close)
+  const handleBulkMarkUnscannedAsAlpa = (unit?: 'SD' | 'SMP' | 'SMA') => {
     const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    const existingForSession = prayerAttendance.filter(
+    const currentList = prayerAttendanceRef.current;
+    const existingForSession = currentList.filter(
       (p) => p.date === selectedDate && p.prayerTime === selectedPrayerTime
     );
     const scannedStudentIds = new Set(existingForSession.map((p) => String(p.studentId).trim().toLowerCase()));
 
+    const targetStudents = unit ? students.filter((s) => s.class === unit) : students;
     const newAlpaRecords: PrayerAttendance[] = [];
 
-    students.forEach((s) => {
+    targetStudents.forEach((s) => {
       const sid = String(s.id).trim().toLowerCase();
       if (!scannedStudentIds.has(sid)) {
-        // Check if on leave or sick
+        // Check if on active leave or in UKS
         const onLeave = leaves.some(
           (l) =>
             l.status === 'Active' &&
@@ -989,7 +985,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
         else if (inUks) autoStatus = 'Izin Sakit';
 
         newAlpaRecords.push({
-          id: `PA-ALPA-${Date.now().toString().slice(-5)}-${Math.floor(Math.random() * 1000)}`,
+          id: `PA-ALPA-${Date.now().toString().slice(-5)}-${s.id}`,
           studentId: s.id,
           studentName: s.name,
           class: s.class,
@@ -998,36 +994,40 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
           date: selectedDate,
           timestamp: nowTime,
           status: autoStatus,
-          note: autoStatus === 'Alpa / Tanpa Keterangan' ? 'Penutupan sesi absensi otomatis' : undefined,
+          note: autoStatus === 'Alpa / Tanpa Keterangan' ? 'Penutupan presensi belum scan' : undefined,
           scannedBy: officerName
         });
       }
     });
 
-    onSavePrayerAttendance([...newAlpaRecords, ...prayerAttendance]);
-    playBeep('warning');
-    alert(`Berhasil menandai ${newAlpaRecords.length} murid yang belum scan untuk sholat ${selectedPrayerTime}!`);
-  };
-
-  // Mark All Students as Hadir for selected session & date
-  const handleMarkAllHadir = () => {
-    if (
-      !window.confirm(
-        `Konfirmasi: Tandai SELURUH murid (${students.length} murid) sebagai "HADIR" untuk Sholat ${selectedPrayerTime} tanggal ${selectedDate}?`
-      )
-    ) {
+    if (newAlpaRecords.length === 0) {
+      alert(`Semua murid ${unit ? unit : ''} sudah memiliki data presensi pada sesi ${selectedPrayerTime}.`);
       return;
     }
 
+    const finalAlpaRecords = [...newAlpaRecords, ...currentList];
+    prayerAttendanceRef.current = finalAlpaRecords;
+    onSavePrayerAttendance(finalAlpaRecords);
+    playBeep('warning');
+    onShowToast?.('Presensi Ditutup', `Berhasil menandai ${newAlpaRecords.length} murid belum scan sebagai Alpa / Tidak Hadir.`, 'warning');
+  };
+
+  // Mark All Students as Hadir for selected session & date
+  const handleMarkAllHadir = (unit?: 'SD' | 'SMP' | 'SMA') => {
+    const targetStudents = unit ? students.filter(s => s.class === unit) : students;
+    
+    // Remove confirmation as requested
+    
     const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    const existingForSession = prayerAttendance.filter(
+    const currentList = prayerAttendanceRef.current;
+    const existingForSession = currentList.filter(
       (p) => p.date === selectedDate && p.prayerTime === selectedPrayerTime
     );
     const existingMap = new Map<string, PrayerAttendance>(
       existingForSession.map((p) => [String(p.studentId).trim().toLowerCase(), p])
     );
 
-    const newRecords: PrayerAttendance[] = students.map((s) => {
+    const newRecords: PrayerAttendance[] = targetStudents.map((s) => {
       const sid = String(s.id).trim().toLowerCase();
       const existing = existingMap.get(sid);
 
@@ -1047,6 +1047,12 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
       if (onLeave) defaultStatus = 'Izin Pulang';
       else if (inUks) defaultStatus = 'Izin Sakit';
 
+      // Keep official sick / leave excuses, but explicitly set Belum Scan or Alpa to HADIR!
+      const finalStatus: PrayerAttendance['status'] =
+        existing?.status === 'Izin Sakit' || existing?.status === 'Izin Pulang'
+          ? existing.status
+          : defaultStatus;
+
       return {
         id: existing?.id || `PA-ALLHADIR-${Date.now().toString().slice(-5)}-${s.id}`,
         studentId: s.id,
@@ -1055,63 +1061,110 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
         dorm: s.dorm,
         prayerTime: selectedPrayerTime,
         date: selectedDate,
-        timestamp: existing?.timestamp || nowTime,
-        status: defaultStatus,
-        note: existing?.note || 'Presensi Massal Hadir Semua',
+        timestamp: nowTime,
+        status: finalStatus,
+        note: existing?.note || (unit ? `Presensi Massal Hadir ${unit}` : 'Presensi Massal Hadir Semua'),
         scannedBy: officerName
       };
     });
 
-    const otherSessionRecords = prayerAttendance.filter(
-      (p) => !(p.date === selectedDate && p.prayerTime === selectedPrayerTime)
+    const otherRecords = currentList.filter(
+      (p) => {
+        // Keep records from other sessions/dates
+        if (!(p.date === selectedDate && p.prayerTime === selectedPrayerTime)) return true;
+        // Keep records from THIS session if the student is NOT in the target group
+        if (unit && p.class !== unit) return true;
+        return false;
+      }
     );
 
-    onSavePrayerAttendance([...newRecords, ...otherSessionRecords]);
+    const finalRecords = [...newRecords, ...otherRecords];
+    prayerAttendanceRef.current = finalRecords;
+    onSavePrayerAttendance(finalRecords);
     playBeep('success');
   };
 
-  // Update status for a single student directly
+  // Update status for a single student directly with strict deduplication
   const handleUpdateStudentStatus = (
     studentId: string,
     studentName: string,
-    studentClass: string,
+    studentClass: Student['class'],
     studentDorm: string,
     newStatus: PrayerAttendance['status']
   ) => {
     const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     const sid = String(studentId).trim().toLowerCase();
+    const currentList = prayerAttendanceRef.current;
 
-    const existingIndex = prayerAttendance.findIndex(
+    const existing = currentList.find(
       (p) =>
         p.date === selectedDate &&
         p.prayerTime === selectedPrayerTime &&
         String(p.studentId).trim().toLowerCase() === sid
     );
 
-    let updatedList = [...prayerAttendance];
-    if (existingIndex >= 0) {
-      updatedList[existingIndex] = {
-        ...updatedList[existingIndex],
-        status: newStatus,
-        timestamp: nowTime,
-        scannedBy: officerName
-      };
-    } else {
-      updatedList.unshift({
-        id: `PA-MANUAL-${Date.now().toString().slice(-5)}-${studentId}`,
-        studentId: studentId,
-        studentName: studentName,
-        class: studentClass,
-        dorm: studentDorm,
-        prayerTime: selectedPrayerTime,
-        date: selectedDate,
-        timestamp: nowTime,
-        status: newStatus,
-        scannedBy: officerName
-      });
-    }
+    const newRecord: PrayerAttendance = {
+      id: existing?.id || `PA-MANUAL-${Date.now().toString().slice(-5)}-${studentId}`,
+      studentId: studentId,
+      studentName: studentName,
+      class: studentClass,
+      dorm: studentDorm,
+      prayerTime: selectedPrayerTime,
+      date: selectedDate,
+      timestamp: nowTime,
+      status: newStatus,
+      scannedBy: officerName
+    };
 
+    // Filter out ANY previous record for this student on this date & prayerTime
+    // This strictly eliminates duplicate records and guarantees immediate consistency!
+    const filteredList = currentList.filter(
+      (p) =>
+        !(
+          p.date === selectedDate &&
+          p.prayerTime === selectedPrayerTime &&
+          String(p.studentId).trim().toLowerCase() === sid
+        )
+    );
+
+    const updatedList = [newRecord, ...filteredList];
+    prayerAttendanceRef.current = updatedList; // Update ref immediately to prevent race conditions
     onSavePrayerAttendance(updatedList);
+
+    if (newStatus === 'Hadir') {
+      playBeep('success');
+      speakAttendance(studentName, 'Hadir');
+    } else if (newStatus === 'Alpa / Tanpa Keterangan') {
+      playBeep('warning');
+      speakAttendance(studentName, 'Alpa');
+    } else if (newStatus === 'Terlambat') {
+      playBeep('warning');
+      speakAttendance(studentName, 'Telat');
+    } else if (newStatus === 'Izin Sakit') {
+      playBeep('warning');
+      speakAttendance(studentName, 'Sakit');
+    } else if (newStatus === 'Izin Pulang') {
+      playBeep('warning');
+      speakAttendance(studentName, 'Izin Pulang');
+    }
+  };
+
+  // 1-Click Fast Toggle (Hadir <-> Alpa)
+  const handleToggleStudentHadirAlpa = (
+    studentId: string,
+    studentName: string,
+    studentClass: Student['class'],
+    studentDorm: string
+  ) => {
+    const sid = String(studentId).trim().toLowerCase();
+    const existingRec = todaySessionMap.get(sid);
+    const currentStatus = existingRec ? existingRec.status : 'Belum Scan';
+
+    // Toggle: if currently Hadir -> switch to Alpa; otherwise switch to Hadir!
+    const nextStatus: PrayerAttendance['status'] =
+      currentStatus === 'Hadir' ? 'Alpa / Tanpa Keterangan' : 'Hadir';
+
+    handleUpdateStudentStatus(studentId, studentName, studentClass, studentDorm, nextStatus);
   };
 
   // Batch update for selected students in checklist modal
@@ -1122,7 +1175,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     const targetSet = new Set(selectedChecklistIds.map((id) => String(id).trim().toLowerCase()));
     const targetStudents = students.filter((s) => targetSet.has(String(s.id).trim().toLowerCase()));
 
-    let updatedList = [...prayerAttendance];
+    let updatedList = [...prayerAttendanceRef.current];
 
     targetStudents.forEach((s) => {
       const sid = String(s.id).trim().toLowerCase();
@@ -1156,6 +1209,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
       }
     });
 
+    prayerAttendanceRef.current = updatedList;
     onSavePrayerAttendance(updatedList);
     setSelectedChecklistIds([]);
     playBeep('success');
@@ -1170,9 +1224,13 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
   const todaySessionMap = useMemo(() => {
     const map = new Map<string, PrayerAttendance>();
-    todaySessionRecords.forEach((p) => {
-      map.set(String(p.studentId).trim().toLowerCase(), p);
-    });
+    // First occurrence (newest prepended record) wins!
+    for (const p of todaySessionRecords) {
+      const sid = String(p.studentId).trim().toLowerCase();
+      if (!map.has(sid)) {
+        map.set(sid, p);
+      }
+    }
     return map;
   }, [todaySessionRecords]);
 
@@ -1288,6 +1346,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
         const newRecords = validRecords.filter((r) => !existingIds.has(r.id));
 
         const combined = [...newRecords, ...prayerAttendance];
+        prayerAttendanceRef.current = combined;
         onSavePrayerAttendance(combined);
         alert(`Berhasil mengimpor ${newRecords.length} rekam absensi baru dari file JSON! Total data saat ini: ${combined.length}`);
       } catch (err: any) {
@@ -1336,17 +1395,47 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
       onShowToast('Menyiapkan Dokumen', `Membuat Lembar Presensi ${sDef.name} (${selectedDate}) dengan Kop Surat...`, 'info');
     }
     try {
+      // Determine student scope based on current active filter
+      const targetStudentList =
+        liveFilterTab === 'SD' || liveFilterTab === 'SMP' || liveFilterTab === 'SMA'
+          ? students.filter((s) => s.class === liveFilterTab)
+          : students;
+
+      // Construct a complete attendance list for all students in scope
+      // Students who have not scanned yet are recorded as Alpa so the report and Total Siswa are 100% complete
+      const fullRecordsToPrint: PrayerAttendance[] = targetStudentList.map((s) => {
+        const existing = todaySessionMap.get(String(s.id).trim().toLowerCase());
+        if (existing) return existing;
+        return {
+          id: `unscanned-${s.id}`,
+          studentId: s.id,
+          studentName: s.name,
+          class: s.class,
+          dorm: s.dorm,
+          prayerTime: selectedPrayerTime,
+          date: selectedDate,
+          timestamp: '-',
+          status: 'Alpa / Tanpa Keterangan',
+          note: 'Belum Presensi'
+        };
+      });
+
+      const recordsToSend = fullRecordsToPrint.length > 0 ? fullRecordsToPrint : todaySessionRecords;
+
       await generatePrayerAttendanceReportPDF(
-        todaySessionRecords,
+        recordsToSend,
         config,
         {
           date: selectedDate,
           prayerTime: selectedPrayerTime,
-          classFilter: 'Semua Kelas',
+          classFilter:
+            liveFilterTab === 'SD' || liveFilterTab === 'SMP' || liveFilterTab === 'SMA'
+              ? liveFilterTab
+              : 'Semua Kelas',
           dormFilter: 'Semua Asrama',
           officerName: officerName || (sDef.category === 'Makan' ? 'Petugas Dapur / Pembina' : 'Pembina Asrama')
         },
-        students
+        targetStudentList
       );
       if (onShowToast) {
         onShowToast('Presensi Siap', `Daftar hadir ${sDef.name} dengan Kop Surat berhasil diunduh.`, 'success');
@@ -1596,16 +1685,37 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
               <div className="flex items-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
+                  onClick={() => {
+                    primeAttendanceAudio();
+                    const next = !soundEnabled;
+                    setSoundEnabled(next);
+                    if (next) {
+                      speakAttendance(students[0]?.name || 'Ahmad Santoso', 'Hadir');
+                    }
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-bold transition-all border ${
                     soundEnabled
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
                       : 'bg-slate-100 text-slate-500 border-slate-200'
                   }`}
+                  title="Aktifkan/Nonaktifkan Suara Keras & Sebut Nama 'Hadir, [Nama]' Otomatis"
                 >
-                  {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4" />}
-                  {soundEnabled ? 'Suara Aktif' : 'Mute Suara'}
+                  {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600 animate-pulse" /> : <VolumeX className="w-4 h-4" />}
+                  {soundEnabled ? 'Suara & Nama: ON' : 'Suara: OFF'}
                 </button>
+                {soundEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      primeAttendanceAudio();
+                      speakAttendance(students[0]?.name || 'Ahmad Santoso', 'Hadir');
+                    }}
+                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-2 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 active:scale-95"
+                    title="Tes Bunyi Keras & Suara 'Hadir, [Nama]'"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" /> Tes
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleBulkMarkUnscannedAsAlpa}
@@ -1626,11 +1736,27 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleMarkAllHadir}
+                  onClick={() => handleMarkAllHadir('SD')}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 active:scale-95"
-                  title="Tandai seluruh murid sebagai HADIR sekaligus"
+                  title="Tandai seluruh murid SD sebagai HADIR sekaligus"
                 >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Hadirkan Semua ({students.length} Murid)
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Hadirkan Semua (SD)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMarkAllHadir('SMP')}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 active:scale-95"
+                  title="Tandai seluruh murid SMP sebagai HADIR sekaligus"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Hadirkan Semua (SMP)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMarkAllHadir('SMA')}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5 active:scale-95"
+                  title="Tandai seluruh murid SMA sebagai HADIR sekaligus"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Hadirkan Semua (SMA)
                 </button>
 
                 <button
@@ -1810,7 +1936,10 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                     <Camera className="w-4 h-4 text-red-600" /> Pemindai QR Code Kamera
                   </h3>
                   <button
-                    onClick={() => setIsScannerActive(!isScannerActive)}
+                    onClick={() => {
+                      primeAttendanceAudio();
+                      setIsScannerActive(!isScannerActive);
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow ${
                       isScannerActive
                         ? 'bg-rose-600 text-white hover:bg-rose-500'
@@ -1923,6 +2052,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                     onSubmit={(e) => {
                       e.preventDefault();
                       handleProcessScan(manualInputId);
+                      setManualInputId('');
                     }}
                     className="flex items-center gap-2"
                   >
@@ -1935,9 +2065,9 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                     />
                     <button
                       type="submit"
-                      className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow transition-all whitespace-nowrap"
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow transition-all whitespace-nowrap"
                     >
-                      Proses Scan
+                      Catat
                     </button>
                   </form>
                 </div>
@@ -2005,20 +2135,35 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={handleMarkAllHadir}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] shadow transition-all flex items-center gap-1 active:scale-95"
-                      title="Klik untuk set seluruh murid sebagai Hadir"
+                      onClick={() => handleMarkAllHadir('SD')}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-[11px] shadow transition-all flex items-center gap-1 active:scale-95"
+                      title="Tandai seluruh murid SD sebagai HADIR"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Hadir Semua
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" /> Hadir SD
                     </button>
-
+                    <button
+                      type="button"
+                      onClick={() => handleMarkAllHadir('SMP')}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-[11px] shadow transition-all flex items-center gap-1 active:scale-95"
+                      title="Tandai seluruh murid SMP sebagai HADIR"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" /> Hadir SMP
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkMarkUnscannedAsAlpa()}
+                      className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-[11px] shadow transition-all flex items-center gap-1 active:scale-95"
+                      title="Tandai semua siswa yang belum scan sebagai Alpa (Tidak Hadir)"
+                    >
+                      <UserX className="w-3.5 h-3.5 text-rose-200" /> Tutup Sesi (Alpa)
+                    </button>
                     <button
                       type="button"
                       onClick={() => setShowChecklistModal(true)}
-                      className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] shadow transition-all flex items-center gap-1 active:scale-95"
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-2.5 py-1.5 rounded-lg text-[11px] shadow transition-all flex items-center gap-1 active:scale-95"
                       title="Kelola & pilih siswa yang tidak hadir"
                     >
                       <UserCheck className="w-3.5 h-3.5 text-amber-400" /> Filter Absen
@@ -2026,41 +2171,139 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                   </div>
                 </div>
 
-                {/* View Mode Switcher & Realtime Search Bar */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
-                  <div className="inline-flex p-0.5 bg-slate-200 rounded-lg text-[11px] font-bold w-full sm:w-auto">
+                {/* Fast Alpha Mode, View Mode Switcher & Search Bar */}
+                <div className="space-y-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="inline-flex p-0.5 bg-slate-200 rounded-lg text-[11px] font-bold">
+                        <button
+                          onClick={() => setLiveLogViewMode('all')}
+                          className={`px-3 py-1 rounded-md transition-all ${
+                            liveLogViewMode === 'all'
+                              ? 'bg-white text-slate-900 shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Semua Siswa ({students.length})
+                        </button>
+                        <button
+                          onClick={() => setLiveLogViewMode('scanned')}
+                          className={`px-3 py-1 rounded-md transition-all ${
+                            liveLogViewMode === 'scanned'
+                              ? 'bg-white text-slate-900 shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Terdata ({todaySessionRecords.length})
+                        </button>
+                      </div>
+
+                      {/* Fast Alpha Mode Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !fastAlphaMode;
+                          setFastAlphaMode(next);
+                          if (next) playBeep('warning');
+                        }}
+                        className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 ${
+                          fastAlphaMode
+                            ? 'bg-rose-600 text-white ring-2 ring-rose-400 animate-pulse'
+                            : 'bg-white hover:bg-rose-50 text-rose-700 border border-rose-300'
+                        }`}
+                        title="Mode Alpha Cepat: Sekali klik nama/kartu murid langsung mengubah menjadi Alpa (Tidak Hadir) atau Hadir kembali"
+                      >
+                        <Zap className={`w-3.5 h-3.5 ${fastAlphaMode ? 'text-amber-200' : 'text-rose-600'}`} />
+                        {fastAlphaMode ? '⚡ Mode Alpha Klik: AKTIF' : '⚡ Mode Alpha Klik'}
+                      </button>
+                    </div>
+
+                    <div className="relative w-full sm:w-44">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                      <input
+                        type="text"
+                        value={liveLogSearch}
+                        onChange={(e) => setLiveLogSearch(e.target.value)}
+                        placeholder="Cari siswa / NISN..."
+                        className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500/30"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Category Filter Pills (Semua, SD, SMP, Belum Scan, Alpa) */}
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                     <button
-                      onClick={() => setLiveLogViewMode('scanned')}
-                      className={`flex-1 sm:flex-none px-3 py-1 rounded-md transition-all ${
-                        liveLogViewMode === 'scanned'
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900'
+                      type="button"
+                      onClick={() => setLiveFilterTab('ALL')}
+                      className={`px-2.5 py-0.5 rounded-full font-bold transition-all ${
+                        liveFilterTab === 'ALL'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
-                      Terdata ({todaySessionRecords.length})
+                      Semua ({students.length})
                     </button>
                     <button
-                      onClick={() => setLiveLogViewMode('all')}
-                      className={`flex-1 sm:flex-none px-3 py-1 rounded-md transition-all ${
-                        liveLogViewMode === 'all'
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900'
+                      type="button"
+                      onClick={() => setLiveFilterTab('SD')}
+                      className={`px-2.5 py-0.5 rounded-full font-bold transition-all ${
+                        liveFilterTab === 'SD'
+                          ? 'bg-emerald-700 text-white'
+                          : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
                       }`}
                     >
-                      Semua Siswa ({students.length})
+                      SD ({students.filter((s) => s.class === 'SD').length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLiveFilterTab('SMP')}
+                      className={`px-2.5 py-0.5 rounded-full font-bold transition-all ${
+                        liveFilterTab === 'SMP'
+                          ? 'bg-blue-700 text-white'
+                          : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200'
+                      }`}
+                    >
+                      SMP ({students.filter((s) => s.class === 'SMP').length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLiveFilterTab('BELUM_SCAN')}
+                      className={`px-2.5 py-0.5 rounded-full font-bold transition-all ${
+                        liveFilterTab === 'BELUM_SCAN'
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                      }`}
+                    >
+                      Belum Scan ({stats.belumScan})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLiveFilterTab('ALPA')}
+                      className={`px-2.5 py-0.5 rounded-full font-bold transition-all ${
+                        liveFilterTab === 'ALPA'
+                          ? 'bg-rose-700 text-white'
+                          : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'
+                      }`}
+                    >
+                      Alpa ({stats.alpa})
                     </button>
                   </div>
 
-                  <div className="relative w-full sm:w-48">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
-                    <input
-                      type="text"
-                      value={liveLogSearch}
-                      onChange={(e) => setLiveLogSearch(e.target.value)}
-                      placeholder="Cari siswa..."
-                      className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500/30"
-                    />
-                  </div>
+                  {fastAlphaMode && (
+                    <div className="bg-rose-100 border border-rose-300 text-rose-900 px-3 py-1.5 rounded-xl text-xs flex items-center justify-between animate-fadeIn">
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <Zap className="w-3.5 h-3.5 text-rose-600 animate-bounce" />
+                        Mode Alpha Cepat AKTIF: Klik pada baris / nama murid untuk langsung ubah Alpa ↔ Hadir!
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFastAlphaMode(false)}
+                        className="text-[11px] font-bold text-rose-700 underline ml-2"
+                      >
+                        Matikan
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Live Feed List */}
@@ -2075,7 +2318,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                         <QrCode className="w-10 h-10 mx-auto opacity-30 text-slate-500" />
                         <p className="text-xs font-medium">Belum ada data presensi untuk sholat {selectedPrayerTime}.</p>
                         <p className="text-[11px] text-slate-400">
-                          Klik <button onClick={handleMarkAllHadir} className="text-emerald-600 font-bold underline">Hadir Semua</button> atau beralih ke tab <button onClick={() => setLiveLogViewMode('all')} className="text-slate-800 font-bold underline">Semua Siswa</button> untuk pilih yang tidak hadir.
+                          Klik <button onClick={() => handleMarkAllHadir('SD')} className="text-emerald-600 font-bold underline">Hadir SD</button> atau <button onClick={() => handleMarkAllHadir('SMP')} className="text-emerald-600 font-bold underline">Hadir SMP</button> atau <button onClick={() => handleMarkAllHadir('SMA')} className="text-emerald-600 font-bold underline">Hadir SMA</button> atau beralih ke tab <button onClick={() => setLiveLogViewMode('all')} className="text-slate-800 font-bold underline">Semua Siswa</button> untuk pilih yang tidak hadir.
                         </p>
                       </div>
                     ) : (
@@ -2147,13 +2390,26 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                         ))
                     )
                   ) : (
-                    /* MODE 2: ALL REGISTERED STUDENTS CHECKLIST */
+                    /* MODE 2: ALL REGISTERED STUDENTS CHECKLIST WITH 1-CLICK TOGGLE & FILTER */
                     students
-                      .filter((s) =>
-                        s.name.toLowerCase().includes(liveLogSearch.toLowerCase()) ||
-                        s.id.toLowerCase().includes(liveLogSearch.toLowerCase()) ||
-                        s.dorm.toLowerCase().includes(liveLogSearch.toLowerCase())
-                      )
+                      .filter((s) => {
+                        const matchSearch =
+                          s.name.toLowerCase().includes(liveLogSearch.toLowerCase()) ||
+                          s.id.toLowerCase().includes(liveLogSearch.toLowerCase()) ||
+                          s.dorm.toLowerCase().includes(liveLogSearch.toLowerCase());
+                        if (!matchSearch) return false;
+
+                        const sid = String(s.id).trim().toLowerCase();
+                        const existingRec = todaySessionMap.get(sid);
+                        const currentStatus = existingRec ? existingRec.status : 'Belum Scan';
+
+                        if (liveFilterTab === 'SD') return s.class === 'SD';
+                        if (liveFilterTab === 'SMP') return s.class === 'SMP';
+                        if (liveFilterTab === 'SMA') return s.class === 'SMA';
+                        if (liveFilterTab === 'BELUM_SCAN') return currentStatus === 'Belum Scan';
+                        if (liveFilterTab === 'ALPA') return currentStatus === 'Alpa / Tanpa Keterangan';
+                        return true;
+                      })
                       .map((s) => {
                         const sid = String(s.id).trim().toLowerCase();
                         const existingRec = todaySessionMap.get(sid);
@@ -2162,76 +2418,130 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                         return (
                           <div
                             key={s.id}
+                            onClick={() => {
+                              if (fastAlphaMode) {
+                                handleToggleStudentHadirAlpa(s.id, s.name, s.class, s.dorm);
+                              }
+                            }}
                             className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 rounded-xl border text-xs transition-all gap-2 ${
+                              fastAlphaMode ? 'cursor-pointer hover:ring-2 hover:ring-rose-400 select-none' : ''
+                            } ${
                               currentStatus === 'Hadir'
-                                ? 'bg-emerald-50/60 border-emerald-200'
+                                ? 'bg-emerald-50/70 border-emerald-200 hover:border-emerald-300'
                                 : currentStatus === 'Terlambat'
-                                ? 'bg-amber-50/60 border-amber-200'
+                                ? 'bg-amber-50/70 border-amber-200 hover:border-amber-300'
                                 : currentStatus === 'Izin Sakit' || currentStatus === 'Izin Pulang'
-                                ? 'bg-purple-50/60 border-purple-200'
+                                ? 'bg-purple-50/70 border-purple-200 hover:border-purple-300'
                                 : currentStatus === 'Alpa / Tanpa Keterangan'
-                                ? 'bg-rose-50/60 border-rose-200'
+                                ? 'bg-rose-50/80 border-rose-200 hover:border-rose-300'
                                 : 'bg-white border-slate-200 hover:border-slate-300'
                             }`}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
                               <div
-                                className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] flex-shrink-0 ${
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleStudentHadirAlpa(s.id, s.name, s.class, s.dorm);
+                                }}
+                                title="Klik untuk beralih Hadir ↔ Alpa"
+                                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 cursor-pointer transition-transform active:scale-90 ${
                                   currentStatus === 'Hadir'
-                                    ? 'bg-emerald-600 text-white'
+                                    ? 'bg-emerald-600 text-white shadow-sm'
                                     : currentStatus === 'Terlambat'
                                     ? 'bg-amber-600 text-white'
                                     : currentStatus === 'Izin Sakit' || currentStatus === 'Izin Pulang'
                                     ? 'bg-purple-600 text-white'
                                     : currentStatus === 'Alpa / Tanpa Keterangan'
-                                    ? 'bg-rose-600 text-white'
-                                    : 'bg-slate-200 text-slate-700'
+                                    ? 'bg-rose-600 text-white ring-2 ring-rose-300 shadow-sm'
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                                 }`}
                               >
-                                {s.name.charAt(0)}
+                                {currentStatus === 'Hadir' ? '✓' : currentStatus === 'Alpa / Tanpa Keterangan' ? '✕' : s.name.charAt(0)}
                               </div>
-                              <div className="min-w-0">
-                                <h4 className="font-bold text-slate-900 leading-tight truncate text-[11px]">{s.name}</h4>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h4 className="font-bold text-slate-900 leading-tight truncate text-[12px]">{s.name}</h4>
+                                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-extrabold uppercase ${
+                                    s.class === 'SD' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {s.class}
+                                  </span>
+                                </div>
                                 <p className="text-[10px] text-slate-500 font-medium truncate">
-                                  {s.id} • {s.class} ({s.dorm})
+                                  {s.id} • {s.dorm}
+                                  {existingRec?.timestamp && ` • Scan ${existingRec.timestamp}`}
                                 </p>
                               </div>
                             </div>
 
-                            {/* Direct Quick Toggle Buttons */}
-                            <div className="flex flex-wrap items-center gap-1 w-full sm:w-auto justify-end">
+                            {/* Direct Quick Toggle Buttons with 1-Tap Toggle */}
+                            <div 
+                              className="flex flex-wrap items-center gap-1 w-full sm:w-auto justify-end"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {/* 1-TAP PRIMARY TOGGLE BUTTON */}
                               <button
                                 type="button"
-                                onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Hadir')}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                onClick={() => handleToggleStudentHadirAlpa(s.id, s.name, s.class, s.dorm)}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition-all flex items-center gap-1 shadow-xs active:scale-95 ${
                                   currentStatus === 'Hadir'
-                                    ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400'
-                                    : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                    ? 'bg-emerald-600 hover:bg-rose-600 text-white group ring-1 ring-emerald-500'
+                                    : currentStatus === 'Alpa / Tanpa Keterangan'
+                                    ? 'bg-rose-600 hover:bg-emerald-600 text-white group ring-1 ring-rose-500'
+                                    : 'bg-slate-100 hover:bg-emerald-600 text-slate-700 hover:text-white border border-slate-300'
                                 }`}
+                                title="Klik 1 kali untuk beralih Hadir ↔ Alpa"
                               >
-                                ✓ Hadir
+                                {currentStatus === 'Hadir' ? (
+                                  <>
+                                    <span>✓ Hadir</span>
+                                    <span className="hidden sm:inline text-[9px] opacity-80 font-normal group-hover:inline">(klik: Alpa)</span>
+                                  </>
+                                ) : currentStatus === 'Alpa / Tanpa Keterangan' ? (
+                                  <>
+                                    <span>❌ Alpa</span>
+                                    <span className="hidden sm:inline text-[9px] opacity-80 font-normal group-hover:inline">(klik: Hadir)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>○ Hadirkan</span>
+                                  </>
+                                )}
                               </button>
 
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Terlambat')}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
-                                  currentStatus === 'Terlambat'
-                                    ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-400'
-                                    : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                                }`}
-                              >
-                                ⏱ Telat
-                              </button>
+                              {/* DIRECT ALPA BUTTON (if currently Hadir or Belum Scan) */}
+                              {currentStatus !== 'Alpa / Tanpa Keterangan' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Alpa / Tanpa Keterangan')}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 transition-all active:scale-95"
+                                  title="Tandai Alpa (Tidak Hadir)"
+                                >
+                                  ❌ Alpa
+                                </button>
+                              )}
+
+                              {/* DIRECT HADIR BUTTON (if currently Alpa) */}
+                              {currentStatus === 'Alpa / Tanpa Keterangan' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Hadir')}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 transition-all active:scale-95"
+                                  title="Tandai Hadir"
+                                >
+                                  ✓ Hadir
+                                </button>
+                              )}
 
                               <button
                                 type="button"
                                 onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Izin Sakit')}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                className={`px-1.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
                                   currentStatus === 'Izin Sakit'
-                                    ? 'bg-teal-600 text-white shadow-sm ring-2 ring-teal-400'
-                                    : 'bg-teal-100 text-teal-800 hover:bg-teal-200'
+                                    ? 'bg-teal-600 text-white shadow-xs'
+                                    : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
                                 }`}
+                                title="Izin Sakit"
                               >
                                 🤒 Sakit
                               </button>
@@ -2239,25 +2549,14 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Izin Pulang')}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                className={`px-1.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
                                   currentStatus === 'Izin Pulang'
-                                    ? 'bg-purple-600 text-white shadow-sm ring-2 ring-purple-400'
-                                    : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                    ? 'bg-purple-600 text-white shadow-xs'
+                                    : 'bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200'
                                 }`}
+                                title="Izin Pulang"
                               >
                                 🏖 Pulang
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateStudentStatus(s.id, s.name, s.class, s.dorm, 'Alpa / Tanpa Keterangan')}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
-                                  currentStatus === 'Alpa / Tanpa Keterangan'
-                                    ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400'
-                                    : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
-                                }`}
-                              >
-                                ❌ Alpa
                               </button>
                             </div>
                           </div>
@@ -2312,10 +2611,24 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={handleMarkAllHadir}
+                        onClick={() => handleMarkAllHadir('SD')}
                         className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
                       >
-                        <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Mark Hadir Semua ({students.length})
+                        <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Hadir Semua (SD)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAllHadir('SMP')}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Hadir Semua (SMP)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAllHadir('SMA')}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Hadir Semua (SMA)
                       </button>
 
                       {selectedChecklistIds.length > 0 && (
@@ -2395,11 +2708,26 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                         className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                       >
                         <option value="">Semua Gedung Asrama</option>
-                        {Array.from(new Set([...(config.dormList || []), ...students.map((s) => s.dorm)])).map((dorm) => (
-                          <option key={dorm} value={dorm}>
-                            {dorm}
-                          </option>
-                        ))}
+                        {Array.from(
+                          (() => {
+                            const map = new Map<string, string>();
+                            [...(config.dormList || []), ...students.map((s) => s.dorm)].forEach((raw) => {
+                              if (!raw || !raw.trim()) return;
+                              const key = getDormKey(raw);
+                              const canonical = getCanonicalDormName(raw, config?.dormList);
+                              if (!map.has(key) || canonical.startsWith('Asrama ')) {
+                                map.set(key, canonical);
+                              }
+                            });
+                            return map.values();
+                          })()
+                        )
+                          .sort((a, b) => a.localeCompare(b))
+                          .map((dorm) => (
+                            <option key={dorm} value={dorm}>
+                              {dorm}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
@@ -2438,8 +2766,14 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                                       s.name.toLowerCase().includes(checklistSearch.toLowerCase()) ||
                                       s.id.toLowerCase().includes(checklistSearch.toLowerCase());
                                     const matchClass = !checklistClassFilter || s.class === checklistClassFilter;
-                                    const matchDorm = !checklistDormFilter || s.dorm === checklistDormFilter;
-                                    return matchSearch && matchClass && matchDorm;
+                                    const matchDorm =
+                                      !checklistDormFilter ||
+                                      getDormKey(s.dorm) === getDormKey(checklistDormFilter);
+                                    const sid = String(s.id).trim().toLowerCase();
+                                    const rec = todaySessionMap.get(sid);
+                                    const st = rec ? rec.status : 'Belum Scan';
+                                    const matchStatus = checklistStatusFilter === 'Semua' || (checklistStatusFilter === 'Belum Scan' ? st === 'Belum Scan' : st === checklistStatusFilter);
+                                    return matchSearch && matchClass && matchDorm && matchStatus;
                                   }).length
                               }
                               onChange={(e) => {
@@ -2448,8 +2782,14 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                                     s.name.toLowerCase().includes(checklistSearch.toLowerCase()) ||
                                     s.id.toLowerCase().includes(checklistSearch.toLowerCase());
                                   const matchClass = !checklistClassFilter || s.class === checklistClassFilter;
-                                  const matchDorm = !checklistDormFilter || s.dorm === checklistDormFilter;
-                                  return matchSearch && matchClass && matchDorm;
+                                  const matchDorm =
+                                    !checklistDormFilter ||
+                                    getDormKey(s.dorm) === getDormKey(checklistDormFilter);
+                                  const sid = String(s.id).trim().toLowerCase();
+                                  const rec = todaySessionMap.get(sid);
+                                  const st = rec ? rec.status : 'Belum Scan';
+                                  const matchStatus = checklistStatusFilter === 'Semua' || (checklistStatusFilter === 'Belum Scan' ? st === 'Belum Scan' : st === checklistStatusFilter);
+                                  return matchSearch && matchClass && matchDorm && matchStatus;
                                 });
                                 if (e.target.checked) {
                                   setSelectedChecklistIds(matching.map((m) => m.id));
@@ -2473,7 +2813,9 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                               s.name.toLowerCase().includes(checklistSearch.toLowerCase()) ||
                               s.id.toLowerCase().includes(checklistSearch.toLowerCase());
                             const matchClass = !checklistClassFilter || s.class === checklistClassFilter;
-                            const matchDorm = !checklistDormFilter || s.dorm === checklistDormFilter;
+                            const matchDorm =
+                              !checklistDormFilter ||
+                              getDormKey(s.dorm) === getDormKey(checklistDormFilter);
 
                             const sid = String(s.id).trim().toLowerCase();
                             const rec = todaySessionMap.get(sid);
@@ -2523,24 +2865,41 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                                   <span className="block text-[10px] text-slate-500">{s.dorm}</span>
                                 </td>
                                 <td className="p-3">
-                                  <span
-                                    className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleStudentHadirAlpa(s.id, s.name, s.class, s.dorm)}
+                                    title="Klik cepat untuk beralih Hadir ↔ Alpa"
+                                    className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase cursor-pointer hover:scale-105 active:scale-95 transition-all ${
                                       currentStatus === 'Hadir'
-                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-rose-100 hover:text-rose-800'
                                         : currentStatus === 'Terlambat'
                                         ? 'bg-amber-100 text-amber-800 border border-amber-300'
                                         : currentStatus === 'Izin Sakit' || currentStatus === 'Izin Pulang'
                                         ? 'bg-purple-100 text-purple-800 border border-purple-300'
                                         : currentStatus === 'Alpa / Tanpa Keterangan'
-                                        ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                        : 'bg-slate-100 text-slate-600 border border-slate-300'
+                                        ? 'bg-rose-100 text-rose-800 border border-rose-300 hover:bg-emerald-100 hover:text-emerald-800'
+                                        : 'bg-slate-100 text-slate-600 border border-slate-300 hover:bg-emerald-100 hover:text-emerald-800'
                                     }`}
                                   >
                                     {currentStatus}
-                                  </span>
+                                  </button>
                                 </td>
                                 <td className="p-3 text-right">
                                   <div className="inline-flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleStudentHadirAlpa(s.id, s.name, s.class, s.dorm)}
+                                      className={`px-2 py-1 rounded text-[10px] font-extrabold transition-all ${
+                                        currentStatus === 'Hadir'
+                                          ? 'bg-emerald-600 text-white shadow'
+                                          : currentStatus === 'Alpa / Tanpa Keterangan'
+                                          ? 'bg-rose-600 text-white shadow'
+                                          : 'bg-slate-100 text-slate-700 hover:bg-emerald-100 border border-slate-300'
+                                      }`}
+                                      title="Klik untuk toggle Hadir ↔ Alpa"
+                                    >
+                                      {currentStatus === 'Hadir' ? '✓ Hadir' : currentStatus === 'Alpa / Tanpa Keterangan' ? '❌ Alpa' : '○ Hadirkan'}
+                                    </button>
                                     <button
                                       type="button"
                                       onClick={() =>
@@ -2552,7 +2911,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                                           : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
                                       }`}
                                     >
-                                      ✓ Hadir
+                                      ✓
                                     </button>
                                     <button
                                       type="button"
@@ -3011,10 +3370,21 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                {onSync && (
+                  <button
+                    onClick={onSync}
+                    disabled={isSyncing}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs shadow-sm transition-all flex items-center gap-1.5 border border-blue-500 active:scale-95 disabled:opacity-50"
+                    title="Simpan data absensi lokal ke Cloud Google Sheet"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /> {isSyncing ? 'Menyinkronkan...' : 'Sinkronisasi ke Cloud'}
+                  </button>
+                )}
                 <button
                   onClick={async () => {
                     const confirmClear = await onAskConfirm?.('Hapus Cache Data Absensi?', 'Apakah Anda yakin ingin menghapus semua data presensi asrama? Tindakan ini tidak dapat dibatalkan.');
                     if (confirmClear) {
+                      prayerAttendanceRef.current = [];
                       onSavePrayerAttendance([]);
                     }
                   }}

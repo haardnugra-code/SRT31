@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Monitor,
   GraduationCap,
   LineChart,
   CheckSquare,
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
+    { id: 'live-monitor', label: 'Live Monitor (TV)', icon: Monitor },
     { id: 'students', label: 'Data Siswa & Profil', icon: Users },
     { id: 'connecting-journal', label: 'Jurnal Penghubung', icon: BookOpen },
     { id: 'meeting-minutes', label: 'Notulensi Rapat', icon: FileText },

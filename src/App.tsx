@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Student,
   Violation,
@@ -65,6 +65,7 @@ import { ConnectingJournalTab } from './components/ConnectingJournalTab';
 import { MenstruationTrackingTab } from './components/MenstruationTrackingTab';
 import { ReportAndRecapTab } from './components/ReportAndRecapTab';
 import { SettingsTab } from './components/SettingsTab';
+import { LiveMonitorTab } from './components/LiveMonitorTab';
 import { MeetingMinutesTab } from './components/MeetingMinutesTab';
 
 export default function App() {
@@ -91,6 +92,10 @@ export default function App() {
   const [meetingMinutes, setMeetingMinutes] = useState<MeetingMinute[]>(loadMeetingMinutes);
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>(loadMedicalRecords);
   const [prayerAttendance, setPrayerAttendance] = useState<PrayerAttendance[]>(loadPrayerAttendance);
+  const prayerAttendanceRef = useRef<PrayerAttendance[]>(prayerAttendance);
+  useEffect(() => {
+    prayerAttendanceRef.current = prayerAttendance;
+  }, [prayerAttendance]);
   const [menstruationRecords, setMenstruationRecords] = useState<MenstruationRecord[]>(loadMenstruationRecords);
   const [reports, setReports] = useState<Record<string, ReportCardData>>(loadReports);
 
@@ -860,27 +865,21 @@ export default function App() {
   );
 
   // 7. Prayer Attendance Handler
+  
+  // 7. Prayer Attendance Handler
   const handleSavePrayerAttendance = useCallback(
     (records: PrayerAttendance[]) => {
+      prayerAttendanceRef.current = records;
       setPrayerAttendance(records);
       savePrayerAttendance(records);
-      showToast('Presensi Disimpan', 'Data presensi sholat & QR code berhasil diperbarui.', 'success');
+      showToast('Presensi Disimpan', 'Data presensi berhasil diperbarui.', 'success');
       
-      // Batch update to Google Apps Script if possible, or just individual
-      if (config.googleScriptUrl) {
-        records.forEach(record => {
-          fetch(config.googleScriptUrl, {
-            method: 'POST',
-            body: JSON.stringify({
-              action: 'addPrayerAttendance',
-              data: record
-            })
-          }).catch(e => console.error(e));
-        });
-      }
+      // Disable sending all records to GAS on every local state update to prevent crashing/network flood
+      // We will only do this during Cloud Sync or batch sync, not every time a single scan happens.
     },
-    [showToast, config.googleScriptUrl]
+    [showToast]
   );
+
 
   const handleDeletePrayerAttendanceItem = useCallback(
     (id: string) => {
@@ -1066,6 +1065,60 @@ export default function App() {
     },
     [students, violations, counseling, leaves, dailyJournals, medicalRecords, prayerAttendance, reports, config.googleScriptUrl, showToast]
   );
+
+
+  // --- Push Cloud Data Sync ---
+  const pushPrayerAttendanceToCloud = useCallback(async () => {
+    if (!config.googleScriptUrl) {
+      showToast('Push Gagal', 'URL Google Script belum dikonfigurasi', 'error');
+      return;
+    }
+    
+    setIsSyncing(true);
+    showToast('Upload Absensi', 'Mengirim data absensi lokal ke server, mohon tunggu...', 'info');
+    
+    // We only send attendance from the last 2 days to avoid overloading the GAS quota
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const limitIso = twoDaysAgo.toISOString().split('T')[0];
+    
+    const recentRecords = prayerAttendance.filter(p => p.date >= limitIso);
+    
+    if (recentRecords.length === 0) {
+      setIsSyncing(false);
+      showToast('Selesai', 'Tidak ada data absensi terbaru untuk disinkronkan.', 'success');
+      return;
+    }
+    
+    try {
+      // Chunk records to prevent timeout
+      const chunkSize = 20;
+      let successCount = 0;
+      
+      for (let i = 0; i < recentRecords.length; i += chunkSize) {
+        const chunk = recentRecords.slice(i, i + chunkSize);
+        const promises = chunk.map(record => 
+          fetch(config.googleScriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'addPrayerAttendance',
+              data: record
+            })
+          })
+        );
+        await Promise.allSettled(promises);
+        successCount += chunk.length;
+      }
+      
+      showToast('Push Selesai', `Berhasil mensinkronkan ${successCount} data absensi lokal ke cloud.`, 'success');
+      recordDataPushSuccess();
+    } catch (e) {
+      console.error('Error pushing attendance', e);
+      showToast('Gagal Upload', 'Terjadi kesalahan saat upload absensi.', 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [config.googleScriptUrl, prayerAttendance, showToast, recordDataPushSuccess]);
 
   // --- Fetch Cloud Data Sync ---
   const syncCloudData = useCallback(
@@ -1303,7 +1356,7 @@ export default function App() {
             fetchedLeaves,
             fetchedJournals,
             fetchedMedical,
-            prayerAttendance,
+            prayerAttendanceRef.current || loadPrayerAttendance(),
             fetchedReports,
             true // purge orphan and invalid records so non-existent data is eliminated
           );
@@ -1417,7 +1470,8 @@ export default function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [config.googleScriptUrl, checkConnection, syncCloudData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.googleScriptUrl]);
 
   const handlePurgeDummyAndReload = useCallback(async () => {
     const confirmed = await askConfirm(
@@ -1479,6 +1533,18 @@ export default function App() {
           />
 
           <div className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8 overflow-y-auto">
+            {activeTab === 'live-monitor' && (
+              <LiveMonitorTab
+                onClose={() => setActiveTab('dashboard')}
+                students={studentsWithViolationCounts}
+                violations={violations}
+                prayerAttendance={prayerAttendance}
+                config={config}
+                leaves={leaves}
+                medicalRecords={medicalRecords}
+                counseling={counseling}
+              />
+            )}
             {activeTab === 'dashboard' && (
               <DashboardTab
                 students={studentsWithViolationCounts}
@@ -1536,6 +1602,8 @@ export default function App() {
                 initialSubTab={activeTab === 'checklist' ? 'checklist' : 'scanner'}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
+                onSync={pushPrayerAttendanceToCloud}
+                isSyncing={isSyncing}
               />
             )}
 

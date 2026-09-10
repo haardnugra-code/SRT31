@@ -146,7 +146,7 @@ export const CounselingTab: React.FC<CounselingTabProps> = ({
   // Check for saved draft on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_STORAGE_KEY) || localStorage.getItem('SANTRI_BK_COUNSELING_DRAFT');
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY) || localStorage.getItem('SR_COUNSELING_DRAFT_FALLBACK');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.caseDescription || parsed.notes || parsed.studentCommitment)) {

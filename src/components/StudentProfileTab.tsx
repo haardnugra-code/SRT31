@@ -56,6 +56,7 @@ import {
   RAPOR_STRUCTURE
 } from '../services/pdfGenerator';
 import { ParentSummonsModal } from './ParentSummonsModal';
+import { consolidateDormList, getCanonicalDormName } from '../utils/dormHelper';
 
 interface StudentProfileTabProps {
   students: Student[];
@@ -147,20 +148,16 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
   const [isSummonsModalOpen, setIsSummonsModalOpen] = useState(false);
   const [selectedSummonsViolation, setSelectedSummonsViolation] = useState<Violation | null>(null);
 
-  // Clean dorm & wali asuh list
-  const dormList = config.dormList || ['Asrama Terpadu'];
+  // Clean dorm & wali asuh list (consolidated)
+  const dormList = useMemo(() => consolidateDormList(config.dormList || ['Asrama Terpadu']), [config.dormList]);
   const cleanWaliAsuh = (config.waliAsuhList || []).map((w) => w.split('|')[0].trim());
 
-  // List of all unique dorms from both config and existing students
+  // List of all unique dorms from both config and existing students (consolidated into single dorms)
   const availableDorms = useMemo(() => {
-    const set = new Set<string>();
-    (config.dormList || []).forEach((d) => {
-      if (d && d.trim()) set.add(d.trim());
-    });
-    students.forEach((s) => {
-      if (s.dorm && s.dorm.trim()) set.add(s.dorm.trim());
-    });
-    return Array.from(set).sort();
+    return consolidateDormList([
+      ...(config.dormList || []),
+      ...students.map((s) => s.dorm)
+    ]);
   }, [config.dormList, students]);
 
   // List of all unique classes from students & standard levels
@@ -191,13 +188,15 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
         !classFilter ||
         String(s.class).trim().toUpperCase() === String(classFilter).trim().toUpperCase();
 
+      const canonicalStudentDorm = getCanonicalDormName(s.dorm, availableDorms);
       const matchDorm =
         !dormFilter ||
+        canonicalStudentDorm.toLowerCase() === String(dormFilter).trim().toLowerCase() ||
         String(s.dorm || '').trim().toLowerCase() === String(dormFilter).trim().toLowerCase();
 
       return matchQuery && matchClass && matchDorm;
     });
-  }, [students, searchQuery, classFilter, dormFilter]);
+  }, [students, searchQuery, classFilter, dormFilter, availableDorms]);
 
   // Current Selected Student Object
   const currentStudent = useMemo(() => {
@@ -421,7 +420,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
       id: formNisn.trim(),
       name: formName.trim(),
       class: formClass,
-      dorm: formDorm,
+      dorm: getCanonicalDormName(formDorm, availableDorms),
       caretaker: formCaretaker,
       rfidTag: formRfidTag.trim() || undefined,
       height: formHeight ? Number(formHeight) : undefined,

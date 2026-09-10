@@ -1,4 +1,11 @@
-import { DEFAULT_CONFIG } from '../services/storage';
+const DEFAULT_FALLBACK_DORMS = [
+  "Asrama Dewantara",
+  "Asrama Pattimura",
+  "Asrama Teuku Umar",
+  "Asrama Cut Nyak Dien",
+  "Asrama RA Kartini",
+  "Asrama Dewi Sartika"
+];
 
 /**
  * Normalizes a raw string for comparing dorm identities.
@@ -50,7 +57,7 @@ export function getCanonicalDormName(rawDorm?: string, knownList?: string[]): st
   // Combine known list with defaults
   const candidates = [
     ...(knownList || []),
-    ...(DEFAULT_CONFIG.dormList || [])
+    ...DEFAULT_FALLBACK_DORMS
   ];
 
   // Try to find an exact key match in the candidate list
@@ -68,3 +75,30 @@ export function getCanonicalDormName(rawDorm?: string, knownList?: string[]): st
 
   return `Asrama ${formatDormWords(cleaned)}`;
 }
+
+/**
+ * Consolidates a list of dorm names by merging duplicates and variations
+ * (e.g. "Dewantara", "Asrama Dewantara", "asrama dewantara", "Gedung Dewantara")
+ * into a single unified canonical dorm name.
+ */
+export function consolidateDormList(list?: string[]): string[] {
+  if (!list || !Array.isArray(list)) return [];
+  const map = new Map<string, string>(); // key: getDormKey -> canonical name
+
+  for (const raw of list) {
+    if (!raw) continue;
+    const trimmed = String(raw).trim();
+    if (!trimmed) continue;
+    const key = getDormKey(trimmed);
+    if (!key) continue;
+
+    if (!map.has(key)) {
+      // Pick best representation
+      const canonical = getCanonicalDormName(trimmed, list);
+      map.set(key, canonical);
+    }
+  }
+
+  return Array.from(map.values());
+}
+

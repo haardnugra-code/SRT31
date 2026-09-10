@@ -28,7 +28,10 @@ import {
   CheckCircle2,
   Clock,
   Megaphone,
-  TableProperties
+  TableProperties,
+  Brain,
+  Stethoscope,
+  ShieldAlert
 } from 'lucide-react';
 import {
   AppConfig,
@@ -49,6 +52,7 @@ import { GOOGLE_APPS_SCRIPT_CODE } from '../services/googleAppsScriptCode';
 import { DEFAULT_DISCIPLINE_LEVELS, DEFAULT_DISCIPLINE_THRESHOLDS, VIOLATION_TEMPLATES } from '../services/storage';
 import { RAPOR_STRUCTURE } from '../services/pdfGenerator';
 import { ShadowDataAuditStats } from '../utils/dataSanitizer';
+import { consolidateDormList } from '../utils/dormHelper';
 import { DatabaseCrudManager } from './DatabaseCrudManager';
 
 interface SettingsTabProps {
@@ -100,6 +104,7 @@ interface SettingsTabProps {
   prayerAttendance?: PrayerAttendance[];
   onSavePrayerAttendance?: (records: PrayerAttendance[]) => void;
   onDeletePrayerAttendance?: (id: string) => void;
+  onNavigateToSpecialChronology?: () => void;
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
@@ -141,7 +146,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   onDeleteReport = () => {},
   prayerAttendance = [],
   onSavePrayerAttendance = () => {},
-  onDeletePrayerAttendance = () => {}
+  onDeletePrayerAttendance = () => {},
+  onNavigateToSpecialChronology
 }) => {
   const [activeSettingsView, setActiveSettingsView] = useState<'general' | 'database'>('general');
   const [isLocked, setIsLocked] = useState<boolean>(true);
@@ -165,6 +171,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [dormText, setDormText] = useState<string>(config.dormList.join('\n'));
   const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(config.semester || 'Genap');
   const [academicYear, setAcademicYear] = useState<string>(config.academicYear || '2025/2026');
+  const [enableSpecialChronology, setEnableSpecialChronology] = useState<boolean>(!!config.enableSpecialChronology);
 
   // Announcement State
   const [announcementText, setAnnouncementText] = useState<string>(announcement);
@@ -330,10 +337,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       .split('\n')
       .map((l) => l.trim())
       .filter((l) => l !== '');
-    const dormLines = dormText
+    const rawDormLines = dormText
       .split('\n')
       .map((l) => l.trim())
       .filter((l) => l !== '');
+    const dormLines = consolidateDormList(rawDormLines);
+    setDormText(dormLines.join('\n'));
 
     if (!waliAsrama || !kepalaSekolah) {
       onShowToast('Data Tidak Valid', 'Nama Wali Asrama dan Kepala Sekolah tidak boleh kosong.', 'error');
@@ -360,7 +369,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       disciplineThresholds,
       violationTemplatesCustom: customTemplates,
       raporStructureCustom: customRaporStructure,
-      autoResetPointsPerSemester: autoResetPoints
+      autoResetPointsPerSemester: autoResetPoints,
+      enableSpecialChronology
     };
 
     onSaveConfig(updatedConfig);
@@ -743,6 +753,75 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   <Save className="w-3.5 h-3.5" />
                   Simpan & Sync Pengumuman
                 </button>
+              </div>
+            </div>
+
+            {/* Special Chronology Case Feature Toggle (Menu Tersembunyi Kronologi Khusus) */}
+            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-lg border border-indigo-800/60 space-y-3.5">
+              <div className="flex items-start justify-between gap-3 border-b border-indigo-800/60 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 bg-gradient-to-br from-red-600 to-indigo-600 rounded-xl shadow-md border border-white/20 shrink-0">
+                    <Brain className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30">
+                        Menu Khusus Tersembunyi
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        Psikiatri & Konseling
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-xs sm:text-sm text-white mt-1">
+                      Kronologi Kasus Setiap Shift (Pelanggaran Berat)
+                    </h4>
+                  </div>
+                </div>
+
+                <span
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                    enableSpecialChronology
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  }`}
+                >
+                  {enableSpecialChronology ? 'Menu Dibuka' : 'Tersembunyi'}
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Dokumentasi terstruktur berbasis ilmu psikiatri, psikologi, dan konseling klinis untuk pelanggaran berat. Dilengkapi instrumen pemeriksaan status mental (MSE), afek/mood, mekanisme koping, risiko eskalasi, handover shift, serta cetak laporan PDF resmi.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-white hover:text-indigo-200 transition select-none">
+                  <input
+                    type="checkbox"
+                    disabled={isLocked}
+                    checked={enableSpecialChronology}
+                    onChange={(e) => {
+                      setEnableSpecialChronology(e.target.checked);
+                      if (e.target.checked) {
+                        onShowToast('Menu Kronologi Khusus Diaktifkan', 'Simpan setelan agar tab Kronologi Kasus muncul di bilah navigasi utama.', 'success');
+                      } else {
+                        onShowToast('Menu Kronologi Khusus Dinonaktifkan', 'Menu akan disembunyikan dari bilah navigasi utama setelah disimpan.', 'warning');
+                      }
+                    }}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-800 border-slate-600 cursor-pointer disabled:opacity-50"
+                  />
+                  <span>Buka / Aktifkan Menu Kronologi Kasus Khusus</span>
+                </label>
+
+                {enableSpecialChronology && onNavigateToSpecialChronology && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToSpecialChronology}
+                    className="font-bold text-xs px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-indigo-600 hover:from-red-500 hover:to-indigo-500 text-white flex items-center justify-center gap-1.5 shadow-md transition active:scale-95 shrink-0 cursor-pointer"
+                  >
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    <span>Buka Kronologi Khusus</span>
+                  </button>
+                )}
               </div>
             </div>
 

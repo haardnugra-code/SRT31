@@ -1,4 +1,5 @@
-import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord, MeetingMinute } from '../types';
+import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog } from '../types';
+import { consolidateDormList } from '../utils/dormHelper';
 
 export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOscEltpKZ3aZP7h7-ZyzZHb-DUgZ5ZD9LxCrIMRQTscJ9cP0WKKWu5cFtOrISJXGuNA/exec";
 
@@ -198,6 +199,9 @@ export function loadAppConfig(): AppConfig {
       if (!parsed.dormList || parsed.dormList.includes('Asrama Putra A')) {
         parsed.dormList = DEFAULT_CONFIG.dormList;
       }
+      if (parsed.dormList && Array.isArray(parsed.dormList)) {
+        parsed.dormList = consolidateDormList(parsed.dormList);
+      }
       return { ...DEFAULT_CONFIG, ...parsed };
     } catch (e) {
       console.error(e);
@@ -207,7 +211,11 @@ export function loadAppConfig(): AppConfig {
 }
 
 export function saveAppConfig(config: AppConfig): void {
-  localStorage.setItem('sr_config', JSON.stringify(config));
+  const consolidatedConfig: AppConfig = {
+    ...config,
+    dormList: consolidateDormList(config.dormList)
+  };
+  localStorage.setItem('sr_config', JSON.stringify(consolidatedConfig));
   if (config.googleScriptUrl) {
     localStorage.setItem('google_script_url', config.googleScriptUrl);
   }
@@ -592,6 +600,7 @@ export function clearStorageCache(): { clearedSize: string; keyCount: number } {
     'sr_prayer_attendance',
     'sr_connecting_journals',
     'sr_menstruation_records',
+    'sr_special_chronology_cases',
     'sr_last_push_time',
     'sr_last_sync_time',
     'sr_auth_status'
@@ -636,3 +645,84 @@ export function loadMeetingMinutes(): MeetingMinute[] {
 export function saveMeetingMinutes(minutes: MeetingMinute[]): void {
   localStorage.setItem('sr_meeting_minutes', JSON.stringify(minutes));
 }
+
+export const INITIAL_SPECIAL_CHRONOLOGY_CASES: SpecialChronologyCase[] = [
+  {
+    id: 'CASE-2026-001',
+    violationId: 'v-dummy-heavy-1',
+    studentId: 'SR-2025-001',
+    studentName: 'ACHMAD FADILLAH',
+    class: '7A',
+    dorm: 'Asrama Dewantara',
+    caseTitle: 'Kronologi Investigasi & Pemantauan Perilaku Agresi Ekstrem & Eskalasi Konflik',
+    incidentDate: '2026-09-08',
+    caseCategory: 'Pelanggaran Berat Level 3 (Agresi Fisik & Pembangkangan)',
+    caseSeverity: 'Tinggi (High Risk)',
+    status: 'Dalam Pemantauan Intensif',
+    primaryInvestigator: 'M ARDIAN NUGRAHA (Wali Asuh)',
+    initialAssessmentSummary: 'Terjadi insiden perkelahian fisik dan perusakan fasilitas asrama pada malam hari. Siswa menunjukkan agitasi motorik tinggi, ketidakmampuan meregulasi amarah saat diprovokasi teman sebaya, serta mekanisme pertahanan denial dan acting out.',
+    createdAt: '2026-09-08T22:30:00.000Z',
+    updatedAt: '2026-09-09T08:00:00.000Z',
+    shifts: [
+      {
+        id: 'shift-log-1',
+        shift: 'Shift Malam / Dini Hari (21.00 - 06.00)',
+        date: '2026-09-08',
+        time: '23:45',
+        officerName: 'Jepri Julianto',
+        officerRole: 'Wali Asuh Shift',
+        appearanceAndMotor: 'Tampak napas memburu, tangan mengepal, tremor ringan pada jari akibat lonjakan adrenalin, kontak mata tajam dan menghindar saat ditatap.',
+        moodAndAffect: 'Mood: Iritabel, mudah meledak (explosive); Afek: Konstriktif, labil saat ditanya perihal pemicu benturan fisik.',
+        speechAndThoughtPattern: 'Volume suara tinggi di awal, artikulasi cepat dan putus-putus. Pola pikir menunjukkan ide rasionalisasi agresif ("dia yang mulai duluan"). Nihil waham atau halusinasi.',
+        orientationAndConsciousness: 'Compos mentis penuh. Orientasi waktu, ruang asrama, dan orang sangat baik.',
+        triggerFactors: 'Ejekan verbal berulang dari teman sekamar terkait barang pribadi yang hilang memicu ambang frustrasi rendah (low frustration tolerance).',
+        emotionalRegulation: 'Defisit regulasi afek akut. Tidak mampu melakukan self-soothing sehingga melampiaskan secara fisik (acting out).',
+        defenseMechanisms: 'Acting Out (pelampiasan agresi fisik), Proyeksi (menimpakan seluruh kesalahan pada pihak lawan), Denial parsial.',
+        riskLevel: 'Tinggi (Eskalasi / Re-offense Risk)',
+        riskNotes: 'Potensi benturan susulan jika ditempatkan dalam satu kamar dengan korban/lawan bicara. Tidak ditemukan ide suicidality / self-harm.',
+        interventionTechnique: 'Protokol De-eskalasi Krisis Verbal, Teknik Relaksasi Pernapasan Dalam (Box Breathing 4-4-4), Pemisahan Ruang Tidur Sementara ke Bilik Tenang Asrama.',
+        studentResponse: 'Setelah 45 menit isolasi stimulus dan pendampingan empatik, tensi motorik menurun. Siswa mulai menangis (katarsis emosional) dan mengakui kekhilafannya.',
+        handoverNotes: 'Siswa tidur di Kamar Transit B-02. Jangan biarkan berinteraksi tanpa pengawasan dengan siswa lawan. Pantau saat bangun Subuh apakah masih ada afek dendam.'
+      },
+      {
+        id: 'shift-log-2',
+        shift: 'Shift Pagi (06.00 - 14.00)',
+        date: '2026-09-09',
+        time: '07:30',
+        officerName: 'M ARDIAN NUGRAHA',
+        officerRole: 'Konselor BK',
+        appearanceAndMotor: 'Penampilan rapi berbusana seragam, gestur motorik tenang, kontak mata mulai adekuat dan kooperatif.',
+        moodAndAffect: 'Mood: Disforik ringan, ada rasa bersalah dan cemas akan pemanggilan orang tua. Afek: Fleksibel dan selaras.',
+        speechAndThoughtPattern: 'Bicara dengan intonasi wajar dan perlahan. Alur pikir runtut dan koheren, mampu merefleksikan konsekuensi tindakan.',
+        orientationAndConsciousness: 'Compos mentis, daya ingat dan tilikan diri (insight) berada pada Level 4 (sadar bahwa perilakunya salah dan merugikan orang lain).',
+        triggerFactors: 'Kecemasan mendalam terhadap sanksi skorsing atau kemarahan orang tua saat surat panggilan dikirimkan.',
+        emotionalRegulation: 'Mulai terbentuk regulasi mandiri, mampu mendengarkan arahan tanpa interupsi defensif.',
+        defenseMechanisms: 'Sublimasi awal, intelektualisasi, rasionalisasi mulai berkurang digantikan perasaan bersalah yang sehat.',
+        riskLevel: 'Sedang (Perlu Pengawasan)',
+        riskNotes: 'Risiko agresi rendah, namun perlu antisipasi reaksi cemas atau menarik diri saat orang tua tiba di sekolah.',
+        interventionTechnique: 'Cognitive Reframing (Restrukturisasi Kognitif), Konseling Individual Realitas (WDEP System), Persiapan Konferensi Kasus Bersama Kepala Asrama.',
+        studentResponse: 'Sangat kooperatif. Menyatakan siap meminta maaf secara tertulis dan menerima tugas pemulihan disiplin.',
+        handoverNotes: 'Siswa tetap mengikuti jam belajar dengan pemantauan tidak langsung oleh guru kelas. Pada shift siang jadwalkan mediasi terfokus antar-pihak.'
+      }
+    ]
+  }
+];
+
+export function loadSpecialChronologyCases(): SpecialChronologyCase[] {
+  try {
+    const saved = localStorage.getItem('sr_special_chronology_cases');
+    if (!saved) {
+      localStorage.setItem('sr_special_chronology_cases', JSON.stringify(INITIAL_SPECIAL_CHRONOLOGY_CASES));
+      return INITIAL_SPECIAL_CHRONOLOGY_CASES;
+    }
+    return JSON.parse(saved);
+  } catch (error) {
+    console.error('Failed to load special chronology cases', error);
+    return INITIAL_SPECIAL_CHRONOLOGY_CASES;
+  }
+}
+
+export function saveSpecialChronologyCases(cases: SpecialChronologyCase[]): void {
+  localStorage.setItem('sr_special_chronology_cases', JSON.stringify(cases));
+}
+

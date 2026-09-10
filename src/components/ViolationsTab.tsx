@@ -98,7 +98,7 @@ export const ViolationsTab: React.FC<ViolationsTabProps> = ({
   // Check saved draft on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_VIOLATIONS_KEY) || localStorage.getItem('SANTRI_VIOLATIONS_DRAFT');
+      const saved = localStorage.getItem(DRAFT_VIOLATIONS_KEY) || localStorage.getItem('SR_VIOLATIONS_DRAFT_FALLBACK');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.note || parsed.photo || parsed.urlInput)) {

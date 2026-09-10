@@ -16,7 +16,8 @@ import {
   X,
   QrCode,
   BookOpen,
-  CalendarHeart
+  CalendarHeart,
+  Brain
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,6 +26,7 @@ interface SidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   userRole?: 'admin' | 'guru';
+  enableSpecialChronology?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -32,7 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   isOpenMobile,
   onCloseMobile,
-  userRole = 'admin'
+  userRole = 'admin',
+  enableSpecialChronology = false
 }) => {
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
@@ -43,6 +46,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'prayer-attendance', label: 'Absensi & Ceklist', icon: QrCode },
     { id: 'menstruation', label: 'Tracking Menstruasi', icon: CalendarHeart },
     { id: 'violations', label: 'Pelanggaran', icon: AlertTriangle },
+    ...(enableSpecialChronology
+      ? [{ id: 'special-chronology', label: 'Kronologi Kasus', icon: Brain, isSpecial: true }]
+      : []),
     { id: 'leaves', label: 'Surat Izin Keluar', icon: DoorOpen },
     { id: 'medical', label: 'UKS & Rekam Medis', icon: HeartPulse },
     { id: 'report-card', label: 'Rapor & Rekapitulasi', icon: FileSignature, restrictedForGuru: true },
@@ -114,7 +120,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }`}
               >
                 <Icon className="w-5 h-5 text-center flex-shrink-0" />
-                <span>{item.label}</span>
+                <span className="flex-1 text-left">{item.label}</span>
+                {(item as any).isSpecial && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    Khusus
+                  </span>
+                )}
               </button>
             );
           })}

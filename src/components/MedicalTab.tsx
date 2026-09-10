@@ -148,7 +148,7 @@ export const MedicalTab: React.FC<MedicalTabProps> = ({
   // Check saved draft on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_MEDICAL_KEY) || localStorage.getItem('SANTRI_MEDICAL_DRAFT');
+      const saved = localStorage.getItem(DRAFT_MEDICAL_KEY) || localStorage.getItem('SR_MEDICAL_DRAFT_FALLBACK');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.symptoms || parsed.diagnosis || parsed.treatment || parsed.notes)) {

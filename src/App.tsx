@@ -12,7 +12,8 @@ import {
   PrayerAttendance,
   ConnectingJournal,
   MenstruationRecord,
-  MeetingMinute
+  MeetingMinute,
+  SpecialChronologyCase
 } from './types';
 import {
   loadAppConfig,
@@ -39,6 +40,8 @@ import {
   savePrayerAttendance,
   loadMenstruationRecords,
   saveMenstruationRecords,
+  loadSpecialChronologyCases,
+  saveSpecialChronologyCases,
   loadLastSyncTime,
   saveLastSyncTime,
   loadLastPushTime,
@@ -67,6 +70,7 @@ import { ReportAndRecapTab } from './components/ReportAndRecapTab';
 import { SettingsTab } from './components/SettingsTab';
 import { LiveMonitorTab } from './components/LiveMonitorTab';
 import { MeetingMinutesTab } from './components/MeetingMinutesTab';
+import { SpecialChronologyTab } from './components/SpecialChronologyTab';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -98,6 +102,7 @@ export default function App() {
   }, [prayerAttendance]);
   const [menstruationRecords, setMenstruationRecords] = useState<MenstruationRecord[]>(loadMenstruationRecords);
   const [reports, setReports] = useState<Record<string, ReportCardData>>(loadReports);
+  const [specialCases, setSpecialCases] = useState<SpecialChronologyCase[]>(loadSpecialChronologyCases);
 
   const [announcement, setAnnouncement] = useState<string>(() => {
     return localStorage.getItem('sr_announcement_text') ||
@@ -262,6 +267,7 @@ export default function App() {
     menstruation: 'Tracking Menstruasi, Masa Bersuci & Ibadah Asrama Putri',
     students: 'Data Induk Murid Sekolah Rakyat',
     violations: 'Pelanggaran',
+    'special-chronology': 'Kronologi Kasus Setiap Shift (Psikologi & Psikiatri Kasus Berat)',
     counseling: 'Pendampingan BK & Konseling',
     leaves: 'Surat Izin Keluar & Kepulangan Asrama (Pesiar, Berobat & Pulang)',
     medical: 'Klinik UKS & Rekam Medis Keasramaan',
@@ -746,6 +752,42 @@ export default function App() {
       });
     },
     [config.googleScriptUrl, recordDataPushSuccess]
+  );
+
+  // Special Chronology Cases Handlers (Kasus Berat Psikiatri & Shift Log)
+  const handleSaveSpecialCase = useCallback(
+    (item: SpecialChronologyCase, isEdit: boolean) => {
+      setSpecialCases((prev) => {
+        let updated: SpecialChronologyCase[];
+        if (isEdit) {
+          updated = prev.map((c) => (c.id === item.id ? item : c));
+        } else {
+          updated = [item, ...prev];
+        }
+        saveSpecialChronologyCases(updated);
+        return updated;
+      });
+      showToast(
+        isEdit ? 'Kasus Khusus Diperbarui' : 'Kasus Khusus Dicatat',
+        isEdit
+          ? 'Berkas kronologi dan observasi shift berhasil diperbarui.'
+          : 'Kasus pelanggaran berat berhasil didokumentasikan dalam sistem psikiatri & psikologi.',
+        'success'
+      );
+    },
+    [showToast]
+  );
+
+  const handleDeleteSpecialCase = useCallback(
+    (id: string) => {
+      setSpecialCases((prev) => {
+        const updated = prev.filter((c) => c.id !== id);
+        saveSpecialChronologyCases(updated);
+        return updated;
+      });
+      showToast('Kasus Dihapus', 'Berkas kronologi kasus berhasil dihapus dari sistem.', 'info');
+    },
+    [showToast]
   );
 
   const handleDeleteConnectingJournal = useCallback(
@@ -1513,6 +1555,7 @@ export default function App() {
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           userRole={userRole}
+          enableSpecialChronology={config.enableSpecialChronology}
         />
 
         {/* Main Content Area */}
@@ -1732,6 +1775,19 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'special-chronology' && (
+              <SpecialChronologyTab
+                students={studentsWithViolationCounts}
+                violations={violations}
+                cases={specialCases}
+                config={config}
+                onSaveCase={handleSaveSpecialCase}
+                onDeleteCase={handleDeleteSpecialCase}
+                onShowToast={showToast}
+                onAskConfirm={askConfirm}
+              />
+            )}
+
             {activeTab === 'settings' && userRole === 'admin' && (
               <SettingsTab
                 config={config}
@@ -1770,6 +1826,7 @@ export default function App() {
                 prayerAttendance={prayerAttendance}
                 onSavePrayerAttendance={handleSavePrayerAttendance}
                 onDeletePrayerAttendance={handleDeletePrayerAttendanceItem}
+                onNavigateToSpecialChronology={() => setActiveTab('special-chronology')}
               />
             )}
           </div>

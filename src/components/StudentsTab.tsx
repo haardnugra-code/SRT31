@@ -39,6 +39,7 @@ import {
   generateAllStudentCardsPDF,
   generateStudentCardSheetA4PDF
 } from '../services/pdfGenerator';
+import { consolidateDormList, getCanonicalDormName } from '../utils/dormHelper';
 import { StudentProfileTab } from './StudentProfileTab';
 
 interface StudentsTabProps {
@@ -139,28 +140,25 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
   const cleanWaliAsuh = config.waliAsuhList.map((item) => item.split('|')[0].trim());
 
-  // List of dorm options following system configuration (config.dormList)
+  // List of dorm options following system configuration (config.dormList) - consolidated
   const dormListFromConfig = useMemo(() => {
-    return config.dormList && config.dormList.length > 0
-      ? config.dormList
-      : ['Asrama Terpadu'];
+    return consolidateDormList(
+      config.dormList && config.dormList.length > 0
+        ? config.dormList
+        : ['Asrama Terpadu']
+    );
   }, [config.dormList]);
 
   // Dorm options for form modal selection (includes current formDorm if not in system config)
   const formDormOptions = useMemo(() => {
-    if (formDorm && !dormListFromConfig.includes(formDorm)) {
-      return [formDorm, ...dormListFromConfig];
-    }
-    return dormListFromConfig;
+    const rawOptions = formDorm ? [formDorm, ...dormListFromConfig] : dormListFromConfig;
+    return consolidateDormList(rawOptions);
   }, [dormListFromConfig, formDorm]);
 
-  // Dorm options for filter dropdown
+  // Dorm options for filter dropdown (consolidated into unique single dorm entities)
   const filterDormOptions = useMemo(() => {
-    const set = new Set<string>(dormListFromConfig);
-    students.forEach((s) => {
-      if (s.dorm) set.add(s.dorm);
-    });
-    return Array.from(set);
+    const allNames = [...dormListFromConfig, ...students.map((s) => s.dorm)];
+    return consolidateDormList(allNames);
   }, [dormListFromConfig, students]);
 
   // Filtered Students using useMemo for zero input lag
@@ -172,10 +170,14 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         s.id.toLowerCase().includes(q) ||
         (s.rfidTag && s.rfidTag.toLowerCase().includes(q));
       const matchClass = classFilter === '' || s.class === classFilter;
-      const matchDorm = dormFilter === '' || s.dorm === dormFilter;
+      const canonicalStudentDorm = getCanonicalDormName(s.dorm, dormListFromConfig);
+      const matchDorm =
+        dormFilter === '' ||
+        canonicalStudentDorm === dormFilter ||
+        s.dorm === dormFilter;
       return matchName && matchClass && matchDorm;
     });
-  }, [students, searchQuery, classFilter, dormFilter]);
+  }, [students, searchQuery, classFilter, dormFilter, dormListFromConfig]);
 
   // Multi-selection state for printing cards
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -256,6 +258,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     const shirtVal = formShirtSize.trim() || undefined;
     const pantsVal = formPantsSize.trim() || undefined;
 
+    const canonicalFormDorm = getCanonicalDormName(formDorm, dormListFromConfig);
+
     if (editingStudentId) {
       const existing = students.find((s) => s.id === editingStudentId);
       const updatedStudent: Student = {
@@ -264,7 +268,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         name,
         rfidTag: rfidTag || undefined,
         class: formClass,
-        dorm: formDorm,
+        dorm: canonicalFormDorm,
         caretaker: formCaretaker,
         height: heightVal,
         weight: weightVal,
@@ -285,7 +289,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         name,
         rfidTag: rfidTag || undefined,
         class: formClass,
-        dorm: formDorm,
+        dorm: canonicalFormDorm,
         caretaker: formCaretaker,
         height: heightVal,
         weight: weightVal,

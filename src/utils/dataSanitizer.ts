@@ -8,6 +8,7 @@ import {
   PrayerAttendance,
   ReportCardData
 } from '../types';
+import { getCanonicalDormName } from './dormHelper';
 
 export interface ShadowDataAuditStats {
   fixedNamesCount: number;
@@ -103,12 +104,16 @@ export function reconcileAndSanitizeShadowData(
         // Different student sharing the same ID! Assign unique auto-ID to avoid losing student
         cleanId = `${cleanId}_${idx + 1}`;
         normKey = cleanId.toLowerCase();
+        const canonicalDorm = getCanonicalDormName(s.dorm);
+        if (s.dorm && s.dorm.trim() !== canonicalDorm) {
+          stats.fixedClassDormCount++;
+        }
         const studentObj: Student = {
           ...s,
           id: cleanId,
           name: cleanName,
           class: s.class || 'SD',
-          dorm: s.dorm || 'Asrama Dewantara',
+          dorm: canonicalDorm,
           caretaker: s.caretaker ? String(s.caretaker).trim() : '',
           rfidTag: s.rfidTag ? String(s.rfidTag).trim() : undefined
         };
@@ -117,12 +122,16 @@ export function reconcileAndSanitizeShadowData(
         cleanedStudents.push(studentObj);
       }
     } else {
+      const canonicalDorm = getCanonicalDormName(s.dorm);
+      if (s.dorm && s.dorm.trim() !== canonicalDorm) {
+        stats.fixedClassDormCount++;
+      }
       const studentObj: Student = {
         ...s,
         id: cleanId,
         name: cleanName,
         class: s.class || 'SD',
-        dorm: s.dorm || 'Asrama Dewantara',
+        dorm: canonicalDorm,
         caretaker: s.caretaker ? String(s.caretaker).trim() : '',
         rfidTag: s.rfidTag ? String(s.rfidTag).trim() : undefined
       };

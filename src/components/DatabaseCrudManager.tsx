@@ -38,6 +38,7 @@ import {
   ReportCardData,
   AppConfig
 } from '../types';
+import { consolidateDormList } from '../utils/dormHelper';
 
 export type DatabaseTableKey =
   | 'students'
@@ -1153,11 +1154,11 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">Gedung Asrama</label>
                       <select
-                        value={formData.dorm || config.dormList[0] || 'Asrama Terpadu'}
+                        value={formData.dorm || consolidateDormList(config.dormList)[0] || 'Asrama Terpadu'}
                         onChange={(e) => setFormData({ ...formData, dorm: e.target.value })}
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
                       >
-                        {config.dormList.map((d) => (
+                        {consolidateDormList(config.dormList).map((d) => (
                           <option key={d} value={d}>
                             {d}
                           </option>

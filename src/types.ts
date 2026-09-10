@@ -322,6 +322,80 @@ export interface AppConfig {
   disciplineThresholds?: DisciplineStatusThreshold[];
   raporStructureCustom?: ReportCategory[];
   autoResetPointsPerSemester?: boolean;
+  enableSpecialChronology?: boolean;
+}
+
+export type ShiftType =
+  | 'Shift Pagi (06.00 - 14.00)'
+  | 'Shift Siang / Sore (14.00 - 21.00)'
+  | 'Shift Malam / Dini Hari (21.00 - 06.00)';
+
+export type ClinicalRiskLevel =
+  | 'Rendah (Aman)'
+  | 'Sedang (Perlu Pengawasan)'
+  | 'Tinggi (Eskalasi / Re-offense Risk)'
+  | 'Kritis (Bahaya Langsung / Rujukan)';
+
+export type SpecialCaseSeverity =
+  | 'Tinggi (High Risk)'
+  | 'Kritis (Severe / Crisis)'
+  | 'Investigasi Khusus';
+
+export type SpecialCaseStatus =
+  | 'Dalam Pemantauan Intensif'
+  | 'Observasi Stabil'
+  | 'Menunggu Sidang Keasramaan'
+  | 'Rujukan Psikiater / Faskes Luar'
+  | 'Selesai / Resolusi';
+
+export interface SpecialShiftLog {
+  id: string;
+  shift: ShiftType;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  officerName: string;
+  officerRole: 'Wali Asuh Shift' | 'Konselor BK' | 'Tim Investigasi Keasramaan' | 'Psikolog / Tenaga Klinis';
+  
+  // 1. Pemeriksaan Status Mental (Mental Status Examination / MSE Observasi)
+  appearanceAndMotor: string; // Penampilan fisik, kontak mata, tingkat kegelisahan, postur, tanda agitasi motorik
+  moodAndAffect: string; // Afek & suasana perasaan (labil, tumpul, agresif, cemas, defensif, datar, sedih)
+  speechAndThoughtPattern: string; // Arus bicara & pola pikir (koheren, memblokir, curiga/paranoid, impulsif)
+  orientationAndConsciousness: string; // Orientasi & tingkat kesadaran realitas
+  
+  // 2. Analisis Dinamika Psikologis & Mekanisme Pertahanan Diri
+  triggerFactors: string; // Faktor pemicu langsung / stimulus konflik
+  emotionalRegulation: string; // Regulasi emosi (mampu self-soothe vs eskalasi amarah)
+  defenseMechanisms: string; // Mekanisme pertahanan ego (Denial, Rasionalisasi, Proyeksi, Acting Out, Represi, Displacement)
+  
+  // 3. Evaluasi Risiko Klinis & Perilaku (Risk Assessment)
+  riskLevel: ClinicalRiskLevel;
+  riskNotes: string; // Indikasi bahaya (self-harm, agresi fisik, pelarian/kabur, provokasi teman)
+  
+  // 4. Intervensi Konseling & Terapi yang Diberikan
+  interventionTechnique: string; // Teknik konseling/de-eskalasi (De-eskalasi Krisis, Active Listening, Grounding, Reframing, Motivational Interviewing)
+  studentResponse: string; // Respon siswa terhadap konseling
+  
+  // 5. Rekomendasi & Serah Terima Shift (Handover / Hand-off Notes)
+  handoverNotes: string; // Instruksi khusus untuk petugas shift berikutnya
+}
+
+export interface SpecialChronologyCase {
+  id: string;
+  violationId?: string; // Tautan ke ID Pelanggaran berat jika ada
+  studentId: string;
+  studentName: string;
+  class: string;
+  dorm: string;
+  caseTitle: string; // Judul / nama berkas kasus
+  incidentDate: string; // Tanggal insiden pelanggaran
+  caseCategory: string; // Kategori Pelanggaran Berat
+  caseSeverity: SpecialCaseSeverity;
+  status: SpecialCaseStatus;
+  primaryInvestigator: string; // Pengasuh utama / Penanggung jawab kasus
+  initialAssessmentSummary: string; // Ringkasan latar belakang & analisis awal kasus
+  shifts: SpecialShiftLog[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ParentSummonsOptions {

@@ -99,7 +99,7 @@ export const LeavesTab: React.FC<LeavesTabProps> = ({
   // Check saved draft on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_LEAVES_KEY) || localStorage.getItem('SANTRI_LEAVES_DRAFT');
+      const saved = localStorage.getItem(DRAFT_LEAVES_KEY) || localStorage.getItem('SR_LEAVES_DRAFT_FALLBACK');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.reason || parsed.destinationAddress || parsed.notes)) {

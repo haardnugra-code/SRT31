@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
-import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord, PrayerAttendance, ParentSummonsOptions, ConnectingJournal, MenstruationRecord, MeetingMinute } from '../types';
+import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord, PrayerAttendance, ParentSummonsOptions, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog } from '../types';
 import { formatDateIndonesian, formatDateShort } from '../utils/dateFormatter';
 import { calculateStudentDisciplineScore } from './storage';
 
@@ -5044,3 +5044,344 @@ export async function printMeetingAttendancePDF(minute: MeetingMinute, config: A
   
   doc.save(`Daftar_Hadir_${minute.agenda.replace(/\s+/g, '_')}_${minute.date}.pdf`);
 }
+
+/**
+ * Menghasilkan Berita Acara & Laporan Klinis Kronologis Kasus Pelanggaran Berat Keasramaan
+ * berbasis metode ilmu psikiatri, psikologi, dan konseling klinis per shift.
+ */
+export async function generateSpecialChronologyPDF(caseItem: SpecialChronologyCase, config: AppConfig): Promise<void> {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
+  const margin = 14;
+  const contentWidth = pageWidth - margin * 2;
+
+  // Header KOP Resmi
+  let leftLogoBase64 = '';
+  let rightLogoBase64 = '';
+  try {
+    leftLogoBase64 = await loadLogoImage(config?.logoKiriUrl || '', 'left');
+  } catch {
+    leftLogoBase64 = generateProgrammaticLogo('left');
+  }
+
+  try {
+    rightLogoBase64 = await loadLogoImage(config?.logoKananUrl || '', 'right');
+  } catch {
+    rightLogoBase64 = generateProgrammaticLogo('right');
+  }
+
+  if (leftLogoBase64) {
+    try {
+      doc.addImage(leftLogoBase64, 'PNG', margin, 10, 18, 18);
+    } catch {}
+  }
+  if (rightLogoBase64) {
+    try {
+      doc.addImage(rightLogoBase64, 'PNG', pageWidth - margin - 18, 10, 18, 18);
+    } catch {}
+  }
+
+  // Teks KOP
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(30, 41, 59);
+
+  const kopKiriLines = (config.kopKiri || 'KEMENTERIAN SOSIAL REPUBLIK INDONESIA').split('\n');
+  const kopKananLines = (config.kopKanan || 'SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG').split('\n');
+
+  let kopY = 12;
+  kopKiriLines.forEach((line) => {
+    doc.text(line.trim(), pageWidth / 2, kopY, { align: 'center' });
+    kopY += 4.2;
+  });
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  kopKananLines.forEach((line) => {
+    doc.text(line.trim(), pageWidth / 2, kopY, { align: 'center' });
+    kopY += 3.8;
+  });
+
+  // Garis Pembatas KOP
+  const lineY = Math.max(kopY + 2, 34);
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.8);
+  doc.line(margin, lineY, pageWidth - margin, lineY);
+  doc.setLineWidth(0.2);
+  doc.line(margin, lineY + 1, pageWidth - margin, lineY + 1);
+
+  let currentY = lineY + 7;
+
+  // Stamp / Label Dokumen Rahasia
+  doc.setFillColor(239, 68, 68); // Red
+  doc.roundedRect(pageWidth - margin - 35, currentY - 3, 35, 6, 1, 1, 'F');
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('RAHASIA / CONFIDENTIAL', pageWidth - margin - 17.5, currentY + 1.2, { align: 'center' });
+
+  // Judul Dokumen
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(11.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('BERITA ACARA & LAPORAN KRONOLOGIS KASUS KHUSUS KEASRAMAAN', pageWidth / 2, currentY + 2, { align: 'center' });
+  currentY += 6.5;
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Metode Observasi Psikologi, Pemeriksaan Status Mental (MSE) & Pemantauan Shift Berkala', pageWidth / 2, currentY, { align: 'center' });
+  currentY += 6;
+
+  // Tabel Identitas & Ringkasan Kasus
+  autoTable(doc, {
+    startY: currentY,
+    margin: { left: margin, right: margin },
+    head: [[
+      { content: 'IDENTITAS KASUS & PESERTA DIDIK', colSpan: 4, styles: { halign: 'left', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' } }
+    ]],
+    body: [
+      [
+        { content: 'Nomor Berkas', styles: { fontStyle: 'bold', cellWidth: 32 } },
+        { content: `: ${caseItem.id}`, styles: { cellWidth: 55 } },
+        { content: 'Tingkat Keparahan', styles: { fontStyle: 'bold', cellWidth: 35 } },
+        { content: `: ${caseItem.caseSeverity}`, styles: { fontStyle: 'bold', textColor: [185, 28, 28] } }
+      ],
+      [
+        { content: 'Nama Siswa', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.studentName.toUpperCase()}` },
+        { content: 'Status Kasus', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.status}`, styles: { fontStyle: 'bold', textColor: [3, 105, 161] } }
+      ],
+      [
+        { content: 'NISN / ID Siswa', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.studentId}` },
+        { content: 'Tanggal Insiden', styles: { fontStyle: 'bold' } },
+        { content: `: ${formatDateIndonesian(caseItem.incidentDate)}` }
+      ],
+      [
+        { content: 'Kelas / Asrama', styles: { fontStyle: 'bold' } },
+        { content: `: Kelas ${caseItem.class} • ${caseItem.dorm}` },
+        { content: 'Penanggung Jawab', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.primaryInvestigator}` }
+      ],
+      [
+        { content: 'Kategori Kasus', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.caseCategory}`, colSpan: 3, styles: { fontStyle: 'bold' } }
+      ],
+      [
+        { content: 'Ringkasan Latar Belakang & Analisis Awal Kasus', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [241, 245, 249] } }
+      ],
+      [
+        { content: caseItem.initialAssessmentSummary || 'Belum ada ringkasan awal kasus.', colSpan: 4, styles: { fontSize: 8 } }
+      ]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { cellWidth: 35 },
+      1: { cellWidth: 55 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 57 }
+    }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 5;
+
+  // Bagian Observasi Kronologis Setiap Shift
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('TABEL KRONOLOGIS OBSERVASI PSIKOLOGI SETIAP SHIFT', margin, currentY);
+  currentY += 3.5;
+
+  if (caseItem.shifts.length === 0) {
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Belum ada catatan observasi shift yang tercatat dalam berkas kasus ini.', margin, currentY + 4);
+    currentY += 12;
+  } else {
+    // Siapkan body tabel shift
+    const shiftTableBody: any[] = [];
+
+    caseItem.shifts.forEach((s, idx) => {
+      // Header baris shift
+      shiftTableBody.push([
+        {
+          content: `LOG #${idx + 1} — ${s.shift.toUpperCase()} | Tanggal: ${formatDateShort(s.date)} (${s.time} WIB) | Petugas: ${s.officerName} (${s.officerRole})`,
+          colSpan: 2,
+          styles: { fillColor: [226, 232, 240], fontStyle: 'bold', textColor: [15, 23, 42], fontSize: 8 }
+        }
+      ]);
+
+      // 1. MSE
+      shiftTableBody.push([
+        { content: '1. Pemeriksaan Status Mental (MSE)', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [248, 250, 252] } },
+        {
+          content: `• Penampilan & Motorik: ${s.appearanceAndMotor}\n• Afek & Mood: ${s.moodAndAffect}\n• Arus Pikir & Pola Bicara: ${s.speechAndThoughtPattern}\n• Orientasi & Kesadaran: ${s.orientationAndConsciousness}`,
+          styles: { fontSize: 7.5 }
+        }
+      ]);
+
+      // 2. Dinamika Psikologis & Koping
+      shiftTableBody.push([
+        { content: '2. Dinamika Psikologis & Koping', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [248, 250, 252] } },
+        {
+          content: `• Stimulus / Faktor Pemicu: ${s.triggerFactors}\n• Regulasi Emosi: ${s.emotionalRegulation}\n• Mekanisme Pertahanan Diri (Defense): ${s.defenseMechanisms}`,
+          styles: { fontSize: 7.5 }
+        }
+      ]);
+
+      // 3. Evaluasi Risiko
+      const riskColor: [number, number, number] =
+        s.riskLevel.includes('Kritis') ? [185, 28, 28] :
+        s.riskLevel.includes('Tinggi') ? [194, 65, 12] :
+        s.riskLevel.includes('Sedang') ? [161, 98, 7] : [21, 128, 61];
+
+      shiftTableBody.push([
+        { content: '3. Evaluasi Risiko & Bahaya', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [248, 250, 252] } },
+        {
+          content: `Tingkat Risiko: ${s.riskLevel}\nCatatan Bahaya/Safety: ${s.riskNotes}`,
+          styles: { fontSize: 7.5, textColor: riskColor, fontStyle: 'bold' }
+        }
+      ]);
+
+      // 4. Intervensi Konseling & Respon
+      shiftTableBody.push([
+        { content: '4. Intervensi Konseling Diberikan', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [248, 250, 252] } },
+        {
+          content: `• Pendekatan / Teknik: ${s.interventionTechnique}\n• Respon Afektif & Kognitif Siswa: ${s.studentResponse}`,
+          styles: { fontSize: 7.5 }
+        }
+      ]);
+
+      // 5. Handover Shift Selanjutnya
+      shiftTableBody.push([
+        { content: '5. Instruksi Handover Shift', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [254, 243, 199] } },
+        {
+          content: `${s.handoverNotes}`,
+          styles: { fontSize: 7.5, fontStyle: 'bold', textColor: [146, 64, 14] }
+        }
+      ]);
+    });
+
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [['Dimensi Asesmen Klinis', 'Temuan Observasi & Analisis Psikologis Shift']],
+      body: shiftTableBody,
+      theme: 'grid',
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+      styles: { cellPadding: 2, textColor: [30, 41, 59] },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: contentWidth - 50 }
+      }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // Cek apakah sisa halaman cukup untuk kesimpulan dan tanda tangan
+  if (currentY > pageHeight - 65) {
+    doc.addPage();
+    currentY = 20;
+  }
+
+  // Rekomendasi & Rencana Tindak Lanjut Multidisipliner
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('KESIMPULAN EVALUASI & REKOMENDASI KLINIS MULTIDISIPLINER:', margin, currentY);
+  currentY += 4.5;
+
+  autoTable(doc, {
+    startY: currentY,
+    margin: { left: margin, right: margin },
+    body: [
+      [
+        { content: '1. Rekomendasi Konseling & Psikiatri', styles: { fontStyle: 'bold', cellWidth: 55 } },
+        { content: 'Dibutuhkan sesi konseling individual lanjutan terjadwal 2x seminggu. Apabila stabilitas emosi memburuk, lakukan rujukan ke Psikolog / Psikiater Rumah Sakit Rujukan.' }
+      ],
+      [
+        { content: '2. Tindakan Disiplin Keasramaan', styles: { fontStyle: 'bold' } },
+        { content: 'Pemberian sanksi edukatif terstruktur tanpa kekerasan fisik, penugasan jurnal refleksi diri, serta monitoring ketertiban asrama oleh Wali Asuh piket.' }
+      ],
+      [
+        { content: '3. Komunikasi Orang Tua & Sekolah', styles: { fontStyle: 'bold' } },
+        { content: 'Pemanggilan orang tua/wali ke asrama untuk penandatanganan pakta integritas pembinaan bersama tim Guru BK dan Pengelola Asrama.' }
+      ]
+    ],
+    theme: 'plain',
+    styles: { fontSize: 7.5, cellPadding: 1.5, textColor: [51, 65, 85] }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 8;
+
+  // Cek space tanda tangan
+  if (currentY > pageHeight - 48) {
+    doc.addPage();
+    currentY = 22;
+  }
+
+  // Pengesahan / Lembar Tanda Tangan
+  const sigDate = formatDateIndonesian(new Date().toISOString().split('T')[0]);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 41, 59);
+  doc.text(`Palembang, ${sigDate}`, pageWidth - margin - 50, currentY);
+  currentY += 4;
+
+  const colWidth = contentWidth / 3;
+  const col1X = margin + colWidth / 2;
+  const col2X = margin + colWidth + colWidth / 2;
+  const col3X = margin + colWidth * 2 + colWidth / 2;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Konselor / Tim Investigasi,', col1X, currentY, { align: 'center' });
+  doc.text('Wali Asrama Mandiri,', col2X, currentY, { align: 'center' });
+  doc.text('Mengetahui,\nKepala Sekolah,', col3X, currentY, { align: 'center' });
+
+  currentY += 20;
+
+  // Nama & NIP
+  doc.setFont('helvetica', 'bold');
+  doc.text(caseItem.primaryInvestigator.split('(')[0].trim(), col1X, currentY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text('NIP. - / Tim Khusus', col1X, currentY + 3.5, { align: 'center' });
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text(config.waliAsrama || 'HISNUL HASHIN, SE', col2X, currentY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(config.waliAsramaNip || 'NIP. 197406262025211027', col2X, currentY + 3.5, { align: 'center' });
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text(config.kepalaSekolah || 'YUNI ARSI, S.Pd', col3X, currentY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(config.kepalaSekolahNip || 'NIP. 197206051999032002', col3X, currentY + 3.5, { align: 'center' });
+
+  // Footer Watermark Nomor Halaman
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Dokumen Rahasia Keasramaan — Berkas: ${caseItem.id} — Halaman ${i} dari ${totalPages}`,
+      pageWidth / 2,
+      pageHeight - 6,
+      { align: 'center' }
+    );
+  }
+
+  doc.save(`Laporan_Kronologi_Psikologi_${caseItem.studentName.replace(/\s+/g, '_')}_${caseItem.id}.pdf`);
+}
+

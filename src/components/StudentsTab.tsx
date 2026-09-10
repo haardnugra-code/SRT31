@@ -128,6 +128,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const [formRfidTag, setFormRfidTag] = useState('');
   const [formClass, setFormClass] = useState<ClassLevel>('SD');
   const [formDorm, setFormDorm] = useState(config.dormList[0] || 'Asrama Terpadu');
+  const [isManualDormMode, setIsManualDormMode] = useState<boolean>(false);
   const [formCaretaker, setFormCaretaker] = useState(
     config.waliAsuhList[0]?.split('|')[0] || 'M. ARDIAN NUGRAHA, S.H'
   );
@@ -215,6 +216,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     setFormRfidTag('');
     setFormClass('SD');
     setFormDorm(config.dormList[0] || 'Asrama Terpadu');
+    setIsManualDormMode(false);
     setFormCaretaker(cleanWaliAsuh[0] || 'M. ARDIAN NUGRAHA, S.H');
     setFormHeight('');
     setFormWeight('');
@@ -232,6 +234,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     setFormRfidTag(student.rfidTag || '');
     setFormClass(student.class);
     setFormDorm(student.dorm);
+    const isStandardDorm = dormListFromConfig.includes(student.dorm);
+    setIsManualDormMode(!isStandardDorm);
     setFormCaretaker(student.caretaker);
     setFormHeight(student.height !== undefined ? String(student.height) : '');
     setFormWeight(student.weight !== undefined ? String(student.weight) : '');
@@ -258,7 +262,9 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     const shirtVal = formShirtSize.trim() || undefined;
     const pantsVal = formPantsSize.trim() || undefined;
 
-    const canonicalFormDorm = getCanonicalDormName(formDorm, dormListFromConfig);
+    const canonicalFormDorm = isManualDormMode
+      ? (formDorm.trim() || 'Asrama Terpadu')
+      : getCanonicalDormName(formDorm, dormListFromConfig);
 
     if (editingStudentId) {
       const existing = students.find((s) => s.id === editingStudentId);
@@ -1111,20 +1117,70 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                      Lokasi Gedung Asrama
-                    </label>
-                    <select
-                      value={formDorm}
-                      onChange={(e) => setFormDorm(e.target.value)}
-                      className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3.5 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                    >
-                      {formDormOptions.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        Lokasi Gedung Asrama
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !isManualDormMode;
+                          setIsManualDormMode(next);
+                          if (next && !formDorm) {
+                            setFormDorm('');
+                          }
+                        }}
+                        className="text-[11px] font-bold text-red-600 hover:text-red-700 underline flex items-center gap-1 transition"
+                      >
+                        {isManualDormMode ? '← Pilih dari Daftar Standar' : '✍️ Ketik Manual / Gedung Khusus'}
+                      </button>
+                    </div>
+
+                    {isManualDormMode ? (
+                      <div className="space-y-1">
+                        <input
+                          type="text"
+                          value={formDorm}
+                          onChange={(e) => setFormDorm(e.target.value)}
+                          list="institutional-dorm-suggestions"
+                          placeholder="Contoh: Wisma Sudirman, Paviliun A, Blok 2..."
+                          className="w-full border border-red-300 bg-white rounded-lg px-3.5 py-2 text-xs md:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                        />
+                        <datalist id="institutional-dorm-suggestions">
+                          {formDormOptions.map((d) => (
+                            <option key={d} value={d} />
+                          ))}
+                          <option value="Wisma Tamu Instansi" />
+                          <option value="Paviliun Transit" />
+                          <option value="Gedung Asrama Utama" />
+                        </datalist>
+                        <p className="text-[10px] text-slate-500">
+                          Pencatatan manual instansi: dapat mencatat wisma, paviliun, mess, atau kamar khusus secara fleksibel.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <select
+                          value={formDorm}
+                          onChange={(e) => {
+                            if (e.target.value === '__custom__') {
+                              setIsManualDormMode(true);
+                              setFormDorm('');
+                            } else {
+                              setFormDorm(e.target.value);
+                            }
+                          }}
+                          className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3.5 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                        >
+                          {formDormOptions.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                          <option value="__custom__">+ Ketik Asrama Manual / Unit Baru...</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
 

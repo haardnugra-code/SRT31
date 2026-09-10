@@ -1,0 +1,723 @@
+export const mmpiTniPolriBattery: PsychologicalTestDefinition = {
+  type: 'mmpi_tni_polri',
+  title: 'Tes Psikologi Kepribadian MMPI (Adaptasi Klinis TNI/POLRI)',
+  subtitle: 'Evaluasi 100 Item Klinis & Validitas Terstruktur',
+  description: 'Instrumen ini dirancang untuk mendeteksi profil kepribadian, stabilitas klinis, kejujuran (validitas), dan potensi kerentanan kejiwaan sesuai dengan standar seleksi atau evaluasi berkala aparat/kandidat kedinasan.',
+  targetAge: 'Kandidat Seleksi / Personel (17+ tahun)',
+  durationMinutes: 45,
+  totalQuestions: 100,
+  dimensions: [
+    { key: 'L', name: 'Skala L (Kebohongan / Defensiveness)', maxScore: 10, description: 'Kecenderungan untuk menampilkan diri secara berlebihan baik (faking good).' },
+    { key: 'F', name: 'Skala F (Infrequency / Faking Bad)', maxScore: 10, description: 'Kecenderungan melebih-lebihkan masalah atau menjawab acak.' },
+    { key: 'K', name: 'Skala K (Koreksi / Sikap Bertahan)', maxScore: 10, description: 'Tingkat defensif terhadap tes psikologi.' },
+    { key: 'Hs', name: 'Hipokondriasis (Kecemasan Kesehatan)', maxScore: 10, description: 'Kekhawatiran berlebihan terhadap fungsi tubuh dan kesehatan.' },
+    { key: 'D', name: 'Depresi (Distres Mental)', maxScore: 10, description: 'Tingkat kesedihan, keputusasaan, dan ketidakpuasan hidup.' },
+    { key: 'Hy', name: 'Histeria (Konversi Fisik)', maxScore: 10, description: 'Kecenderungan menggunakan gejala fisik untuk menghindari stres psikologis.' },
+    { key: 'Pd', name: 'Penyimpangan Psikopat (Otoritas)', maxScore: 10, description: 'Konflik dengan otoritas, norma sosial, dan impulsivitas.' },
+    { key: 'Pa', name: 'Paranoia (Kecurigaan)', maxScore: 10, description: 'Tingkat sensitivitas, kecurigaan, dan perasaan dianiaya.' },
+    { key: 'Pt', name: 'Psikastenia (Kecemasan / Obsesif)', maxScore: 10, description: 'Kecemasan kronis, keragu-raguan, dan perilaku obsesif.' },
+    { key: 'Sc', name: 'Skizofrenia (Keterasingan Sosial)', maxScore: 10, description: 'Pikiran kacau, keterasingan sosial yang tidak wajar.' },
+  ],
+  questions: [
+    {
+      id: 'mmpi_l_1',
+      number: 1,
+      dimensionKey: 'L',
+      text: 'Saya tidak pernah berbohong sekalipun untuk kebaikan.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_1',
+      number: 2,
+      dimensionKey: 'F',
+      text: 'Saya sering melihat bayangan hitam yang tidak terlihat orang lain.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_1',
+      number: 3,
+      dimensionKey: 'K',
+      text: 'Saya tidak butuh bantuan siapa pun untuk menyelesaikan masalah pribadi saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_1',
+      number: 4,
+      dimensionKey: 'Hs',
+      text: 'Saya sangat sering mengkhawatirkan kondisi kesehatan fisik saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_1',
+      number: 5,
+      dimensionKey: 'D',
+      text: 'Saya sering merasa sangat sedih dan murung hampir sepanjang hari.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_1',
+      number: 6,
+      dimensionKey: 'Hy',
+      text: 'Saya sering tiba-tiba sakit perut ketika harus menghadapi konflik besar.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_1',
+      number: 7,
+      dimensionKey: 'Pd',
+      text: 'Aturan dibuat hanya untuk membatasi kebebasan dan harus sering dilanggar.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_1',
+      number: 8,
+      dimensionKey: 'Pa',
+      text: 'Banyak orang yang secara rahasia ingin menjatuhkan karir atau hidup saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_1',
+      number: 9,
+      dimensionKey: 'Pt',
+      text: 'Saya sering terobsesi pada kesalahan kecil yang saya buat di masa lalu.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_1',
+      number: 10,
+      dimensionKey: 'Sc',
+      text: 'Saya sering memiliki ide-ide aneh yang membuat orang lain bingung.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_l_2',
+      number: 11,
+      dimensionKey: 'L',
+      text: 'Saya tidak pernah marah saat dikritik atau disalahkan.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_2',
+      number: 12,
+      dimensionKey: 'F',
+      text: 'Pikiran saya dikendalikan oleh kekuatan asing dari luar angkasa.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_2',
+      number: 13,
+      dimensionKey: 'K',
+      text: 'Saya tidak pernah merasa gugup walau dalam tekanan berat.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_2',
+      number: 14,
+      dimensionKey: 'Hs',
+      text: 'Saya sering merasa pusing atau sakit kepala berat akhir-akhir ini.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_2',
+      number: 15,
+      dimensionKey: 'D',
+      text: 'Masa depan terlihat sangat suram dan saya tidak punya harapan.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_2',
+      number: 16,
+      dimensionKey: 'Hy',
+      text: 'Saya butuh perhatian lebih banyak dari orang di sekitar saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_2',
+      number: 17,
+      dimensionKey: 'Pd',
+      text: 'Saya tidak peduli dengan omongan atau penilaian orang tentang diri saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_2',
+      number: 18,
+      dimensionKey: 'Pa',
+      text: 'Sangat berbahaya mempercayai rekan kerja karena mereka bisa berkhianat.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_2',
+      number: 19,
+      dimensionKey: 'Pt',
+      text: 'Saya punya kebiasaan mengecek hal berulang kali (seperti kunci pintu) karena ragu.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_2',
+      number: 20,
+      dimensionKey: 'Sc',
+      text: 'Saya merasa benar-benar terisolasi dan sendirian di dunia ini.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_l_3',
+      number: 21,
+      dimensionKey: 'L',
+      text: 'Saya selalu menaati peraturan lalu lintas setiap saat.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_3',
+      number: 22,
+      dimensionKey: 'F',
+      text: 'Saya merasa dunia akan segera kiamat dalam waktu dekat.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_3',
+      number: 23,
+      dimensionKey: 'K',
+      text: 'Kritikan orang lain sama sekali tidak mempengaruhi saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_3',
+      number: 24,
+      dimensionKey: 'Hs',
+      text: 'Dada saya sering terasa nyeri atau sesak napas tanpa aktivitas fisik.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_3',
+      number: 25,
+      dimensionKey: 'D',
+      text: 'Hal-hal yang dulu menyenangkan kini tidak lagi menarik minat saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_3',
+      number: 26,
+      dimensionKey: 'Hy',
+      text: 'Saya sering sakit kepala berdenyut hebat saat merasa tertekan.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_3',
+      number: 27,
+      dimensionKey: 'Pd',
+      text: 'Saya bosan dengan rutinitas dan selalu mencari sensasi yang menantang.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_3',
+      number: 28,
+      dimensionKey: 'Pa',
+      text: 'Saya merasa sering dibicarakan keburukannya di belakang saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_3',
+      number: 29,
+      dimensionKey: 'Pt',
+      text: 'Pikiran-pikiran buruk terus berputar di otak dan saya tak bisa menghentikannya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_3',
+      number: 30,
+      dimensionKey: 'Sc',
+      text: 'Saya lebih suka melamun dan hidup di khayalan daripada menghadapi dunia nyata.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_l_4',
+      number: 31,
+      dimensionKey: 'L',
+      text: 'Saya tidak pernah membicarakan keburukan orang lain.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_4',
+      number: 32,
+      dimensionKey: 'F',
+      text: 'Saya sering mendengar suara-suara yang menyuruh saya berbuat hal buruk.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_4',
+      number: 33,
+      dimensionKey: 'K',
+      text: 'Keluarga saya adalah keluarga yang paling harmonis tanpa masalah.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_4',
+      number: 34,
+      dimensionKey: 'Hs',
+      text: 'Saya sering merasakan mual, perut kembung, dan gangguan pencernaan.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_4',
+      number: 35,
+      dimensionKey: 'D',
+      text: 'Saya sering merasa diri saya tidak berguna atau berharga.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_4',
+      number: 36,
+      dimensionKey: 'Hy',
+      text: 'Terkadang otot saya terasa kaku dan lumpuh sesaat ketika sangat takut.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_4',
+      number: 37,
+      dimensionKey: 'Pd',
+      text: 'Berbohong untuk menghindari hukuman adalah hal yang wajar bagi saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_4',
+      number: 38,
+      dimensionKey: 'Pa',
+      text: 'Saya yakin beberapa orang sengaja membuat masalah bagi saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_4',
+      number: 39,
+      dimensionKey: 'Pt',
+      text: 'Saya sering cemas bahwa hal buruk akan segera menimpa orang terdekat saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_4',
+      number: 40,
+      dimensionKey: 'Sc',
+      text: 'Orang lain sering menganggap perilaku atau gaya hidup saya sangat aneh.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_l_5',
+      number: 41,
+      dimensionKey: 'L',
+      text: 'Saya tidak pernah menunda pekerjaan sekecil apapun.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_5',
+      number: 42,
+      dimensionKey: 'F',
+      text: 'Saya tidak mengenali wajah saya sendiri saat berkaca.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_5',
+      number: 43,
+      dimensionKey: 'K',
+      text: 'Saya selalu bisa mengendalikan emosi saya dengan sempurna.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_5',
+      number: 44,
+      dimensionKey: 'Hs',
+      text: 'Tangan atau kaki saya sering terasa kesemutan atau mati rasa.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_5',
+      number: 45,
+      dimensionKey: 'D',
+      text: 'Saya sering merasa ingin menangis walau tidak ada alasan yang jelas.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_5',
+      number: 46,
+      dimensionKey: 'Hy',
+      text: 'Saya lebih mudah kelelahan secara fisik saat stres pikiran melanda.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_5',
+      number: 47,
+      dimensionKey: 'Pd',
+      text: 'Saya merasa tidak bersalah meski telah mengecewakan orang lain.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_5',
+      number: 48,
+      dimensionKey: 'Pa',
+      text: 'Jika saya lengah, orang pasti akan memanfaatkan kebaikan saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_5',
+      number: 49,
+      dimensionKey: 'Pt',
+      text: 'Perubahan kecil dalam rutinitas membuat saya sangat stres dan terganggu.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_5',
+      number: 50,
+      dimensionKey: 'Sc',
+      text: 'Saya merasa tidak terhubung atau mati rasa terhadap tubuh saya sendiri.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_l_6',
+      number: 51,
+      dimensionKey: 'L',
+      text: 'Saya selalu ramah kepada semua orang tanpa terkecuali.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_6',
+      number: 52,
+      dimensionKey: 'F',
+      text: 'Semua makanan terasa seperti racun bagi saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_6',
+      number: 53,
+      dimensionKey: 'K',
+      text: 'Saya jarang cemas akan hal-hal yang belum terjadi.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_6',
+      number: 54,
+      dimensionKey: 'Hs',
+      text: 'Kesehatan saya terasa lebih buruk dibanding orang lain seusia saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_6',
+      number: 55,
+      dimensionKey: 'D',
+      text: 'Saya merasa sangat lambat dalam berpikir maupun bergerak.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_6',
+      number: 56,
+      dimensionKey: 'Hy',
+      text: 'Bila ada masalah berat, saya mencoba melupakannya dan berpura-pura tidak terjadi.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_6',
+      number: 57,
+      dimensionKey: 'Pd',
+      text: 'Saya sering berkonflik keras dengan figur otoritas (atasan/guru/orangtua).',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_6',
+      number: 58,
+      dimensionKey: 'Pa',
+      text: 'Saya sulit memaafkan dan akan membalas dendam pada yang menyakiti saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_6',
+      number: 59,
+      dimensionKey: 'Pt',
+      text: 'Saya sering ditakuti oleh ketakutan tidak beralasan terhadap ruang tertutup atau gelap.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_6',
+      number: 60,
+      dimensionKey: 'Sc',
+      text: 'Saya percaya kejadian-kejadian acak memiliki arti khusus yang tertuju pada saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_l_7',
+      number: 61,
+      dimensionKey: 'L',
+      text: 'Saya tidak pernah iri pada kesuksesan orang lain.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_7',
+      number: 62,
+      dimensionKey: 'F',
+      text: 'Saya merasa jantung saya pernah berhenti berdetak selama beberapa menit.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_7',
+      number: 63,
+      dimensionKey: 'K',
+      text: 'Orang lain terlalu membesar-besarkan masalah psikologis mereka.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_7',
+      number: 64,
+      dimensionKey: 'Hs',
+      text: 'Saya sering terbangun karena nyeri otot yang muncul tiba-tiba.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_7',
+      number: 65,
+      dimensionKey: 'D',
+      text: 'Terkadang saya berharap lebih baik tidak pernah dilahirkan.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_7',
+      number: 66,
+      dimensionKey: 'Hy',
+      text: 'Suara saya pernah hilang sesaat akibat syok emosional.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_7',
+      number: 67,
+      dimensionKey: 'Pd',
+      text: 'Saya bisa memanipulasi orang lain dengan mudah demi keuntungan saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_7',
+      number: 68,
+      dimensionKey: 'Pa',
+      text: 'Orang-orang sering berpura-pura baik padahal punya niat buruk tersembunyi.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_7',
+      number: 69,
+      dimensionKey: 'Pt',
+      text: 'Saya harus mengerjakan segalanya secara sangat sempurna atau tidak sama sekali.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_7',
+      number: 70,
+      dimensionKey: 'Sc',
+      text: 'Terkadang pikiran saya tiba-tiba kosong seperti ditarik keluar dari otak.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_l_8',
+      number: 71,
+      dimensionKey: 'L',
+      text: 'Saya menyukai dan peduli pada semua orang yang saya kenal.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_8',
+      number: 72,
+      dimensionKey: 'F',
+      text: 'Setiap hari saya merasa ingin segera mati saja.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_8',
+      number: 73,
+      dimensionKey: 'K',
+      text: 'Saya merasa memiliki kondisi mental yang 100% stabil setiap hari.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_8',
+      number: 74,
+      dimensionKey: 'Hs',
+      text: 'Saya mudah merasa lelah meskipun baru saja bangun tidur.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_8',
+      number: 75,
+      dimensionKey: 'D',
+      text: 'Saya kesulitan membuat keputusan kecil yang biasanya mudah.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_8',
+      number: 76,
+      dimensionKey: 'Hy',
+      text: 'Sangat penting bagi saya untuk disukai oleh semua orang.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_8',
+      number: 77,
+      dimensionKey: 'Pd',
+      text: 'Kebebasan saya lebih penting dari sekadar menjaga kesopanan sosial.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_8',
+      number: 78,
+      dimensionKey: 'Pa',
+      text: 'Saya sangat sensitif bila ada orang yang melihat saya dengan cara yang salah.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_8',
+      number: 79,
+      dimensionKey: 'Pt',
+      text: 'Ketegangan mental membuat saya sulit bersantai meski di hari libur.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_8',
+      number: 80,
+      dimensionKey: 'Sc',
+      text: 'Saya sangat kesulitan merasakan emosi sedih, senang, atau empati.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_l_9',
+      number: 81,
+      dimensionKey: 'L',
+      text: 'Saya selalu membaca setiap dokumen sepenuhnya sebelum menyetujuinya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_9',
+      number: 82,
+      dimensionKey: 'F',
+      text: 'Tidak ada satupun orang di dunia ini yang benar-benar nyata.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_9',
+      number: 83,
+      dimensionKey: 'K',
+      text: 'Sangat jarang saya merasa menyesal atas perbuatan saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_9',
+      number: 84,
+      dimensionKey: 'Hs',
+      text: 'Saya sangat cemas jika ada bintik merah atau gejala kecil di tubuh saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_9',
+      number: 85,
+      dimensionKey: 'D',
+      text: 'Orang-orang akan merasa lebih baik jika saya tidak ada.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_9',
+      number: 86,
+      dimensionKey: 'Hy',
+      text: 'Orang lain sering kali tidak mengerti betapa sensitifnya perasaan saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_9',
+      number: 87,
+      dimensionKey: 'Pd',
+      text: 'Saya pernah melanggar peraturan atau hukum secara sadar dan berulang.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_9',
+      number: 88,
+      dimensionKey: 'Pa',
+      text: 'Banyak orang cemburu terhadap kemampuan dan prestasi yang saya miliki.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_9',
+      number: 89,
+      dimensionKey: 'Pt',
+      text: 'Saya sering ragu-ragu sehingga pekerjaan tidak pernah selesai tepat waktu.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_9',
+      number: 90,
+      dimensionKey: 'Sc',
+      text: 'Saya tidak menikmati sosialisasi dan selalu menjauhi orang lain sebisa mungkin.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_l_10',
+      number: 91,
+      dimensionKey: 'L',
+      text: 'Saya tidak pernah mengucapkan kata-kata kotor saat sedang marah.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_f_10',
+      number: 92,
+      dimensionKey: 'F',
+      text: 'Saya merasa organ dalam tubuh saya perlahan membusuk.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_k_10',
+      number: 93,
+      dimensionKey: 'K',
+      text: 'Saya tidak pernah merasa hidup ini tidak adil bagi saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hs_10',
+      number: 94,
+      dimensionKey: 'Hs',
+      text: 'Saya merasa sering sakit-sakitan dalam beberapa bulan terakhir.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_d_10',
+      number: 95,
+      dimensionKey: 'D',
+      text: 'Saya hampir tidak pernah merasa benar-benar bahagia.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_hy_10',
+      number: 96,
+      dimensionKey: 'Hy',
+      text: 'Saya sering merasa pusing seperti berputar ketika dikritik tajam.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pd_10',
+      number: 97,
+      dimensionKey: 'Pd',
+      text: 'Sangat sulit bagi saya untuk menyesuaikan diri dengan sistem kedisiplinan militer.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pa_10',
+      number: 98,
+      dimensionKey: 'Pa',
+      text: 'Saya curiga keluarga atau teman diam-diam berkonspirasi terhadap saya.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_pt_10',
+      number: 99,
+      dimensionKey: 'Pt',
+      text: 'Saya mencemaskan masa depan hingga membuat saya tidak bisa fokus pada masa kini.',
+      options: mmpiOptions
+    },
+    {
+      id: 'mmpi_sc_10',
+      number: 100,
+      dimensionKey: 'Sc',
+      text: 'Saya pernah merasa lingkungan saya ini bukanlah dunia nyata.',
+      options: mmpiOptions
+    },
+  ]
+};

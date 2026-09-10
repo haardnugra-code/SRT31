@@ -7,15 +7,17 @@ import {
   Wifi,
   WifiOff,
   CloudUpload,
-  CloudCheck,
   CheckCircle2,
   AlertCircle,
   Clock,
   ArrowUpRight,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react';
 import { AppConfig } from '../types';
+import { DataIntegrityReport } from '../utils/integrityVerifier';
 
 interface HeaderProps {
   activeTabTitle: string;
@@ -29,6 +31,8 @@ interface HeaderProps {
   lastPingTime?: string | null;
   lastPushTime?: string | null;
   lastSyncTime?: string | null;
+  lastIntegrityReport?: DataIntegrityReport | null;
+  onOpenIntegrityReport?: () => void;
   onCheckConnection?: () => void;
 }
 
@@ -44,6 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
   lastPingTime = null,
   lastPushTime = null,
   lastSyncTime = null,
+  lastIntegrityReport = null,
+  onOpenIntegrityReport,
   onCheckConnection
 }) => {
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
@@ -230,7 +236,38 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
 
-                {/* 4. Google Script Backend URL */}
+                {/* 4. Data Integrity Audit Status */}
+                {lastIntegrityReport && (
+                  <div className="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200">
+                    <div className="flex items-center justify-between text-slate-700 mb-1">
+                      <div className="flex items-center gap-1.5 font-semibold text-[11px] text-emerald-900">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Audit Integritas Data Cloud:</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-200/80 text-emerald-900">
+                        {lastIntegrityReport.healthScore}% Valid
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-600 pl-5 leading-tight">
+                      {lastIntegrityReport.totalRecordsChecked} entri diperiksa. 0 anomali shadow data.
+                    </p>
+                    {onOpenIntegrityReport && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowConnectionDetails(false);
+                          onOpenIntegrityReport();
+                        }}
+                        className="mt-1.5 ml-5 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 underline flex items-center gap-1"
+                      >
+                        <span>Lihat Rincian Laporan Audit</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* 5. Google Script Backend URL */}
                 <div className="px-1 text-[11px] text-slate-500">
                   <span className="font-medium text-slate-600">Endpoint: </span>
                   <span className="font-mono text-[10px] text-slate-700 break-all">{scriptUrlShort}</span>
@@ -265,6 +302,20 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
         </div>
+
+        {/* Quick Integrity Badge & Modal Opener */}
+        {lastIntegrityReport && onOpenIntegrityReport && (
+          <button
+            type="button"
+            onClick={onOpenIntegrityReport}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all active:scale-95 shadow-xs cursor-pointer"
+            title="Klik untuk melihat Laporan Verifikasi Integritas Data Cloud"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="hidden lg:inline">Integritas:</span>
+            <span>{lastIntegrityReport.healthScore}% Valid</span>
+          </button>
+        )}
 
         <button
           onClick={onSync}

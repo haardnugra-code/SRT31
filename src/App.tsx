@@ -13,7 +13,10 @@ import {
   ConnectingJournal,
   MenstruationRecord,
   MeetingMinute,
-  SpecialChronologyCase
+  SpecialChronologyCase,
+  DormInspection,
+  DormAsset,
+  PsychologicalAssessment
 } from './types';
 import {
   loadAppConfig,
@@ -42,19 +45,29 @@ import {
   saveMenstruationRecords,
   loadSpecialChronologyCases,
   saveSpecialChronologyCases,
+  loadDormInspections,
+  saveDormInspections,
+  loadDormAssets,
+  saveDormAssets,
+  loadPsychologicalAssessments,
+  savePsychologicalAssessments,
   loadLastSyncTime,
   saveLastSyncTime,
   loadLastPushTime,
   saveLastPushTime,
+  loadLastIntegrityReport,
+  saveLastIntegrityReport,
   purgeAllDummyData
 } from './services/storage';
 import { reconcileAndSanitizeShadowData, ShadowDataAuditStats } from './utils/dataSanitizer';
+import { verifyDataIntegrity, DataIntegrityReport, PreviousCountsSnapshot } from './utils/integrityVerifier';
 
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import { LoginModal } from './components/LoginModal';
+import { DataIntegrityModal } from './components/DataIntegrityModal';
 
 import { DashboardTab } from './components/DashboardTab';
 import { StudentProfileTab } from './components/StudentProfileTab';
@@ -68,9 +81,13 @@ import { ConnectingJournalTab } from './components/ConnectingJournalTab';
 import { MenstruationTrackingTab } from './components/MenstruationTrackingTab';
 import { ReportAndRecapTab } from './components/ReportAndRecapTab';
 import { SettingsTab } from './components/SettingsTab';
-import { LiveMonitorTab } from './components/LiveMonitorTab';
 import { MeetingMinutesTab } from './components/MeetingMinutesTab';
 import { SpecialChronologyTab } from './components/SpecialChronologyTab';
+import { DormInspectionTab } from './components/DormInspectionTab';
+import { DormAssetTab } from './components/DormAssetTab';
+import { LiveMonitorTab } from './components/LiveMonitorTab';
+import { PsychologicalAssessmentTab } from './components/PsychologicalAssessmentTab';
+import { StudentAssessmentPortalModal } from './components/StudentAssessmentPortalModal';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -103,6 +120,34 @@ export default function App() {
   const [menstruationRecords, setMenstruationRecords] = useState<MenstruationRecord[]>(loadMenstruationRecords);
   const [reports, setReports] = useState<Record<string, ReportCardData>>(loadReports);
   const [specialCases, setSpecialCases] = useState<SpecialChronologyCase[]>(loadSpecialChronologyCases);
+  const [dormInspections, setDormInspections] = useState<DormInspection[]>(loadDormInspections);
+  const [dormAssets, setDormAssets] = useState<DormAsset[]>(loadDormAssets);
+  const [psychologicalAssessments, setPsychologicalAssessments] = useState<PsychologicalAssessment[]>(loadPsychologicalAssessments);
+  const [isStudentAssessmentModalOpen, setIsStudentAssessmentModalOpen] = useState<boolean>(false);
+  const [portalStudentId, setPortalStudentId] = useState<string | undefined>(undefined);
+
+  const handleSavePsychologicalAssessment = useCallback((assessment: PsychologicalAssessment) => {
+    setPsychologicalAssessments((prev) => {
+      const idx = prev.findIndex((a) => a.id === assessment.id);
+      let next: PsychologicalAssessment[];
+      if (idx >= 0) {
+        next = [...prev];
+        next[idx] = assessment;
+      } else {
+        next = [assessment, ...prev];
+      }
+      savePsychologicalAssessments(next);
+      return next;
+    });
+  }, []);
+
+  const handleDeletePsychologicalAssessment = useCallback((id: string) => {
+    setPsychologicalAssessments((prev) => {
+      const next = prev.filter((a) => a.id !== id);
+      savePsychologicalAssessments(next);
+      return next;
+    });
+  }, []);
 
   const [announcement, setAnnouncement] = useState<string>(() => {
     return localStorage.getItem('sr_announcement_text') ||
@@ -117,20 +162,34 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'checking'>('checking');
   const [lastPingTime, setLastPingTime] = useState<string | null>(null);
 
+  // Data Integrity Verification Report State
+  const [lastIntegrityReport, setLastIntegrityReport] = useState<DataIntegrityReport | null>(loadLastIntegrityReport);
+  const [isIntegrityModalOpen, setIsIntegrityModalOpen] = useState<boolean>(false);
+
   // Toast State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const showToast = useCallback(
-    (title: string, message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+    (
+      title: string,
+      message: string,
+      type: 'success' | 'warning' | 'error' | 'info' = 'success',
+      action?: { label: string; onClick: () => void },
+      duration: number = 4000
+    ) => {
       const id = `toast-${Date.now()}-${Math.random()}`;
-      setToasts((prev) => [...prev, { id, title, message, type }]);
+      setToasts((prev) => [...prev, { id, title, message, type, action }]);
 
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 4000);
+      }, duration);
     },
     []
   );
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   const handleLogout = useCallback(() => {
     sessionStorage.removeItem('sr_auth_status');
@@ -259,15 +318,18 @@ export default function App() {
   // Tab Titles
   const tabTitles: Record<string, string> = {
     dashboard: 'Dashboard Ringkasan Asrama',
+    'live-monitor': 'Live Monitor Keasramaan Terpadu (Pusat Komando)',
     profile: 'Profil & Portofolio Siswa Terpadu',
     'connecting-journal': 'Jurnal Penghubung Materi & Task Order',
+    'dorm-inspection': 'Penilaian Kebersihan & Kerapian Asrama (SOP Sekolah Rakyat)',
+    'dorm-asset': 'Inventaris & Pemantauan Aset Asrama (SOP Sekolah Rakyat)',
     'meeting-minutes': 'Notulensi Rapat',
     'prayer-attendance': 'Absensi Presensi Asrama (Sholat, Makan & Kegiatan)',
     checklist: 'Jurnal & Ceklist Anak Asuh',
     menstruation: 'Tracking Menstruasi, Masa Bersuci & Ibadah Asrama Putri',
     students: 'Data Induk Murid Sekolah Rakyat',
     violations: 'Pelanggaran',
-    'special-chronology': 'Kronologi Kasus Setiap Shift (Psikologi & Psikiatri Kasus Berat)',
+    'special-chronology': 'Kronologi Kejadian & Handover Shift',
     counseling: 'Pendampingan BK & Konseling',
     leaves: 'Surat Izin Keluar & Kepulangan Asrama (Pesiar, Berobat & Pulang)',
     medical: 'Klinik UKS & Rekam Medis Keasramaan',
@@ -768,10 +830,10 @@ export default function App() {
         return updated;
       });
       showToast(
-        isEdit ? 'Kasus Khusus Diperbarui' : 'Kasus Khusus Dicatat',
+        isEdit ? 'Catatan Shift Diperbarui' : 'Catatan Kejadian & Handover Disimpan',
         isEdit
-          ? 'Berkas kronologi dan observasi shift berhasil diperbarui.'
-          : 'Kasus pelanggaran berat berhasil didokumentasikan dalam sistem psikiatri & psikologi.',
+          ? 'Catatan kejadian dan serah terima tugas berhasil diperbarui.'
+          : 'Catatan kejadian shift dan instruksi serah terima tugas (handover) berhasil didokumentasikan.',
         'success'
       );
     },
@@ -788,6 +850,56 @@ export default function App() {
       showToast('Kasus Dihapus', 'Berkas kronologi kasus berhasil dihapus dari sistem.', 'info');
     },
     [showToast]
+  );
+
+  // Dorm Inspection CRUD
+  const handleSaveDormInspection = useCallback(
+    (inspection: DormInspection) => {
+      setDormInspections((prev) => {
+        const exists = prev.some((i) => i.id === inspection.id);
+        const updated = exists ? prev.map((i) => (i.id === inspection.id ? inspection : i)) : [inspection, ...prev];
+        saveDormInspections(updated);
+        return updated;
+      });
+    },
+    []
+  );
+
+  const handleDeleteDormInspection = useCallback(
+    (id: string) => {
+      setDormInspections((prev) => {
+        const updated = prev.filter((i) => i.id !== id);
+        saveDormInspections(updated);
+        return updated;
+      });
+    },
+    []
+  );
+
+  // Dorm Asset CRUD
+  const handleSaveDormAsset = useCallback(
+    (asset: DormAsset) => {
+      setDormAssets((prev) => {
+        const exists = prev.some((a) => a.id === asset.id);
+        const updated = exists
+          ? prev.map((a) => (a.id === asset.id ? asset : a))
+          : [asset, ...prev];
+        saveDormAssets(updated);
+        return updated;
+      });
+    },
+    []
+  );
+
+  const handleDeleteDormAsset = useCallback(
+    (id: string) => {
+      setDormAssets((prev) => {
+        const updated = prev.filter((a) => a.id !== id);
+        saveDormAssets(updated);
+        return updated;
+      });
+    },
+    []
   );
 
   const handleDeleteConnectingJournal = useCallback(
@@ -1172,16 +1284,57 @@ export default function App() {
         return;
       }
 
+      // Snapshot data metrics before synchronization for delta auditing
+      const previousCounts: PreviousCountsSnapshot = {
+        students: students.length,
+        violations: violations.length,
+        counseling: counseling.length,
+        leaves: leaves.length,
+        dailyJournals: dailyJournals.length,
+        medicalRecords: medicalRecords.length,
+        prayerAttendance: prayerAttendance.length,
+        reports: Object.keys(reports).length,
+        connectingJournals: connectingJournals.length,
+        meetingMinutes: meetingMinutes.length,
+        menstruationRecords: menstruationRecords.length,
+        dormInspections: dormInspections.length,
+        dormAssets: dormAssets.length,
+        specialChronologies: specialCases.length
+      };
+
       setIsSyncing(true);
       if (isManual) {
         showToast('Sinkronisasi Mulai', 'Menghubungkan ke cloud database...', 'warning');
       }
 
       try {
-        const response = await fetch(`${config.googleScriptUrl}?action=fetchData`);
+                // Call the new GAS API
+        const response = await fetch(`${config.googleScriptUrl}?action=getAllData`);
         const resJson = await response.json();
 
-        if (resJson.status === 'success') {
+        
+        if (resJson.status === 'success' || !resJson.status) {
+          // Map new GAS keys to App.tsx expected keys
+          const mappedRes = {
+             status: 'success',
+             students: resJson.Students || [],
+             violations: resJson.Violations || [],
+             counseling: resJson.Counseling || [],
+             leaves: resJson.Leaves || [],
+             medicalRecords: resJson.Medical || [],
+             journals: resJson.DailyJournals || [],
+             prayerAttendance: resJson.PrayerAttendance || [],
+             menstruationRecords: resJson.Menstruation || [],
+             psychologicalAssessments: resJson.PsychologicalAssessments || [],
+             specialCases: resJson.SpecialChronology || [],
+             dormInspections: resJson.DormInspection || [],
+             dormAssets: resJson.DormAsset || [],
+             announcements: []
+          };
+          
+          // Re-assign to resJson so the rest of the function works exactly as before
+          Object.assign(resJson, mappedRes);
+
           if (resJson.announcements && Array.isArray(resJson.announcements) && resJson.announcements.length > 0) {
             const activeMsgs = resJson.announcements
               .filter((a: any) => {
@@ -1362,8 +1515,9 @@ export default function App() {
             }));
           }
 
+          let fetchedConnecting: ConnectingJournal[] = connectingJournals;
           if (resJson.connectingJournals) {
-            const fetchedConnecting: ConnectingJournal[] = resJson.connectingJournals.map((cj: any) => ({
+            fetchedConnecting = resJson.connectingJournals.map((cj: any) => ({
               id: cj['ID Jurnal'] || cj['id'] || '',
               date: cj['Tanggal'] || cj['date'] || '',
               targetClass: cj['Target/Kelas'] || cj['targetClass'] || 'Klasikal (SD)',
@@ -1434,9 +1588,70 @@ export default function App() {
           setConnectionStatus('online');
           setLastPingTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
-          if (isManual) {
-            showToast('Sinkronisasi & Rekonsiliasi Berhasil', 'Database cloud diselaraskan dan data shadow telah dibersihkan.', 'success');
+          // 6-PILLAR DATA INTEGRITY AUDITING & VERIFICATION
+          const integrityReport = verifyDataIntegrity(
+            {
+              students: reconciled.students,
+              violations: reconciled.violations,
+              counseling: reconciled.counseling,
+              leaves: reconciled.leaves,
+              dailyJournals: reconciled.dailyJournals,
+              medicalRecords: reconciled.medicalRecords,
+              prayerAttendance: reconciled.prayerAttendance,
+              reports: reconciled.reports,
+              connectingJournals: fetchedConnecting,
+              meetingMinutes: resJson.meetingMinutes || meetingMinutes,
+              menstruationRecords,
+              dormInspections,
+              dormAssets,
+              specialChronologies: specialCases
+            },
+            previousCounts,
+            reconciled.stats,
+            config
+          );
+
+                    saveLastIntegrityReport(integrityReport);
+          setLastIntegrityReport(integrityReport);
+
+          // NEW: Push all local data to cloud (Bulk Sync)
+          try {
+            await fetch(config.googleScriptUrl, {
+              method: 'POST',
+              body: JSON.stringify({
+                action: 'sync',
+                data: {
+                  Students: reconciled.students,
+                  Violations: reconciled.violations,
+                  Counseling: reconciled.counseling,
+                  Leaves: reconciled.leaves,
+                  Medical: reconciled.medicalRecords,
+                  DailyJournals: reconciled.dailyJournals,
+                  PrayerAttendance: reconciled.prayerAttendance,
+                  PsychologicalAssessments: psychologicalAssessments,
+                  DormInspection: dormInspections,
+                  DormAsset: dormAssets,
+                  SpecialChronology: specialCases,
+                  Menstruation: menstruationRecords
+                }
+              })
+            });
+          } catch(e) {
+            console.error('Failed to bulk push to cloud', e);
           }
+
+
+          // Tampilkan notifikasi ringkasan data yang berhasil diperbarui & status integritas
+          showToast(
+            integrityReport.summaryToastTitle,
+            integrityReport.summaryToastMessage,
+            integrityReport.overallStatus === 'warning' ? 'warning' : 'success',
+            {
+              label: 'Lihat Rincian Audit',
+              onClick: () => setIsIntegrityModalOpen(true)
+            },
+            7000
+          );
         } else if (isManual) {
           showToast('Sinkronisasi Tertolak', resJson.message || 'Respon dari script backend gagal.', 'error');
         }
@@ -1449,7 +1664,25 @@ export default function App() {
         setIsSyncing(false);
       }
     },
-    [config.googleScriptUrl, showToast, students, violations, counseling, leaves, dailyJournals, medicalRecords, prayerAttendance, reports, connectingJournals, meetingMinutes]
+    [
+      config,
+      showToast,
+      students,
+      violations,
+      counseling,
+      leaves,
+      dailyJournals,
+      medicalRecords,
+      prayerAttendance,
+      reports,
+      connectingJournals,
+      meetingMinutes,
+      menstruationRecords,
+      dormInspections,
+      dormAssets,
+      specialCases,
+      psychologicalAssessments
+    ]
   );
 
   // --- Real-Time Connection Ping Check ---
@@ -1524,15 +1757,28 @@ export default function App() {
 
     purgeAllDummyData();
     setStudents([]);
+    setViolations([]);
+    setCounseling([]);
+    setLeaves([]);
+    setDailyJournals([]);
+    setConnectingJournals([]);
+    setMeetingMinutes([]);
     setMedicalRecords([]);
-    showToast('Data Dummy Dihapus', 'Mengambil database murni dari Google Sheet...', 'info');
+    setPrayerAttendance([]);
+    setMenstruationRecords([]);
+    setReports({});
+    setSpecialCases([]);
+    setDormInspections([]);
+    setDormAssets([]);
+    setPsychologicalAssessments([]);
+    showToast('Data Dummy Dihapus', 'Semua data dummy berhasil dibersihkan. Mengambil database murni dari Google Sheet...', 'info');
     await syncCloudData(true);
   }, [askConfirm, showToast, syncCloudData]);
 
   return (
     <div className="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans selection:bg-red-500 selection:text-white">
       {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       {/* Confirmation Dialog Modal */}
       <ConfirmModal
@@ -1543,8 +1789,22 @@ export default function App() {
         onCancel={() => handleConfirmResolve(false)}
       />
 
+      {/* Data Integrity Verification Modal */}
+      <DataIntegrityModal
+        isOpen={isIntegrityModalOpen}
+        onClose={() => setIsIntegrityModalOpen(false)}
+        report={lastIntegrityReport}
+        onReverify={() => syncCloudData(true)}
+        isVerifying={isSyncing}
+        onShowToast={showToast}
+      />
+
       {/* Login Screen Modal */}
-      <LoginModal isLoggedIn={isLoggedIn} onLoginSuccess={handleLoginSuccess} />
+      <LoginModal 
+        isLoggedIn={isLoggedIn} 
+        onLoginSuccess={handleLoginSuccess} 
+        onOpenStudentAssessment={() => setIsStudentAssessmentModalOpen(true)}
+      />
 
       {/* Main Row Container */}
       <div className="flex flex-col md:flex-row min-h-screen flex-1 relative">
@@ -1572,22 +1832,12 @@ export default function App() {
             lastPingTime={lastPingTime}
             lastPushTime={lastPushTime}
             lastSyncTime={lastSyncTime}
+            lastIntegrityReport={lastIntegrityReport}
+            onOpenIntegrityReport={() => setIsIntegrityModalOpen(true)}
             onCheckConnection={checkConnection}
           />
 
           <div className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8 overflow-y-auto">
-            {activeTab === 'live-monitor' && (
-              <LiveMonitorTab
-                onClose={() => setActiveTab('dashboard')}
-                students={studentsWithViolationCounts}
-                violations={violations}
-                prayerAttendance={prayerAttendance}
-                config={config}
-                leaves={leaves}
-                medicalRecords={medicalRecords}
-                counseling={counseling}
-              />
-            )}
             {activeTab === 'dashboard' && (
               <DashboardTab
                 students={studentsWithViolationCounts}
@@ -1609,6 +1859,22 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'live-monitor' && (
+              <LiveMonitorTab
+                students={studentsWithViolationCounts}
+                prayerAttendance={prayerAttendance}
+                violations={violations}
+                specialCases={specialCases}
+                medicalRecords={medicalRecords}
+                leaves={leaves}
+                menstruationRecords={menstruationRecords}
+                config={config}
+                onNavigateTab={setActiveTab}
+                onShowToast={showToast}
+                onSyncCloud={() => syncCloudData(true)}
+              />
+            )}
+
             {activeTab === 'profile' && (
               <StudentProfileTab
                 students={studentsWithViolationCounts}
@@ -1620,6 +1886,11 @@ export default function App() {
                 leaves={leaves}
                 prayerAttendance={prayerAttendance}
                 menstruationRecords={menstruationRecords}
+                psychologicalAssessments={psychologicalAssessments}
+                onStartPsychologicalTest={(sid) => {
+                  setPortalStudentId(sid);
+                  setIsStudentAssessmentModalOpen(true);
+                }}
                 config={config}
                 initialStudentId={profileStudentId}
                 onSaveStudent={handleSaveStudent}
@@ -1747,6 +2018,31 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'dorm-inspection' && (
+              <DormInspectionTab
+                config={config}
+                students={studentsWithViolationCounts}
+                inspections={dormInspections}
+                onSaveInspection={handleSaveDormInspection}
+                onDeleteInspection={handleDeleteDormInspection}
+                onShowToast={showToast}
+                onAskConfirm={askConfirm}
+                userRole={userRole}
+              />
+            )}
+
+            {activeTab === 'dorm-asset' && (
+              <DormAssetTab
+                config={config}
+                assets={dormAssets}
+                onSaveAsset={handleSaveDormAsset}
+                onDeleteAsset={handleDeleteDormAsset}
+                onShowToast={showToast}
+                onAskConfirm={askConfirm}
+                userRole={userRole}
+              />
+            )}
+
             {activeTab === 'meeting-minutes' && (
               <MeetingMinutesTab 
                 showToast={showToast} 
@@ -1788,6 +2084,22 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'psychology' && (
+              <PsychologicalAssessmentTab
+                students={studentsWithViolationCounts}
+                assessments={psychologicalAssessments}
+                onSaveAssessment={handleSavePsychologicalAssessment}
+                onDeleteAssessment={handleDeletePsychologicalAssessment}
+                config={config}
+                onOpenCounselingWithContext={(sid, contextNotes) => {
+                  setProfileStudentId(sid);
+                  setActiveTab('counseling');
+                  setIsViolationModalOpenExternal(true);
+                }}
+                onShowToast={showToast}
+              />
+            )}
+
             {activeTab === 'settings' && userRole === 'admin' && (
               <SettingsTab
                 config={config}
@@ -1798,6 +2110,8 @@ export default function App() {
                 isSyncing={isSyncing}
                 onReconcileShadowData={handleReconcileShadowData}
                 onPurgeDummyDataAndReload={handlePurgeDummyAndReload}
+                lastIntegrityReport={lastIntegrityReport}
+                onOpenIntegrityReport={() => setIsIntegrityModalOpen(true)}
                 studentsCount={students.length}
                 recordsCount={violations.length + counseling.length + leaves.length + dailyJournals.length + medicalRecords.length + prayerAttendance.length}
                 announcement={announcement}
@@ -1832,6 +2146,19 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      {/* Portal Self-Access Modal (Accessible from Login & Anywhere) */}
+      <StudentAssessmentPortalModal
+        isOpen={isStudentAssessmentModalOpen}
+        onClose={() => {
+          setIsStudentAssessmentModalOpen(false);
+          setPortalStudentId(undefined);
+        }}
+        students={studentsWithViolationCounts}
+        onSaveAssessment={handleSavePsychologicalAssessment}
+        preselectedStudentId={portalStudentId}
+        onShowToast={showToast}
+      />
     </div>
   );
 }

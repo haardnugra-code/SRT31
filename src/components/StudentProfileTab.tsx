@@ -27,7 +27,8 @@ import {
   ExternalLink,
   MessageSquare,
   MailWarning,
-  ArrowLeft
+  ArrowLeft,
+  Brain
 } from 'lucide-react';
 import {
   Student,
@@ -40,7 +41,8 @@ import {
   PrayerAttendance,
   MenstruationRecord,
   AppConfig,
-  ClassLevel
+  ClassLevel,
+  PsychologicalAssessment
 } from '../types';
 import { calculateStudentDisciplineScore, ROUTINE_TASKS } from '../services/storage';
 import { formatDateIndonesian } from '../utils/dateFormatter';
@@ -68,6 +70,8 @@ interface StudentProfileTabProps {
   leaves: Leave[];
   prayerAttendance: PrayerAttendance[];
   menstruationRecords?: MenstruationRecord[];
+  psychologicalAssessments?: PsychologicalAssessment[];
+  onStartPsychologicalTest?: (studentId: string) => void;
   config: AppConfig;
   initialStudentId?: string;
   onBackToTable?: () => void;
@@ -89,6 +93,8 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
   leaves,
   prayerAttendance,
   menstruationRecords = [],
+  psychologicalAssessments = [],
+  onStartPsychologicalTest,
   config,
   initialStudentId,
   onBackToTable,
@@ -118,7 +124,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
 
   // Active Sub-Tab
   const [activeSubTab, setActiveSubTab] = useState<
-    'overview' | 'violations' | 'checklist' | 'report-card' | 'counseling' | 'medical' | 'leaves' | 'attendance'
+    'overview' | 'violations' | 'checklist' | 'report-card' | 'counseling' | 'psychology' | 'medical' | 'leaves' | 'attendance'
   >('overview');
 
   // Quick Daily Checklist Form State
@@ -135,6 +141,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
   const [formRfidTag, setFormRfidTag] = useState('');
   const [formClass, setFormClass] = useState<ClassLevel>('SD');
   const [formDorm, setFormDorm] = useState('');
+  const [isManualDormMode, setIsManualDormMode] = useState(false);
   const [formCaretaker, setFormCaretaker] = useState('');
   const [formHeight, setFormHeight] = useState('');
   const [formWeight, setFormWeight] = useState('');
@@ -287,6 +294,13 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [counseling, currentStudent]);
 
+  const studentPsychology = useMemo(() => {
+    if (!currentStudent || !psychologicalAssessments) return [];
+    return psychologicalAssessments
+      .filter((p) => String(p.studentId).trim() === String(currentStudent.id).trim())
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [psychologicalAssessments, currentStudent]);
+
   const studentMedical = useMemo(() => {
     if (!currentStudent) return [];
     return medicalRecords
@@ -394,7 +408,10 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
     setFormNisn(currentStudent.id);
     setFormRfidTag(currentStudent.rfidTag || '');
     setFormClass(currentStudent.class);
-    setFormDorm(currentStudent.dorm || dormList[0] || 'Asrama Terpadu');
+    const studentDorm = currentStudent.dorm || dormList[0] || 'Asrama Terpadu';
+    setFormDorm(studentDorm);
+    const isStandard = dormList.includes(studentDorm);
+    setIsManualDormMode(!isStandard);
     setFormCaretaker(currentStudent.caretaker || cleanWaliAsuh[0] || '');
     setFormHeight(currentStudent.height ? String(currentStudent.height) : '');
     setFormWeight(currentStudent.weight ? String(currentStudent.weight) : '');
@@ -420,7 +437,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
       id: formNisn.trim(),
       name: formName.trim(),
       class: formClass,
-      dorm: getCanonicalDormName(formDorm, availableDorms),
+      dorm: isManualDormMode ? (formDorm.trim() || 'Asrama Terpadu') : getCanonicalDormName(formDorm, availableDorms),
       caretaker: formCaretaker,
       rfidTag: formRfidTag.trim() || undefined,
       height: formHeight ? Number(formHeight) : undefined,
@@ -919,6 +936,17 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" /> Konseling BK ({studentCounseling.length})
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('psychology')}
+              className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex items-center gap-2 ${
+                activeSubTab === 'psychology'
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5" /> Asesmen Jiwa & Psikologi ({studentPsychology.length})
             </button>
 
             <button
@@ -1572,6 +1600,131 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
               </div>
             )}
 
+            {/* === SUB-TAB 5B: ASESMEN PSIKOLOGI & TUMBUH KEMBANG KEJIWAAN === */}
+            {activeSubTab === 'psychology' && (
+              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                      <Brain className="w-5 h-5 text-red-600" />
+                      <span>Riwayat Asesmen Psikologi & Tumbuh Kembang Siswa</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Hasil tes psikometri klinis (SDQ-25 / Resiliensi) sebagai pertimbangan kejiwaan & tumbuh kembang anak.
+                    </p>
+                  </div>
+                  {onStartPsychologicalTest && currentStudent && (
+                    <button
+                      type="button"
+                      onClick={() => onStartPsychologicalTest(currentStudent.id)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Mulai Tes Psikologi Baru</span>
+                    </button>
+                  )}
+                </div>
+
+                {studentPsychology.length > 0 ? (
+                  <div className="space-y-4">
+                    {studentPsychology.map((p) => {
+                      const isNormal = p.overallStatus === 'normal';
+                      const isBorderline = p.overallStatus === 'borderline';
+
+                      return (
+                        <div
+                          key={p.id}
+                          className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3.5 text-xs shadow-xs"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                              <span className="font-bold text-sm text-slate-900">{p.testTitle}</span>
+                              <p className="text-[11px] text-slate-500 mt-0.5">
+                                Tanggal Pelaksanaan: <span className="font-medium text-slate-700">{formatDateIndonesian(p.date, true)}</span> • Diisi oleh: {p.filledBy === 'student' ? 'Akses Mandiri Siswa' : 'Didampingi Pengasuh'}
+                              </p>
+                            </div>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-black uppercase shrink-0 ${
+                                isNormal
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : isBorderline
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {p.overallStatusLabel}
+                            </span>
+                          </div>
+
+                          {/* Insights */}
+                          <div className="p-3 bg-white rounded-xl border border-slate-200/70 text-slate-700 leading-relaxed">
+                            <p className="font-bold text-slate-800 mb-1">
+                              📌 Dinamika & Tumbuh Kembang:
+                            </p>
+                            <p>{p.developmentalInsights}</p>
+                          </div>
+
+                          {/* Dimension Chips */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {(Object.values(p.dimensionScores) as any[]).map((dim) => (
+                              <div
+                                key={dim.dimensionKey}
+                                className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-col justify-between"
+                              >
+                                <span className="text-[11px] font-semibold text-slate-700 truncate">
+                                  {dim.dimensionName}
+                                </span>
+                                <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-100">
+                                  <span className="font-mono font-bold text-slate-900">
+                                    {dim.score}/{dim.maxScore}
+                                  </span>
+                                  <span
+                                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                                      dim.status === 'normal'
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : dim.status === 'borderline'
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-rose-100 text-rose-800'
+                                    }`}
+                                  >
+                                    {dim.status === 'normal' ? 'Normal' : dim.status === 'borderline' ? 'Border' : 'Risiko'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Considerations */}
+                          {p.psychologicalConsiderations.length > 0 && (
+                            <div className="bg-amber-50/70 border border-amber-200/80 p-3 rounded-xl space-y-1">
+                              <p className="text-[11px] font-bold text-amber-950">
+                                💡 Pertimbangan Kejiwaan Siswa:
+                              </p>
+                              <ul className="text-[11px] text-amber-900 space-y-1 list-disc list-inside">
+                                {p.psychologicalConsiderations.map((c, idx) => (
+                                  <li key={idx}>{c}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-slate-400 space-y-3">
+                    <Brain className="w-10 h-10 mx-auto opacity-30" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-600">Belum Ada Riwayat Tes Psikologi</p>
+                      <p className="text-[11px] text-slate-400 max-w-sm mx-auto mt-1">
+                        Ananda belum pernah mengisi asesmen psikologi atau tumbuh kembang. Klik tombol di atas untuk memulai.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* === SUB-TAB 6: UKS & KESEHATAN === */}
             {activeSubTab === 'medical' && (
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
@@ -1959,18 +2112,66 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Gedung Asrama</label>
-                  <select
-                    value={formDorm}
-                    onChange={(e) => setFormDorm(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  >
-                    {dormList.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">Gedung Asrama</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !isManualDormMode;
+                        setIsManualDormMode(next);
+                        if (next && !formDorm) {
+                          setFormDorm('');
+                        }
+                      }}
+                      className="text-xs font-bold text-red-600 hover:text-red-700 underline flex items-center gap-1 transition"
+                    >
+                      {isManualDormMode ? '← Pilih dari Daftar Standar' : '✍️ Ketik Manual / Unit Khusus'}
+                    </button>
+                  </div>
+
+                  {isManualDormMode ? (
+                    <div className="space-y-1">
+                      <input
+                        type="text"
+                        value={formDorm}
+                        onChange={(e) => setFormDorm(e.target.value)}
+                        list="profile-dorm-suggestions"
+                        placeholder="Contoh: Wisma Sudirman, Paviliun A, Blok 2..."
+                        className="w-full p-2.5 border border-red-300 rounded-xl bg-white font-medium focus:ring-2 focus:ring-red-500 focus:outline-none text-sm"
+                      />
+                      <datalist id="profile-dorm-suggestions">
+                        {dormList.map((d) => (
+                          <option key={d} value={d} />
+                        ))}
+                        <option value="Wisma Tamu Instansi" />
+                        <option value="Paviliun Transit" />
+                        <option value="Gedung Asrama Utama" />
+                      </datalist>
+                      <p className="text-[10px] text-slate-500">
+                        Mode manual instansi: dapat mencatat wisma, paviliun, mess, atau kamar khusus.
+                      </p>
+                    </div>
+                  ) : (
+                    <select
+                      value={formDorm}
+                      onChange={(e) => {
+                        if (e.target.value === '__custom__') {
+                          setIsManualDormMode(true);
+                          setFormDorm('');
+                        } else {
+                          setFormDorm(e.target.value);
+                        }
+                      }}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-red-500 focus:outline-none text-sm"
+                    >
+                      {dormList.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                      <option value="__custom__">+ Ketik Asrama Manual / Unit Baru...</option>
+                    </select>
+                  )}
                 </div>
 
                 <div>

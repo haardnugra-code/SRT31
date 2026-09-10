@@ -1,9 +1,9 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
-import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord, PrayerAttendance, ParentSummonsOptions, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog } from '../types';
+import { Student, DailyJournal, Leave, ReportCardData, AppConfig, Violation, Counseling, MedicalRecord, PrayerAttendance, ParentSummonsOptions, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog, DormInspection, DormAsset } from '../types';
 import { formatDateIndonesian, formatDateShort } from '../utils/dateFormatter';
-import { calculateStudentDisciplineScore } from './storage';
+import { calculateStudentDisciplineScore, DEFAULT_SOP_CRITERIA } from './storage';
 
 // Helper to generate canvas base64 logo if URL fails or is empty
 function generateProgrammaticLogo(type: 'left' | 'right'): string {
@@ -228,7 +228,7 @@ export async function printJournalPDF(journal: DailyJournal, student: Student | 
     body: tableRows,
     startY: metaY + 18,
     theme: 'grid',
-    headStyles: { fillColor: [71, 85, 105], fontStyle: 'bold', fontSize: 8.5 },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
       1: { cellWidth: 'auto' },
@@ -409,7 +409,7 @@ export async function printLeavePassPDF(
     ],
     startY: contentY,
     theme: 'plain',
-    styles: { fontSize: 8.3, cellPadding: 1.5, textColor: [30, 41, 59] },
+    styles: { fontSize: 8.0, cellPadding: 1.2, textColor: [30, 41, 59] },
     columnStyles: {
       0: { cellWidth: 54, fontStyle: 'bold' },
       1: { cellWidth: 'auto', fontStyle: 'normal' }
@@ -418,14 +418,14 @@ export async function printLeavePassPDF(
     pageBreak: 'avoid'
   });
 
-  contentY = (doc as any).lastAutoTable.finalY + 5;
+  contentY = (doc as any).lastAutoTable.finalY + 4;
 
   // Box / Rules Section
   doc.setFont("Helvetica", "bold");
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
-  doc.text("KETENTUAN & TATA TERTIB DISIPLIN SELAMA MASA PERIZINAN:", 13, contentY);
-  contentY += 4;
+  doc.text("KETENTUAN & TATA TERTIB DISIPLIN SELAMA MASA PERIZINAN:", 14, contentY);
+  contentY += 3.8;
 
   const rules = [
     "1. Peserta didik wajib menjaga adab, sopan santun, akhlakul karimah, serta nama baik Sekolah Rakyat selama berada di luar asrama.",
@@ -435,23 +435,23 @@ export async function printLeavePassPDF(
   ];
 
   doc.setFont("Helvetica", "normal");
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setTextColor(51, 65, 85);
 
   rules.forEach((rule) => {
-    const wrappedRule = doc.splitTextToSize(rule, 184);
-    doc.text(wrappedRule, 13, contentY);
-    contentY += wrappedRule.length * 3.4 + 0.8;
+    const wrappedRule = doc.splitTextToSize(rule, 182);
+    doc.text(wrappedRule, 14, contentY);
+    contentY += wrappedRule.length * 3.1 + 0.5;
   });
 
-  contentY += 4;
+  contentY += 3;
 
   // Closing sentence
   const closingText =
     "Demikian Surat Izin Keluar ini diterbitkan secara sah dan resmi untuk dapat dipergunakan sebagaimana mestinya.";
-  const wrappedClosing = doc.splitTextToSize(closingText, 184);
-  doc.text(wrappedClosing, 13, contentY);
-  contentY += wrappedClosing.length * 3.5 + 5;
+  const wrappedClosing = doc.splitTextToSize(closingText, 182);
+  doc.text(wrappedClosing, 14, contentY);
+  contentY += wrappedClosing.length * 3.1 + 3;
 
   // QR Code Verification Generator
   const qrPayload = `VALIDASI RESMI SEKOLAH RAKYAT 31 PALEMBANG\nDokumen: Surat Izin Keluar/Pulang\nNomor: ${letterNo}\nNama: ${leave.studentName} (${leave.studentId})\nKategori: ${catDisplay}\nAlasan: ${leave.reason}\nWaktu Keluar: ${leave.leaveDate} ${leave.leaveTime || ''}\nBatas Kembali: ${leave.returnDate} ${leave.returnTime || ''}\nStatus: Disetujui & Terdaftar`;
@@ -461,19 +461,16 @@ export async function printLeavePassPDF(
     qrCodeDataUrl = await QRCode.toDataURL(qrPayload, {
       errorCorrectionLevel: 'M',
       margin: 1,
-      width: 120,
+      width: 100,
       color: { dark: '#0f172a', light: '#ffffff' }
     });
   } catch (err) {
     console.error("QR Code generation error:", err);
   }
 
-  // Ensure contentY leaves enough space for signature block
-  if (contentY > 224) {
-    contentY = 224;
-  }
-
-  const sigY = contentY;
+  // Ensure contentY leaves enough space for signature block without overlapping text
+  const sigY = Math.min(Math.max(contentY + 4, 214), 232);
+  const leftNameY = sigY + 26;
 
   // 3-Column Signature Block: Wali Asuh (Left) | Pos Keamanan/Satpam (Middle) | Wali Asrama (Right)
   doc.setFont("Helvetica", "normal");
@@ -481,60 +478,60 @@ export async function printLeavePassPDF(
   doc.setTextColor(30, 41, 59);
 
   // Left: Wali Asuh
-  doc.text("Menyetujui,", 18, sigY);
+  doc.text("Menyetujui,", 16, sigY);
   doc.setFont("Helvetica", "bold");
-  doc.text("Wali Asuh Pendamping,", 18, sigY + 4);
+  doc.text("Wali Asuh Pendamping,", 16, sigY + 4);
 
-  const leftNameY = sigY + 25;
-  doc.text(`( ${leave.caretaker} )`, 18, leftNameY);
+  doc.text(`( ${leave.caretaker} )`, 16, leftNameY);
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
   doc.text(
     `NIP/NIK. ${leave.caretakerNip || '.........................'}`,
-    18,
+    16,
     leftNameY + 3.8
   );
 
-  // Middle: Pos Keamanan / Satpam Gerbang & QR
+  // Middle: Pos Keamanan / Satpam Gerbang & Non-overlapping QR Code
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(30, 41, 59);
-  doc.text("Pemeriksaan Gerbang,", 88, sigY, { align: "center" });
+  doc.text("Pemeriksaan Gerbang,", 105, sigY, { align: "center" });
   doc.setFont("Helvetica", "bold");
-  doc.text("Pos Keamanan / Satpam,", 88, sigY + 4, { align: "center" });
+  doc.text("Pos Keamanan / Satpam,", 105, sigY + 4, { align: "center" });
 
   if (qrCodeDataUrl) {
-    doc.addImage(qrCodeDataUrl, 'PNG', 77, sigY + 7, 22, 22);
+    // 16x16 QR code placed cleanly between header text (sigY+4) and name label (leftNameY at sigY+26)
+    doc.addImage(qrCodeDataUrl, 'PNG', 97, sigY + 6.5, 16, 16);
   }
 
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text("( Paraf Petugas Gerbang )", 88, leftNameY, { align: "center" });
-  doc.text("Keluar: [  ]  |  Kembali: [  ]", 88, leftNameY + 3.8, { align: "center" });
+  doc.text("( Paraf Petugas Gerbang )", 105, leftNameY, { align: "center" });
+  doc.text("Keluar: [  ]   Kembali: [  ]", 105, leftNameY + 3.8, { align: "center" });
 
   // Right: Wali Asrama Mandiri
   const dateStr = formatDateIndonesian(leave.leaveDate || new Date());
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(30, 41, 59);
-  doc.text(`Palembang, ${dateStr}`, 140, sigY);
-  doc.text("Mengetahui & Mengesahkan,", 140, sigY + 4);
+  doc.text(`Palembang, ${dateStr}`, 142, sigY);
+  doc.text("Mengetahui & Mengesahkan,", 142, sigY + 4);
   doc.setFont("Helvetica", "bold");
   const waliTitle = config?.waliAsramaTitle ? `${config.waliAsramaTitle},` : "Wali Asrama Mandiri,";
-  doc.text(waliTitle, 140, sigY + 8);
+  doc.text(waliTitle, 142, sigY + 8);
 
   const dormMasterName =
     leave.dormMaster || config?.waliAsrama || 'Wali Asrama Mandiri';
   const dormMasterNip =
     leave.dormMasterNip || config?.waliAsramaNip || '.........................';
 
-  doc.text(`( ${dormMasterName} )`, 140, leftNameY);
+  doc.text(`( ${dormMasterName} )`, 142, leftNameY);
   doc.setFont("Helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(`NIP. ${dormMasterNip}`, 140, leftNameY + 3.8);
+  doc.text(`NIP. ${dormMasterNip}`, 142, leftNameY + 3.8);
 
   // Footer Note
   doc.setFontSize(7);
@@ -987,7 +984,7 @@ export async function printReportCardPDF(
       body: violationBody,
       startY: finalY,
       theme: 'striped',
-      headStyles: { fillColor: [185, 28, 28], fontSize: 8 },
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
       styles: { fontSize: 7.5, cellPadding: 2 },
       margin: { left: 15, right: 15 }
     });
@@ -1029,7 +1026,7 @@ export async function printReportCardPDF(
         body: counselingBody,
         startY: finalY,
         theme: 'striped',
-        headStyles: { fillColor: [30, 58, 138], fontSize: 8 },
+        headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
         styles: { fontSize: 7.5, cellPadding: 2 },
         margin: { left: 15, right: 15 }
       });
@@ -1071,7 +1068,7 @@ export async function printReportCardPDF(
         body: medicalBody,
         startY: finalY,
         theme: 'striped',
-        headStyles: { fillColor: [6, 95, 70], fontSize: 8 },
+        headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
         styles: { fontSize: 7.5, cellPadding: 2 },
         margin: { left: 15, right: 15 }
       });
@@ -1103,7 +1100,7 @@ export async function printReportCardPDF(
     body: legendBody,
     startY: finalY + 4,
     theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59], fontSize: 8 },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
     columnStyles: {
       0: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
       1: { cellWidth: 35, halign: 'center' },
@@ -1299,7 +1296,7 @@ export async function generateComprehensivePDF(
     body: violationRows,
     startY: 32,
     theme: 'striped',
-    headStyles: { fillColor: [185, 28, 28] },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
     styles: { fontSize: 8, cellPadding: 2.5 },
     didDrawPage: function (data) {
       if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
@@ -1324,7 +1321,7 @@ export async function generateComprehensivePDF(
     body: counselingRows,
     startY: 32,
     theme: 'striped',
-    headStyles: { fillColor: [71, 85, 105] },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
     styles: { fontSize: 8, cellPadding: 2.5 },
     didDrawPage: function (data) {
       if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
@@ -1350,7 +1347,7 @@ export async function generateComprehensivePDF(
     body: leaveRows,
     startY: 32,
     theme: 'striped',
-    headStyles: { fillColor: [71, 85, 105] },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
     styles: { fontSize: 8, cellPadding: 2.5 },
     didDrawPage: function (data) {
       if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
@@ -1378,7 +1375,7 @@ export async function generateComprehensivePDF(
       body: medicalRows,
       startY: 32,
       theme: 'striped',
-      headStyles: { fillColor: [71, 85, 105] },
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
       styles: { fontSize: 8, cellPadding: 2.5 },
       didDrawPage: function (data) {
         if (watermarkBase64) doc.addImage(watermarkBase64, 'PNG', 55, 98, 100, 100);
@@ -1591,7 +1588,7 @@ export async function generateViolationNoticePDF(
     ],
     startY: contentY,
     theme: 'grid',
-    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 9, halign: 'left' },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9, halign: 'left' },
     styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [30, 41, 59] },
     columnStyles: {
       0: { cellWidth: 58, fontStyle: 'bold', fillColor: [248, 250, 252] },
@@ -1752,7 +1749,7 @@ export async function generateStudentViolationHistoryPDF(
     ],
     startY: contentY,
     theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59], fontSize: 8.5, fontStyle: 'bold' },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontSize: 8.5, fontStyle: 'bold' },
     styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
     columnStyles: {
       0: { cellWidth: 42, fontStyle: 'bold', fillColor: [248, 250, 252] },
@@ -1796,7 +1793,7 @@ export async function generateStudentViolationHistoryPDF(
     body: violationBody,
     startY: tableStartY,
     theme: 'grid',
-    headStyles: { fillColor: [185, 28, 28], fontSize: 8, fontStyle: 'bold', halign: 'center' },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold', halign: 'center' },
     styles: { fontSize: 7.5, cellPadding: 2.2, textColor: [30, 41, 59] },
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
@@ -2002,7 +1999,7 @@ export async function printSickLeavePDF(
     ],
     startY: contentY,
     theme: 'grid',
-    headStyles: { fillColor: [51, 65, 85], fontStyle: 'bold', fontSize: 9, halign: 'left' },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9, halign: 'left' },
     styles: { fontSize: 8.5, cellPadding: 2.2, textColor: [30, 41, 59] },
     columnStyles: {
       0: { cellWidth: 55, fontStyle: 'bold', fillColor: [248, 250, 252] },
@@ -2030,7 +2027,7 @@ export async function printSickLeavePDF(
     ],
     startY: contentY,
     theme: 'grid',
-    headStyles: { fillColor: [71, 85, 105], fontStyle: 'bold', fontSize: 9, halign: 'left' },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9, halign: 'left' },
     styles: { fontSize: 8.5, cellPadding: 2.2, textColor: [30, 41, 59] },
     columnStyles: {
       0: { cellWidth: 55, fontStyle: 'bold', fillColor: [248, 250, 252] },
@@ -3416,7 +3413,7 @@ export async function generateParentSummonsPDF(
     ],
     startY: bodyY,
     theme: 'grid',
-    headStyles: { fillColor: [185, 28, 28], fontStyle: 'bold', fontSize: 8.8, halign: 'left' },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.8, halign: 'left' },
     styles: { fontSize: 8.6, cellPadding: 2.6, textColor: [30, 41, 59] },
     columnStyles: {
       0: { cellWidth: 55, fontStyle: 'bold', fillColor: [248, 250, 252] },
@@ -3508,10 +3505,10 @@ export async function generateParentSummonsPDF(
 
   // Middle Signature Area: QR Code Official Validation Stamp
   if (qrCodeDataUrl) {
-    doc.addImage(qrCodeDataUrl, 'PNG', centerX - 11, sigY + 2, 22, 22);
+    doc.addImage(qrCodeDataUrl, 'PNG', centerX - 9, sigY + 2.5, 18, 18);
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text("Verifikasi Sistem Resmi", centerX, sigY + 27, { align: "center" });
+    doc.text("Verifikasi Sistem Resmi", centerX, sigY + 23.5, { align: "center" });
   }
 
   // Right Signature: Kepala Sekolah
@@ -3533,10 +3530,7 @@ export async function generateParentSummonsPDF(
   doc.text(`NIP. ${headNip}`, rightX - 60, sigY + 28);
 
   // --- 10. BOTTOM TEAR-OFF ACKNOWLEDGEMENT SLIP (POTONGAN TANDA TERIMA ORANG TUA) ---
-  let slipStartY = 273;
-  if (!renderSlipOnSamePage) {
-    slipStartY = addNewLegalPage("Lembar Konfirmasi Kehadiran & Tanda Terima Orang Tua");
-  }
+  let slipStartY = renderSlipOnSamePage ? Math.max(sigY + 33, 250) : addNewLegalPage("Lembar Konfirmasi Kehadiran & Tanda Terima Orang Tua");
 
   doc.setDrawColor(148, 163, 184);
   doc.setLineWidth(0.35);
@@ -3605,7 +3599,7 @@ export async function generateParentSummonsPDF(
       body: historyRows,
       startY: appendixStartY + 15,
       theme: 'striped',
-      headStyles: { fillColor: [185, 28, 28], fontSize: 8.5 },
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
       styles: { fontSize: 8, cellPadding: 2.5 },
       margin: { left: leftMargin, right: rightMargin },
       pageBreak: 'auto',
@@ -4036,16 +4030,16 @@ export async function generateSingleConnectingJournalDispositionPDF(
   const docNumber = `No. Berkas: SR31/JP/${journal.id || 'DOC'}/${new Date().getFullYear()}`;
   doc.text(docNumber, centerX, currentY, { align: 'center' });
 
-  // Generate Verification QR Code
+  // Generate Verification QR Code cleanly positioned at top right without overlapping meta box
   try {
     const qrData = `SR31-DISPOSISI|ID:${journal.id}|Tgl:${journal.date}|Mapel:${journal.subject}|Guru:${journal.teacherName}|Target:${journal.targetClass}|Status:${journal.status}|Wali:${journal.caretakerName || '-'}`;
-    const qrDataUrl = await QRCode.toDataURL(qrData, { width: 100, margin: 1 });
-    doc.addImage(qrDataUrl, 'PNG', rightX - 22, currentY - 7, 20, 20);
+    const qrDataUrl = await QRCode.toDataURL(qrData, { width: 80, margin: 1 });
+    doc.addImage(qrDataUrl, 'PNG', rightX - 16, lineY + 2.5, 15, 15);
   } catch (e) {
     console.error('QR Code Generation Error:', e);
   }
 
-  currentY += 6;
+  currentY += 7.5;
 
   // 4. Meta Information Grid (Identity Table)
   const formattedDate = formatDateIndonesian(journal.date, false);
@@ -4148,8 +4142,8 @@ export async function generateSingleConnectingJournalDispositionPDF(
   doc.text('II. INSTRUKSI PENUGASAN ASRAMA (TASK ORDER GURU KEPADA WALI ASUH)', leftMargin, currentY);
 
   currentY += 3;
-  doc.setFillColor(254, 243, 199); // subtle amber
-  doc.setDrawColor(245, 158, 11);
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.3);
 
   const taskText = journal.taskOrder || '(Tidak ada instruksi tugas tertulis khusus)';
@@ -4159,7 +4153,7 @@ export async function generateSingleConnectingJournalDispositionPDF(
 
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(120, 53, 15);
+  doc.setTextColor(30, 41, 59);
   doc.text(taskLines, leftMargin + 4, currentY + 5.5);
 
   currentY += taskBoxHeight + 5;
@@ -4171,8 +4165,8 @@ export async function generateSingleConnectingJournalDispositionPDF(
   doc.text('III. LAPORAN TINDAK LANJUT & BIMBINGAN WALI ASUH DI ASRAMA', leftMargin, currentY);
 
   currentY += 3;
-  doc.setFillColor(240, 253, 244); // subtle emerald
-  doc.setDrawColor(34, 197, 94);
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.3);
 
   let followUpText = journal.followUp || '';
@@ -4187,13 +4181,13 @@ export async function generateSingleConnectingJournalDispositionPDF(
 
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(20, 83, 45);
+  doc.setTextColor(30, 41, 59);
   doc.text(followUpLines, leftMargin + 4, currentY + 5.5);
 
   // Caretaker info inside bottom of box
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(7.5);
-  doc.setTextColor(22, 101, 52);
+  doc.setTextColor(71, 85, 105);
   const caretakerLabel = `Wali Asuh Pendamping: ${journal.caretakerName || '-'} | NIP/NRK: ${journal.caretakerNip || '-'} | Tanggal Respon: ${journal.responseDate ? formatDateIndonesian(journal.responseDate, false) : '-'}`;
   doc.text(caretakerLabel, leftMargin + 4, currentY + followUpBoxHeight - 3);
 
@@ -4504,7 +4498,7 @@ export async function generateMenstruationRecapPDF(
     body: tableData,
     theme: 'grid',
     headStyles: {
-      fillColor: [185, 28, 28], // Red-700
+      fillColor: [51, 65, 85],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 7.5,
@@ -4773,7 +4767,7 @@ export async function generateSingleStudentMenstruationCardPDF(
     body: tableRows.length > 0 ? tableRows : [['-', 'Belum ada catatan siklus tersimpan', '-', '-', '-', '-', '-']],
     theme: 'grid',
     headStyles: {
-      fillColor: [185, 28, 28],
+      fillColor: [51, 65, 85],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 7.5,
@@ -4811,13 +4805,13 @@ export async function generateSingleStudentMenstruationCardPDF(
     finalY = 20;
   }
 
-  doc.setFillColor(254, 242, 242);
-  doc.setDrawColor(254, 202, 202);
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
   doc.roundedRect(leftMargin, finalY, contentWidth, 22, 2, 2, 'FD');
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(7.5);
-  doc.setTextColor(153, 27, 27);
+  doc.setTextColor(30, 41, 59);
   doc.text('KETENTUAN FIQIH HAID & THAHARAH (BERSUCI) ASRAMA PUTRI:', leftMargin + 4, finalY + 5);
 
   doc.setFont('Helvetica', 'normal');
@@ -5032,7 +5026,7 @@ export async function printMeetingAttendancePDF(minute: MeetingMinute, config: A
     head: [['No', 'Nama Peserta', 'Kehadiran', 'Tanda Tangan']],
     body: tableData,
     theme: 'grid',
-    headStyles: { fillColor: [41, 128, 185] },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
     columnStyles: {
       0: { cellWidth: 15, halign: 'center' },
       1: { cellWidth: 80 },
@@ -5111,217 +5105,157 @@ export async function generateSpecialChronologyPDF(caseItem: SpecialChronologyCa
   doc.setLineWidth(0.2);
   doc.line(margin, lineY + 1, pageWidth - margin, lineY + 1);
 
-  let currentY = lineY + 7;
+  let currentY = lineY + 6;
 
-  // Stamp / Label Dokumen Rahasia
-  doc.setFillColor(239, 68, 68); // Red
-  doc.roundedRect(pageWidth - margin - 35, currentY - 3, 35, 6, 1, 1, 'F');
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text('RAHASIA / CONFIDENTIAL', pageWidth - margin - 17.5, currentY + 1.2, { align: 'center' });
-
-  // Judul Dokumen
+  // Judul Dokumen (Clean & un-overlapping)
   doc.setTextColor(15, 23, 42);
-  doc.setFontSize(11.5);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('BERITA ACARA & LAPORAN KRONOLOGIS KASUS KHUSUS KEASRAMAAN', pageWidth / 2, currentY + 2, { align: 'center' });
-  currentY += 6.5;
+  doc.text('LEMBAR LAPORAN KEJADIAN & SERAH TERIMA TUGAS SHIFT ASRAMA', pageWidth / 2, currentY, { align: 'center' });
+  currentY += 4.5;
 
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
   doc.setTextColor(71, 85, 105);
-  doc.text('Metode Observasi Psikologi, Pemeriksaan Status Mental (MSE) & Pemantauan Shift Berkala', pageWidth / 2, currentY, { align: 'center' });
+  doc.text('Dokumentasi Kejadian Penting & Instruksi Handover Antar-Petugas Dinas Jaga Keasramaan', pageWidth / 2, currentY, { align: 'center' });
   currentY += 6;
 
-  // Tabel Identitas & Ringkasan Kasus
+  // Tabel Identitas Shift & Handover
+  const shiftTitle = caseItem.shiftType || caseItem.caseCategory || 'Shift Dinas';
+  const displayTime = caseItem.incidentTime ? `${caseItem.incidentTime} WIB` : '';
+  const dormDisplay = caseItem.dorm || 'Semua Asrama / Terpadu';
+  const studentDisplay = caseItem.studentName && caseItem.studentName.trim() ? `${caseItem.studentName} (${caseItem.class || 'Siswa'})` : 'Umum (Tidak Ada Siswa Khusus)';
+
   autoTable(doc, {
     startY: currentY,
     margin: { left: margin, right: margin },
     head: [[
-      { content: 'IDENTITAS KASUS & PESERTA DIDIK', colSpan: 4, styles: { halign: 'left', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' } }
+      { content: 'INFORMASI DINAS SHIFT & STATUS HANDOVER', colSpan: 4, styles: { halign: 'left', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 } }
     ]],
     body: [
       [
-        { content: 'Nomor Berkas', styles: { fontStyle: 'bold', cellWidth: 32 } },
-        { content: `: ${caseItem.id}`, styles: { cellWidth: 55 } },
-        { content: 'Tingkat Keparahan', styles: { fontStyle: 'bold', cellWidth: 35 } },
-        { content: `: ${caseItem.caseSeverity}`, styles: { fontStyle: 'bold', textColor: [185, 28, 28] } }
+        { content: 'ID / Nomor Berkas', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.id}` },
+        { content: 'Tingkat Prioritas', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.caseSeverity || 'Biasa'}`, styles: { fontStyle: 'bold', textColor: String(caseItem.caseSeverity).includes('Mendesak') || String(caseItem.caseSeverity).includes('Tinggi') ? [185, 28, 28] : [30, 41, 59] } }
       ],
       [
-        { content: 'Nama Siswa', styles: { fontStyle: 'bold' } },
-        { content: `: ${caseItem.studentName.toUpperCase()}` },
-        { content: 'Status Kasus', styles: { fontStyle: 'bold' } },
-        { content: `: ${caseItem.status}`, styles: { fontStyle: 'bold', textColor: [3, 105, 161] } }
+        { content: 'Hari / Tanggal', styles: { fontStyle: 'bold' } },
+        { content: `: ${formatDateIndonesian(caseItem.incidentDate)} ${displayTime}` },
+        { content: 'Status Handover', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.status || 'Perlu Tindak Lanjut'}`, styles: { fontStyle: 'bold', textColor: String(caseItem.status).includes('Selesai') ? [16, 185, 129] : [217, 119, 6] } }
       ],
       [
-        { content: 'NISN / ID Siswa', styles: { fontStyle: 'bold' } },
-        { content: `: ${caseItem.studentId}` },
-        { content: 'Tanggal Insiden', styles: { fontStyle: 'bold' } },
-        { content: `: ${formatDateIndonesian(caseItem.incidentDate)}` }
+        { content: 'Jenis Shift', styles: { fontStyle: 'bold' } },
+        { content: `: ${shiftTitle}` },
+        { content: 'Lokasi / Asrama', styles: { fontStyle: 'bold' } },
+        { content: `: ${dormDisplay}` }
       ],
       [
-        { content: 'Kelas / Asrama', styles: { fontStyle: 'bold' } },
-        { content: `: Kelas ${caseItem.class} • ${caseItem.dorm}` },
-        { content: 'Penanggung Jawab', styles: { fontStyle: 'bold' } },
-        { content: `: ${caseItem.primaryInvestigator}` }
+        { content: 'Petugas Shift Jaga', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.primaryInvestigator}` },
+        { content: 'Petugas Penerima', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.incomingOfficer || 'Menunggu Shift Berikutnya'}` }
       ],
       [
-        { content: 'Kategori Kasus', styles: { fontStyle: 'bold' } },
-        { content: `: ${caseItem.caseCategory}`, colSpan: 3, styles: { fontStyle: 'bold' } }
+        { content: 'Siswa Terkait', styles: { fontStyle: 'bold' } },
+        { content: `: ${studentDisplay}`, colSpan: 3 }
       ],
       [
-        { content: 'Ringkasan Latar Belakang & Analisis Awal Kasus', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [241, 245, 249] } }
-      ],
-      [
-        { content: caseItem.initialAssessmentSummary || 'Belum ada ringkasan awal kasus.', colSpan: 4, styles: { fontSize: 8 } }
+        { content: 'Judul / Topik', styles: { fontStyle: 'bold' } },
+        { content: `: ${caseItem.caseTitle}`, colSpan: 3, styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
       ]
     ],
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
     columnStyles: {
-      0: { cellWidth: 35 },
-      1: { cellWidth: 55 },
-      2: { cellWidth: 35 },
-      3: { cellWidth: 57 }
+      0: { cellWidth: 32 },
+      1: { cellWidth: 58 },
+      2: { cellWidth: 32 },
+      3: { cellWidth: 60 }
     }
   });
 
   currentY = (doc as any).lastAutoTable.finalY + 5;
 
-  // Bagian Observasi Kronologis Setiap Shift
-  doc.setFontSize(9.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('TABEL KRONOLOGIS OBSERVASI PSIKOLOGI SETIAP SHIFT', margin, currentY);
-  currentY += 3.5;
-
-  if (caseItem.shifts.length === 0) {
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(100, 116, 139);
-    doc.text('Belum ada catatan observasi shift yang tercatat dalam berkas kasus ini.', margin, currentY + 4);
-    currentY += 12;
-  } else {
-    // Siapkan body tabel shift
-    const shiftTableBody: any[] = [];
-
-    caseItem.shifts.forEach((s, idx) => {
-      // Header baris shift
-      shiftTableBody.push([
+  // Bagian 1: Uraian Kronologis Kejadian / Situasi Shift
+  autoTable(doc, {
+    startY: currentY,
+    margin: { left: margin, right: margin },
+    head: [[
+      { content: '1. KRONOLOGI / URAIAN KEJADIAN & KONDISI SELAMA SHIFT', styles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 } }
+    ]],
+    body: [
+      [
         {
-          content: `LOG #${idx + 1} — ${s.shift.toUpperCase()} | Tanggal: ${formatDateShort(s.date)} (${s.time} WIB) | Petugas: ${s.officerName} (${s.officerRole})`,
-          colSpan: 2,
-          styles: { fillColor: [226, 232, 240], fontStyle: 'bold', textColor: [15, 23, 42], fontSize: 8 }
+          content: caseItem.initialAssessmentSummary || 'Tidak ada kejadian luar biasa. Kondisi asrama aman, tertib, dan kondusif.',
+          styles: { fontSize: 8.5, cellPadding: 3.5, minCellHeight: 20 }
         }
-      ]);
+      ]
+    ],
+    theme: 'grid'
+  });
 
-      // 1. MSE
-      shiftTableBody.push([
-        { content: '1. Pemeriksaan Status Mental (MSE)', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [248, 250, 252] } },
-        {
-          content: `• Penampilan & Motorik: ${s.appearanceAndMotor}\n• Afek & Mood: ${s.moodAndAffect}\n• Arus Pikir & Pola Bicara: ${s.speechAndThoughtPattern}\n• Orientasi & Kesadaran: ${s.orientationAndConsciousness}`,
-          styles: { fontSize: 7.5 }
-        }
-      ]);
+  currentY = (doc as any).lastAutoTable.finalY + 5;
 
-      // 2. Dinamika Psikologis & Koping
-      shiftTableBody.push([
-        { content: '2. Dinamika Psikologis & Koping', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [248, 250, 252] } },
-        {
-          content: `• Stimulus / Faktor Pemicu: ${s.triggerFactors}\n• Regulasi Emosi: ${s.emotionalRegulation}\n• Mekanisme Pertahanan Diri (Defense): ${s.defenseMechanisms}`,
-          styles: { fontSize: 7.5 }
-        }
-      ]);
-
-      // 3. Evaluasi Risiko
-      const riskColor: [number, number, number] =
-        s.riskLevel.includes('Kritis') ? [185, 28, 28] :
-        s.riskLevel.includes('Tinggi') ? [194, 65, 12] :
-        s.riskLevel.includes('Sedang') ? [161, 98, 7] : [21, 128, 61];
-
-      shiftTableBody.push([
-        { content: '3. Evaluasi Risiko & Bahaya', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [248, 250, 252] } },
-        {
-          content: `Tingkat Risiko: ${s.riskLevel}\nCatatan Bahaya/Safety: ${s.riskNotes}`,
-          styles: { fontSize: 7.5, textColor: riskColor, fontStyle: 'bold' }
-        }
-      ]);
-
-      // 4. Intervensi Konseling & Respon
-      shiftTableBody.push([
-        { content: '4. Intervensi Konseling Diberikan', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [248, 250, 252] } },
-        {
-          content: `• Pendekatan / Teknik: ${s.interventionTechnique}\n• Respon Afektif & Kognitif Siswa: ${s.studentResponse}`,
-          styles: { fontSize: 7.5 }
-        }
-      ]);
-
-      // 5. Handover Shift Selanjutnya
-      shiftTableBody.push([
-        { content: '5. Instruksi Handover Shift', styles: { fontStyle: 'bold', cellWidth: 52, fillColor: [254, 243, 199] } },
-        {
-          content: `${s.handoverNotes}`,
-          styles: { fontSize: 7.5, fontStyle: 'bold', textColor: [146, 64, 14] }
-        }
-      ]);
-    });
-
-    autoTable(doc, {
-      startY: currentY,
-      margin: { left: margin, right: margin },
-      head: [['Dimensi Asesmen Klinis', 'Temuan Observasi & Analisis Psikologis Shift']],
-      body: shiftTableBody,
-      theme: 'grid',
-      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
-      styles: { cellPadding: 2, textColor: [30, 41, 59] },
-      columnStyles: {
-        0: { cellWidth: 50 },
-        1: { cellWidth: contentWidth - 50 }
-      }
-    });
-
-    currentY = (doc as any).lastAutoTable.finalY + 6;
-  }
-
-  // Cek apakah sisa halaman cukup untuk kesimpulan dan tanda tangan
-  if (currentY > pageHeight - 65) {
-    doc.addPage();
-    currentY = 20;
-  }
-
-  // Rekomendasi & Rencana Tindak Lanjut Multidisipliner
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('KESIMPULAN EVALUASI & REKOMENDASI KLINIS MULTIDISIPLINER:', margin, currentY);
-  currentY += 4.5;
+  // Bagian 2: Catatan Tugas Handover ke Shift Berikutnya
+  const handoverText = caseItem.handoverNotes || (caseItem.shifts && caseItem.shifts[0]?.handoverNotes) || 'Tidak ada instruksi khusus untuk shift selanjutnya.';
 
   autoTable(doc, {
     startY: currentY,
     margin: { left: margin, right: margin },
+    head: [[
+      { content: '2. TUGAS / INSTRUKSI SERAH TERIMA (HANDOVER KE SHIFT BERIKUTNYA)', styles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 } }
+    ]],
     body: [
       [
-        { content: '1. Rekomendasi Konseling & Psikiatri', styles: { fontStyle: 'bold', cellWidth: 55 } },
-        { content: 'Dibutuhkan sesi konseling individual lanjutan terjadwal 2x seminggu. Apabila stabilitas emosi memburuk, lakukan rujukan ke Psikolog / Psikiater Rumah Sakit Rujukan.' }
-      ],
-      [
-        { content: '2. Tindakan Disiplin Keasramaan', styles: { fontStyle: 'bold' } },
-        { content: 'Pemberian sanksi edukatif terstruktur tanpa kekerasan fisik, penugasan jurnal refleksi diri, serta monitoring ketertiban asrama oleh Wali Asuh piket.' }
-      ],
-      [
-        { content: '3. Komunikasi Orang Tua & Sekolah', styles: { fontStyle: 'bold' } },
-        { content: 'Pemanggilan orang tua/wali ke asrama untuk penandatanganan pakta integritas pembinaan bersama tim Guru BK dan Pengelola Asrama.' }
+        {
+          content: handoverText,
+          styles: { fontSize: 8.5, cellPadding: 3.5, minCellHeight: 20, textColor: [30, 41, 59] }
+        }
       ]
     ],
-    theme: 'plain',
-    styles: { fontSize: 7.5, cellPadding: 1.5, textColor: [51, 65, 85] }
+    theme: 'grid'
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 8;
+  currentY = (doc as any).lastAutoTable.finalY + 6;
 
-  // Cek space tanda tangan
-  if (currentY > pageHeight - 48) {
+  // Log Tindak Lanjut jika ada shifts tambahan
+  if (caseItem.shifts && caseItem.shifts.length > 0) {
+    const validFollowups = caseItem.shifts.filter(s => s.handoverNotes || s.incidentDetails);
+    if (validFollowups.length > 0) {
+      if (currentY > pageHeight - 65) {
+        doc.addPage();
+        currentY = 22;
+      }
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('CATATAN TINDAK LANJUT SHIFT TERKAIT:', margin, currentY);
+      currentY += 4;
+
+      const followUpBody = validFollowups.map((s, idx) => [
+        { content: `${idx + 1}. ${s.shift} (${formatDateShort(s.date)} ${s.time}) — ${s.officerName}`, styles: { fontStyle: 'bold' as const, cellWidth: 55 } },
+        { content: s.handoverNotes || s.incidentDetails || '-' }
+      ]);
+
+      autoTable(doc, {
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: [['Waktu & Petugas', 'Uraian Catatan / Tindak Lanjut']],
+        body: followUpBody,
+        theme: 'grid',
+        styles: { fontSize: 7.5, cellPadding: 2, textColor: [30, 41, 59] },
+        headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontSize: 8 }
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 6;
+    }
+  }
+
+  // Cek space tanda tangan (butuh ruang vertikal aman)
+  if (currentY > pageHeight - 58) {
     doc.addPage();
     currentY = 22;
   }
@@ -5331,8 +5265,8 @@ export async function generateSpecialChronologyPDF(caseItem: SpecialChronologyCa
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(30, 41, 59);
-  doc.text(`Palembang, ${sigDate}`, pageWidth - margin - 50, currentY);
-  currentY += 4;
+  doc.text(`Palembang, ${sigDate}`, pageWidth - margin - 45, currentY);
+  currentY += 5;
 
   const colWidth = contentWidth / 3;
   const col1X = margin + colWidth / 2;
@@ -5340,32 +5274,35 @@ export async function generateSpecialChronologyPDF(caseItem: SpecialChronologyCa
   const col3X = margin + colWidth * 2 + colWidth / 2;
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Konselor / Tim Investigasi,', col1X, currentY, { align: 'center' });
-  doc.text('Wali Asrama Mandiri,', col2X, currentY, { align: 'center' });
-  doc.text('Mengetahui,\nKepala Sekolah,', col3X, currentY, { align: 'center' });
+  doc.setFontSize(8);
+  doc.text('Petugas Shift (Menyerahkan),', col1X, currentY, { align: 'center' });
+  doc.text('Petugas Shift (Menerima),', col2X, currentY, { align: 'center' });
+  doc.text('Mengetahui,', col3X, currentY, { align: 'center' });
+  doc.text('Wali Asrama Mandiri,', col3X, currentY + 3.5, { align: 'center' });
 
   currentY += 20;
 
   // Nama & NIP
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
   doc.text(caseItem.primaryInvestigator.split('(')[0].trim(), col1X, currentY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text('NIP. - / Tim Khusus', col1X, currentY + 3.5, { align: 'center' });
+  doc.text('Wali Asuh Piket', col1X, currentY + 3.5, { align: 'center' });
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text(config.waliAsrama || 'HISNUL HASHIN, SE', col2X, currentY, { align: 'center' });
+  doc.text(caseItem.incomingOfficer || '( ........................................ )', col2X, currentY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text(config.waliAsramaNip || 'NIP. 197406262025211027', col2X, currentY + 3.5, { align: 'center' });
+  doc.text('Wali Asuh Penerima', col2X, currentY + 3.5, { align: 'center' });
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text(config.kepalaSekolah || 'YUNI ARSI, S.Pd', col3X, currentY, { align: 'center' });
+  doc.text(config.waliAsrama || 'HISNUL HASHIN, SE', col3X, currentY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text(config.kepalaSekolahNip || 'NIP. 197206051999032002', col3X, currentY + 3.5, { align: 'center' });
+  doc.text(config.waliAsramaNip || 'NIP. 197406262025211027', col3X, currentY + 3.5, { align: 'center' });
 
   // Footer Watermark Nomor Halaman
   const totalPages = (doc as any).internal.getNumberOfPages();
@@ -5375,13 +5312,1462 @@ export async function generateSpecialChronologyPDF(caseItem: SpecialChronologyCa
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(148, 163, 184);
     doc.text(
-      `Dokumen Rahasia Keasramaan — Berkas: ${caseItem.id} — Halaman ${i} dari ${totalPages}`,
+      `Buku Jurnal & Serah Terima Shift Keasramaan — ID: ${caseItem.id} — Halaman ${i} dari ${totalPages}`,
       pageWidth / 2,
       pageHeight - 6,
       { align: 'center' }
     );
   }
 
-  doc.save(`Laporan_Kronologi_Psikologi_${caseItem.studentName.replace(/\s+/g, '_')}_${caseItem.id}.pdf`);
+  const safeFileName = (caseItem.studentName || 'Shift').replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Handover_Shift_${caseItem.incidentDate}_${safeFileName}_${caseItem.id}.pdf`);
 }
+
+/**
+ * Mencetak Rekapitulasi Buku Jurnal & Handover Shift Seluruh Kasus/Kejadian
+ */
+export async function generateAllShiftHandoverPDF(
+  cases: SpecialChronologyCase[],
+  config: AppConfig
+): Promise<void> {
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
+  const margin = 12;
+
+  // Header KOP Resmi
+  let leftLogoBase64 = '';
+  let rightLogoBase64 = '';
+  try {
+    leftLogoBase64 = await loadLogoImage(config?.logoKiriUrl || '', 'left');
+  } catch {
+    leftLogoBase64 = generateProgrammaticLogo('left');
+  }
+
+  try {
+    rightLogoBase64 = await loadLogoImage(config?.logoKananUrl || '', 'right');
+  } catch {
+    rightLogoBase64 = generateProgrammaticLogo('right');
+  }
+
+  if (leftLogoBase64) {
+    try {
+      doc.addImage(leftLogoBase64, 'PNG', margin, 8, 16, 16);
+    } catch {}
+  }
+  if (rightLogoBase64) {
+    try {
+      doc.addImage(rightLogoBase64, 'PNG', pageWidth - margin - 16, 8, 16, 16);
+    } catch {}
+  }
+
+  // Teks KOP
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(30, 41, 59);
+
+  const kopKiriLines = (config.kopKiri || 'KEMENTERIAN SOSIAL REPUBLIK INDONESIA').split('\n');
+  const kopKananLines = (config.kopKanan || 'SEKOLAH RAKYAT TERINTEGRASI 31 PALEMBANG').split('\n');
+
+  let kopY = 10;
+  kopKiriLines.forEach((line) => {
+    doc.text(line.trim(), pageWidth / 2, kopY, { align: 'center' });
+    kopY += 4;
+  });
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  kopKananLines.forEach((line) => {
+    doc.text(line.trim(), pageWidth / 2, kopY, { align: 'center' });
+    kopY += 3.5;
+  });
+
+  const lineY = Math.max(kopY + 1.5, 28);
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.7);
+  doc.line(margin, lineY, pageWidth - margin, lineY);
+  doc.setLineWidth(0.2);
+  doc.line(margin, lineY + 0.8, pageWidth - margin, lineY + 0.8);
+
+  let currentY = lineY + 6;
+
+  // Judul
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('REKAPITULASI JURNAL KEJADIAN & SERAH TERIMA TUGAS (HANDOVER) SHIFT ASRAMA', pageWidth / 2, currentY, { align: 'center' });
+  currentY += 5;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Dicetak pada: ${formatDateIndonesian(new Date().toISOString().split('T')[0])} • Total: ${cases.length} Catatan Kejadian & Handover`, pageWidth / 2, currentY, { align: 'center' });
+  currentY += 5;
+
+  const tableBody = cases.map((c, idx) => {
+    const shiftInfo = `${c.shiftType || 'Shift'} (${formatDateShort(c.incidentDate)}${c.incidentTime ? ` ${c.incidentTime}` : ''})`;
+    const dormOrStudent = [c.dorm, c.studentName].filter(Boolean).join(' • ') || 'Semua Asrama';
+    const handover = c.handoverNotes || (c.shifts && c.shifts[0]?.handoverNotes) || '-';
+
+    return [
+      String(idx + 1),
+      shiftInfo,
+      c.primaryInvestigator || '-',
+      dormOrStudent,
+      c.caseTitle || '-',
+      c.initialAssessmentSummary || '-',
+      handover,
+      c.status || 'Perlu Tindak Lanjut'
+    ];
+  });
+
+  autoTable(doc, {
+    startY: currentY,
+    margin: { left: margin, right: margin },
+    head: [[
+      'No',
+      'Waktu & Shift',
+      'Petugas Jaga',
+      'Lokasi / Siswa',
+      'Judul Kejadian',
+      'Uraian Kejadian / Kondisi',
+      'Handover ke Shift Berikutnya',
+      'Status'
+    ]],
+    body: tableBody,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [30, 41, 59],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8,
+      halign: 'center'
+    },
+    styles: {
+      fontSize: 7.5,
+      cellPadding: 2,
+      textColor: [30, 41, 59]
+    },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' },
+      1: { cellWidth: 32 },
+      2: { cellWidth: 32 },
+      3: { cellWidth: 32 },
+      4: { cellWidth: 38, fontStyle: 'bold' },
+      5: { cellWidth: 50 },
+      6: { cellWidth: 50 },
+      7: { cellWidth: 23, halign: 'center', fontStyle: 'bold' }
+    }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 8;
+
+  if (currentY > pageHeight - 50) {
+    doc.addPage();
+    currentY = 22;
+  }
+
+  const sigDate = formatDateIndonesian(new Date().toISOString().split('T')[0]);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 41, 59);
+
+  const colWidth = (pageWidth - margin * 2) / 2;
+  const col1X = margin + colWidth / 2;
+  const col2X = margin + colWidth + colWidth / 2;
+
+  doc.text(`Palembang, ${sigDate}`, col2X, currentY, { align: 'center' });
+  currentY += 5;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Koordinator / Wali Asrama Mandiri,', col1X, currentY, { align: 'center' });
+  doc.text('Mengetahui, Kepala Sekolah,', col2X, currentY, { align: 'center' });
+
+  currentY += 18;
+
+  doc.text(config.waliAsrama || 'HISNUL HASHIN, SE', col1X, currentY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(config.waliAsramaNip || 'NIP. 197406262025211027', col1X, currentY + 3.5, { align: 'center' });
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text(config.kepalaSekolah || 'YUNI ARSI, S.Pd', col2X, currentY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(config.kepalaSekolahNip || 'NIP. 197206051999032002', col2X, currentY + 3.5, { align: 'center' });
+
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Buku Jurnal Handover Shift Keasramaan — Halaman ${i} dari ${totalPages}`,
+      pageWidth / 2,
+      pageHeight - 6,
+      { align: 'center' }
+    );
+  }
+
+  doc.save(`Rekap_Handover_Shift_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// ============================================================================
+// CETAK LEMBAR PENILAIAN KEBERSIHAN & KERAPIAN ASRAMA (SOP SEKOLAH RAKYAT)
+// ============================================================================
+
+export async function printDormInspectionPDF(inspection: DormInspection, config: AppConfig): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const leftMargin = 14;
+  const rightMargin = 14;
+  const contentWidth = pageWidth - leftMargin - rightMargin;
+
+  // Header Logos & KOP
+  const leftLogo = await loadLogoImage(config.logoKiriUrl, 'left');
+  const rightLogo = await loadLogoImage(config.logoKananUrl, 'right');
+
+  doc.addImage(leftLogo, 'PNG', leftMargin, 10, 18, 18);
+  doc.addImage(rightLogo, 'PNG', pageWidth - rightMargin - 18, 10, 18, 18);
+
+  let currentY = 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(30, 41, 59);
+
+  const kopKiriLines = (config.kopKiri || 'KEMENTERIAN SOSIAL REPUBLIK INDONESIA\nPUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI').split('\n');
+  kopKiriLines.forEach((line) => {
+    doc.text(line.trim(), pageWidth / 2, currentY, { align: 'center' });
+    currentY += 4;
+  });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  const kopKananLines = (config.kopKanan || 'SEKOLAH RAKYAT TERPADU 31 PALEMBANG\nJl. Komp Sosial Km 5 Sukabangun, Palembang').split('\n');
+  kopKananLines.forEach((line) => {
+    doc.text(line.trim(), pageWidth / 2, currentY, { align: 'center' });
+    currentY += 3.8;
+  });
+
+  // Double divider line
+  currentY += 1.5;
+  doc.setDrawColor(51, 65, 85);
+  doc.setLineWidth(0.75);
+  doc.line(leftMargin, currentY, pageWidth - rightMargin, currentY);
+  currentY += 0.9;
+  doc.setLineWidth(0.25);
+  doc.line(leftMargin, currentY, pageWidth - rightMargin, currentY);
+
+  // Title Box
+  currentY += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('FORMULIR PENILAIAN KEBERSIHAN & KERAPIAN ASRAMA', pageWidth / 2, currentY, { align: 'center' });
+
+  currentY += 4;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text('STANDAR OPERASIONAL PROSEDUR (SOP) ASRAMA SEKOLAH RAKYAT KEMENSOS RI', pageWidth / 2, currentY, { align: 'center' });
+
+  // Meta Information Table
+  currentY += 4;
+  const metaData = [
+    [
+      { content: 'Gedung / Asrama', styles: { fontStyle: 'bold' as const, cellWidth: 32 } },
+      { content: `: ${inspection.dorm || '-'}`, styles: { cellWidth: 63 } },
+      { content: 'Tanggal & Waktu', styles: { fontStyle: 'bold' as const, cellWidth: 32 } },
+      { content: `: ${formatDateIndonesian(inspection.date)} (${inspection.time || '-'} WIB)`, styles: { cellWidth: 55 } }
+    ],
+    [
+      { content: 'Nomor Kamar', styles: { fontStyle: 'bold' as const } },
+      { content: `: ${inspection.roomNumber || '-'}` },
+      { content: 'Jenis Inspeksi', styles: { fontStyle: 'bold' as const } },
+      { content: `: ${inspection.inspectionType || 'Inspeksi Rutin Pagi'}` }
+    ],
+    [
+      { content: 'Ketua / Penghuni Kamar', styles: { fontStyle: 'bold' as const } },
+      { content: `: ${inspection.roomLeaderName ? inspection.roomLeaderName + (inspection.studentNamesInRoom ? ` (${inspection.studentNamesInRoom})` : '') : (inspection.studentNamesInRoom || '-')}` },
+      { content: 'Petugas Pemeriksa', styles: { fontStyle: 'bold' as const } },
+      { content: `: ${inspection.inspectorName} ${inspection.inspectorNip ? `(${inspection.inspectorNip})` : ''}` }
+    ]
+  ];
+
+  autoTable(doc, {
+    body: metaData,
+    startY: currentY,
+    theme: 'plain',
+    styles: {
+      fontSize: 7.8,
+      cellPadding: 1.2,
+      textColor: [30, 41, 59]
+    },
+    margin: { left: leftMargin, right: rightMargin }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 3;
+
+  // Score Summary Banner
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(leftMargin, currentY, contentWidth, 12, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text('REKAPITULASI HASIL INSPEKSI:', leftMargin + 3.5, currentY + 5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`SKOR TOTAL: ${inspection.totalScore} / 100`, leftMargin + 3.5, currentY + 9.5);
+
+  const gradeText = `PREDIKAT: ${inspection.grade} (${inspection.gradeLabel})`;
+  doc.setFontSize(8.5);
+  doc.text(gradeText, pageWidth - rightMargin - 3.5, currentY + 7.5, { align: 'right' });
+
+  currentY += 15;
+
+  // Table Body with Criteria
+  const tableRows: any[] = [];
+  const categories: { key: string; label: string }[] = [
+    { key: 'ranjang_selimut', label: 'I. PENATAAN RANJANG & SELIMUT (BOBOT 25 POIN)' },
+    { key: 'lemari_isi', label: 'II. LEMARI & KEBERSIHAN TINGKATAN ISI LEMARI (BOBOT 30 POIN)' },
+    { key: 'debu_permukaan', label: 'III. PENGECEKAN DEBU & KEBERSIHAN PERMUKAAN (BOBOT 25 POIN)' },
+    { key: 'fasilitas_kelengkapan', label: 'IV. KELENGKAPAN & FASILITAS ASRAMA (BOBOT 20 POIN)' }
+  ];
+
+  let itemNumber = 1;
+  categories.forEach((cat) => {
+    // Category Subheader row
+    tableRows.push([
+      {
+        content: cat.label,
+        colSpan: 6,
+        styles: {
+          fillColor: [241, 245, 249],
+          textColor: [30, 41, 59],
+          fontStyle: 'bold' as const,
+          fontSize: 7.8,
+          halign: 'left' as const
+        }
+      }
+    ]);
+
+    const itemsInCat = inspection.items.filter((i) => i.category === cat.key);
+    itemsInCat.forEach((item) => {
+      tableRows.push([
+        { content: String(itemNumber++), styles: { halign: 'center' as const } },
+        { content: item.title, styles: { fontStyle: 'bold' as const } },
+        { content: item.sopStandard, styles: { fontSize: 7 } },
+        { content: `${item.score} / ${item.maxScore}`, styles: { halign: 'center' as const, fontStyle: 'bold' as const } },
+        {
+          content: item.isCompliant ? 'Sesuai SOP' : 'Tidak Sesuai',
+          styles: {
+            halign: 'center' as const,
+            fontStyle: 'bold' as const,
+            textColor: item.isCompliant ? [22, 101, 52] : [185, 28, 28]
+          }
+        },
+        { content: item.notes || '-' }
+      ]);
+    });
+  });
+
+  autoTable(doc, {
+    head: [[
+      { content: 'No', styles: { halign: 'center' as const } },
+      { content: 'Aspek Penilaian', styles: { halign: 'left' as const } },
+      { content: 'Standar Prosedur (SOP Asrama)', styles: { halign: 'left' as const } },
+      { content: 'Skor', styles: { halign: 'center' as const } },
+      { content: 'Kepatuhan', styles: { halign: 'center' as const } },
+      { content: 'Catatan Temuan', styles: { halign: 'left' as const } }
+    ]],
+    body: tableRows,
+    startY: currentY,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [51, 65, 85],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7.8,
+      cellPadding: 2
+    },
+    styles: {
+      fontSize: 7.2,
+      cellPadding: 1.8,
+      textColor: [30, 41, 59],
+      lineColor: [203, 213, 225],
+      lineWidth: 0.2
+    },
+    columnStyles: {
+      0: { cellWidth: 8 },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 64 },
+      3: { cellWidth: 15 },
+      4: { cellWidth: 22 },
+      5: { cellWidth: 33 }
+    },
+    margin: { left: leftMargin, right: rightMargin },
+    pageBreak: 'auto'
+  });
+
+  let finalY = (doc as any).lastAutoTable.finalY + 4;
+
+  if (finalY > 235) {
+    doc.addPage();
+    finalY = 18;
+  }
+
+  // Box Catatan & Tindak Lanjut
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(leftMargin, finalY, contentWidth, 23, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text('CATATAN TEMUAN & KEPUTUSAN TINDAK LANJUT:', leftMargin + 3.5, finalY + 4.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(
+    `Status Keputusan  : [ ${inspection.actionRequired || 'Lulus Standar SOP'} ] ${inspection.actionDeadline ? `(Tenggat Waktu: ${inspection.actionDeadline})` : ''}`,
+    leftMargin + 3.5,
+    finalY + 9
+  );
+
+  const findingsText = inspection.findings ? `Temuan Khusus      : ${inspection.findings}` : 'Temuan Khusus      : Tidak ada temuan pelanggaran berat, kamar memenuhi standar kebersihan.';
+  const splitFindings = doc.splitTextToSize(findingsText, contentWidth - 8);
+  doc.text(splitFindings, leftMargin + 3.5, finalY + 13.5);
+
+  if (inspection.actionNotes) {
+    const actionNotesText = `Instruksi Petugas  : ${inspection.actionNotes}`;
+    const splitActionNotes = doc.splitTextToSize(actionNotesText, contentWidth - 8);
+    doc.text(splitActionNotes, leftMargin + 3.5, finalY + 18);
+  }
+
+  finalY += 28;
+
+  if (finalY > 245) {
+    doc.addPage();
+    finalY = 20;
+  }
+
+  // 3-Column Signatures
+  const colWidth = contentWidth / 3;
+  const col1X = leftMargin + colWidth / 2;
+  const col2X = leftMargin + colWidth + colWidth / 2;
+  const col3X = leftMargin + colWidth * 2 + colWidth / 2;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 41, 59);
+
+  doc.text('Ketua Kamar / Siswa,', col1X, finalY, { align: 'center' });
+  doc.text('Petugas Pemeriksa (Wali Asuh),', col2X, finalY, { align: 'center' });
+  doc.text('Mengetahui, Wali Asrama,', col3X, finalY, { align: 'center' });
+
+  finalY += 17;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text(inspection.roomLeaderName || '(Perwakilan Kamar)', col1X, finalY, { align: 'center' });
+  doc.text(inspection.inspectorName || 'Wali Asuh Pemeriksa', col2X, finalY, { align: 'center' });
+  doc.text(config.waliAsrama || 'HISNUL HASHIN, SE', col3X, finalY, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Ketua / Anggota Kamar', col1X, finalY + 3.5, { align: 'center' });
+  doc.text(inspection.inspectorNip || 'Petugas Piket Asrama', col2X, finalY + 3.5, { align: 'center' });
+  doc.text(config.waliAsramaNip || 'NIP. 197406262025211027', col3X, finalY + 3.5, { align: 'center' });
+
+  // Page Numbers Footer
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Lembar Penilaian Kebersihan & Kerapian Asrama — Halaman ${i} dari ${totalPages}`,
+      pageWidth / 2,
+      pageHeight - 5,
+      { align: 'center' }
+    );
+  }
+
+  const cleanDorm = (inspection.dorm || 'Asrama').replace(/\s+/g, '_');
+  const cleanRoom = (inspection.roomNumber || 'Kamar').replace(/\s+/g, '_');
+  doc.save(`Penilaian_Kebersihan_${cleanDorm}_${cleanRoom}_${inspection.date}.pdf`);
+}
+
+export async function printBlankDormInspectionFormPDF(config: AppConfig): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const leftMargin = 14;
+  const rightMargin = 14;
+  const contentWidth = pageWidth - leftMargin - rightMargin;
+
+  // Header Logos & KOP
+  const leftLogo = await loadLogoImage(config.logoKiriUrl, 'left');
+  const rightLogo = await loadLogoImage(config.logoKananUrl, 'right');
+
+  doc.addImage(leftLogo, 'PNG', leftMargin, 10, 18, 18);
+  doc.addImage(rightLogo, 'PNG', pageWidth - rightMargin - 18, 10, 18, 18);
+
+  let currentY = 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(30, 41, 59);
+
+  const kopKiriLines = (config.kopKiri || 'KEMENTERIAN SOSIAL REPUBLIK INDONESIA\nPUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI').split('\n');
+  kopKiriLines.forEach((line) => {
+    doc.text(line.trim(), pageWidth / 2, currentY, { align: 'center' });
+    currentY += 4;
+  });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  const kopKananLines = (config.kopKanan || 'SEKOLAH RAKYAT TERPADU 31 PALEMBANG\nJl. Komp Sosial Km 5 Sukabangun, Palembang').split('\n');
+  kopKananLines.forEach((line) => {
+    doc.text(line.trim(), pageWidth / 2, currentY, { align: 'center' });
+    currentY += 3.8;
+  });
+
+  // Double divider line
+  currentY += 1.5;
+  doc.setDrawColor(51, 65, 85);
+  doc.setLineWidth(0.75);
+  doc.line(leftMargin, currentY, pageWidth - rightMargin, currentY);
+  currentY += 0.9;
+  doc.setLineWidth(0.25);
+  doc.line(leftMargin, currentY, pageWidth - rightMargin, currentY);
+
+  // Title Box
+  currentY += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('FORMULIR ISIAN INSPEKSI KEBERSIHAN & KERAPIAN ASRAMA', pageWidth / 2, currentY, { align: 'center' });
+
+  currentY += 4;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text('LEMBAR CEKLIST LAPANGAN WALI ASUH / PETUGAS PIKET (SOP SEKOLAH RAKYAT)', pageWidth / 2, currentY, { align: 'center' });
+
+  // Blank Meta Information
+  currentY += 4;
+  const blankMetaData = [
+    [
+      { content: 'Gedung / Asrama', styles: { fontStyle: 'bold' as const, cellWidth: 32 } },
+      { content: ': ................................................................', styles: { cellWidth: 63 } },
+      { content: 'Tanggal Inspeksi', styles: { fontStyle: 'bold' as const, cellWidth: 32 } },
+      { content: ': ...... / ...... / 2026', styles: { cellWidth: 55 } }
+    ],
+    [
+      { content: 'Nomor Kamar', styles: { fontStyle: 'bold' as const } },
+      { content: ': Kamar .........' },
+      { content: 'Waktu / Jam', styles: { fontStyle: 'bold' as const } },
+      { content: ': Pukul .......... WIB' }
+    ],
+    [
+      { content: 'Ketua Kamar / Anggota', styles: { fontStyle: 'bold' as const } },
+      { content: ': ................................................................' },
+      { content: 'Petugas Pemeriksa', styles: { fontStyle: 'bold' as const } },
+      { content: ': .............................................' }
+    ]
+  ];
+
+  autoTable(doc, {
+    body: blankMetaData,
+    startY: currentY,
+    theme: 'plain',
+    styles: {
+      fontSize: 7.8,
+      cellPadding: 1.2,
+      textColor: [30, 41, 59]
+    },
+    margin: { left: leftMargin, right: rightMargin }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 4;
+
+  // Criteria Table for Blank Form
+  const tableRows: any[] = [];
+  const categories: { key: string; label: string }[] = [
+    { key: 'ranjang_selimut', label: 'I. PENATAAN RANJANG & TEMPAT TIDUR (BOBOT 25 POIN)' },
+    { key: 'lemari_isi', label: 'II. LEMARI & KEBERSIHAN TINGKATAN ISI LEMARI (BOBOT 30 POIN)' },
+    { key: 'debu_permukaan', label: 'III. PENGECEKAN DEBU & KEBERSIHAN PERMUKAAN (BOBOT 25 POIN)' },
+    { key: 'fasilitas_kelengkapan', label: 'IV. KELENGKAPAN & FASILITAS ASRAMA (BOBOT 20 POIN)' }
+  ];
+
+  let itemNumber = 1;
+  categories.forEach((cat) => {
+    tableRows.push([
+      {
+        content: cat.label,
+        colSpan: 6,
+        styles: {
+          fillColor: [241, 245, 249],
+          textColor: [30, 41, 59],
+          fontStyle: 'bold' as const,
+          fontSize: 7.8,
+          halign: 'left' as const
+        }
+      }
+    ]);
+
+    const itemsInCat = DEFAULT_SOP_CRITERIA.filter((c) => c.category === cat.key);
+    itemsInCat.forEach((item) => {
+      tableRows.push([
+        { content: String(itemNumber++), styles: { halign: 'center' as const } },
+        { content: item.title, styles: { fontStyle: 'bold' as const } },
+        { content: item.sopStandard, styles: { fontSize: 7 } },
+        { content: `[   ] / ${item.maxScore}`, styles: { halign: 'center' as const } },
+        { content: '[  ] Ya   [  ] Tdk', styles: { halign: 'center' as const, fontSize: 7 } },
+        { content: '' }
+      ]);
+    });
+  });
+
+  autoTable(doc, {
+    head: [[
+      { content: 'No', styles: { halign: 'center' as const } },
+      { content: 'Aspek Penilaian', styles: { halign: 'left' as const } },
+      { content: 'Standar Prosedur (SOP Asrama)', styles: { halign: 'left' as const } },
+      { content: 'Skor Fisik', styles: { halign: 'center' as const } },
+      { content: 'Sesuai SOP?', styles: { halign: 'center' as const } },
+      { content: 'Catatan Temuan Petugas', styles: { halign: 'left' as const } }
+    ]],
+    body: tableRows,
+    startY: currentY,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [51, 65, 85],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7.8,
+      cellPadding: 2
+    },
+    styles: {
+      fontSize: 7.2,
+      cellPadding: 1.8,
+      textColor: [30, 41, 59],
+      lineColor: [203, 213, 225],
+      lineWidth: 0.2
+    },
+    columnStyles: {
+      0: { cellWidth: 8 },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 64 },
+      3: { cellWidth: 15 },
+      4: { cellWidth: 22 },
+      5: { cellWidth: 33 }
+    },
+    margin: { left: leftMargin, right: rightMargin },
+    pageBreak: 'auto'
+  });
+
+  let finalY = (doc as any).lastAutoTable.finalY + 4;
+
+  if (finalY > 235) {
+    doc.addPage();
+    finalY = 18;
+  }
+
+  // Blank Notes Box
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(leftMargin, finalY, contentWidth, 23, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text('CATATAN TEMUAN / TINDAK LANJUT PETUGAS:', leftMargin + 3.5, finalY + 4.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text('Keputusan: [  ] Lulus Standar SOP     [  ] Piket Ulang Hari Ini     [  ] Pembinaan Khusus Wali Asuh', leftMargin + 3.5, finalY + 9.5);
+  doc.text('Catatan: ...................................................................................................................................................................', leftMargin + 3.5, finalY + 14.5);
+  doc.text('Tenggat Perbaikan: ....................................................................................................................................................', leftMargin + 3.5, finalY + 19.5);
+
+  finalY += 28;
+
+  if (finalY > 245) {
+    doc.addPage();
+    finalY = 20;
+  }
+
+  // 3-Column Signatures
+  const colWidth = contentWidth / 3;
+  const col1X = leftMargin + colWidth / 2;
+  const col2X = leftMargin + colWidth + colWidth / 2;
+  const col3X = leftMargin + colWidth * 2 + colWidth / 2;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 41, 59);
+
+  doc.text('Ketua Kamar / Siswa,', col1X, finalY, { align: 'center' });
+  doc.text('Petugas Pemeriksa (Wali Asuh),', col2X, finalY, { align: 'center' });
+  doc.text('Mengetahui, Wali Asrama,', col3X, finalY, { align: 'center' });
+
+  finalY += 17;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('( .................................................. )', col1X, finalY, { align: 'center' });
+  doc.text('( .................................................. )', col2X, finalY, { align: 'center' });
+  doc.text(config.waliAsrama || 'HISNUL HASHIN, SE', col3X, finalY, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Ketua / Anggota Kamar', col1X, finalY + 3.5, { align: 'center' });
+  doc.text('NIP / NRK: ...................................', col2X, finalY + 3.5, { align: 'center' });
+  doc.text(config.waliAsramaNip || 'NIP. 197406262025211027', col3X, finalY + 3.5, { align: 'center' });
+
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Formulir Ceklist Lapangan Kebersihan Asrama — Halaman ${i} dari ${totalPages}`,
+      pageWidth / 2,
+      pageHeight - 5,
+      { align: 'center' }
+    );
+  }
+
+  doc.save(`Formulir_Kosong_Cek_Kebersihan_Asrama.pdf`);
+}
+
+// --- 16A. REKAPITULASI INVENTARIS ASET ASRAMA (LANDSCAPE A4) ---
+export async function generateDormAssetsReportPDF(
+  assets: DormAsset[],
+  dormFilter: string,
+  config: AppConfig,
+  options?: {
+    inspectorName?: string;
+    printDate?: string;
+    notes?: string;
+  }
+): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth(); // 297
+  const pageHeight = doc.internal.pageSize.getHeight(); // 210
+  const leftMargin = 14;
+  const rightMargin = 14;
+  const contentWidth = pageWidth - leftMargin - rightMargin; // 269
+
+  // Filter assets if specific dorm is selected
+  const filteredAssets = dormFilter === 'Semua' || dormFilter === 'Semua Asrama'
+    ? assets
+    : assets.filter(a => a.dormName.toLowerCase() === dormFilter.toLowerCase());
+
+  // Calculate Statistics
+  const totalItemCount = filteredAssets.length;
+  const totalUnits = filteredAssets.reduce((sum, a) => sum + (Number(a.totalQuantity) || 0), 0);
+  const totalGoodUnits = filteredAssets.reduce((sum, a) => sum + (Number(a.goodQuantity) || 0), 0);
+  const totalDamagedUnits = filteredAssets.reduce((sum, a) => sum + (Number(a.damagedQuantity) || 0), 0);
+  const totalLightDamage = filteredAssets.filter(a => a.damageSeverity === 'ringan').reduce((sum, a) => sum + (Number(a.damagedQuantity) || 0), 0);
+  const totalMediumDamage = filteredAssets.filter(a => a.damageSeverity === 'sedang').reduce((sum, a) => sum + (Number(a.damagedQuantity) || 0), 0);
+  const totalHeavyDamage = filteredAssets.filter(a => a.damageSeverity === 'berat').reduce((sum, a) => sum + (Number(a.damagedQuantity) || 0), 0);
+  const conditionPercentage = totalUnits > 0 ? Math.round((totalGoodUnits / totalUnits) * 100) : 100;
+
+  // Logos
+  let leftLogo = config.logoKiriUrl || '';
+  let rightLogo = config.logoKananUrl || '';
+  if (!leftLogo) leftLogo = generateProgrammaticLogo('left');
+  if (!rightLogo) rightLogo = generateProgrammaticLogo('right');
+
+  // Header Function
+  const renderHeader = () => {
+    try {
+      if (leftLogo) doc.addImage(leftLogo, 'PNG', leftMargin, 8, 16, 16);
+      if (rightLogo) doc.addImage(rightLogo, 'PNG', pageWidth - rightMargin - 16, 8, 16, 16);
+    } catch (e) {}
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text('KEMENTERIAN SOSIAL REPUBLIK INDONESIA', pageWidth / 2, 11, { align: 'center' });
+
+    doc.setFontSize(10.5);
+    doc.text('SEKOLAH RAKYAT TERPADU 31 PALEMBANG', pageWidth / 2, 16, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      'SISTEM MANAJEMEN SARANA PRASARANA & INVENTARIS ASET ASRAMA BERDASARKAN STANDAR SOP',
+      pageWidth / 2,
+      20.5,
+      { align: 'center' }
+    );
+
+    // Decorative separator line
+    doc.setDrawColor(16, 185, 129); // emerald
+    doc.setLineWidth(0.8);
+    doc.line(leftMargin, 23.5, pageWidth - rightMargin, 23.5);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.line(leftMargin, 24.5, pageWidth - rightMargin, 24.5);
+  };
+
+  renderHeader();
+
+  let startY = 28;
+
+  // Title Banner
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  const titleText = `BERITA ACARA & REKAPITULASI INVENTARIS ASET ${dormFilter.toUpperCase()}`;
+  doc.text(titleText, pageWidth / 2, startY, { align: 'center' });
+
+  startY += 4.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  const printDateStr = formatDateIndonesian(options?.printDate || new Date().toISOString().split('T')[0], false);
+  doc.text(`Dicetak pada: ${printDateStr} | Status: Dokumen Resmi Pengelolaan Sarpras Asrama`, pageWidth / 2, startY, { align: 'center' });
+
+  startY += 4;
+
+  // KPI Summary Stat Box
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(leftMargin, startY, contentWidth, 14, 2, 2, 'FD');
+
+  const statWidth = contentWidth / 4;
+  
+  // Stat 1: Total Aset
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('TOTAL JENIS ASET', leftMargin + statWidth * 0.5, startY + 4.5, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${totalItemCount} Barang (${totalUnits} Unit)`, leftMargin + statWidth * 0.5, startY + 10.5, { align: 'center' });
+
+  // Divider 1
+  doc.setDrawColor(226, 232, 240);
+  doc.line(leftMargin + statWidth, startY + 2, leftMargin + statWidth, startY + 12);
+
+  // Stat 2: Kondisi Baik
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('KONDISI BAIK / LAYAK', leftMargin + statWidth * 1.5, startY + 4.5, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(5, 150, 105); // emerald-600
+  doc.text(`${totalGoodUnits} Unit (${conditionPercentage}%)`, leftMargin + statWidth * 1.5, startY + 10.5, { align: 'center' });
+
+  // Divider 2
+  doc.line(leftMargin + statWidth * 2, startY + 2, leftMargin + statWidth * 2, startY + 12);
+
+  // Stat 3: Kondisi Rusak
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('KONDISI RUSAK TOTAL', leftMargin + statWidth * 2.5, startY + 4.5, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(totalDamagedUnits > 0 ? 225 : 71, totalDamagedUnits > 0 ? 29 : 85, totalDamagedUnits > 0 ? 72 : 105);
+  doc.text(`${totalDamagedUnits} Unit`, leftMargin + statWidth * 2.5, startY + 10.5, { align: 'center' });
+
+  // Divider 3
+  doc.line(leftMargin + statWidth * 3, startY + 2, leftMargin + statWidth * 3, startY + 12);
+
+  // Stat 4: Rincian Kerusakan
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('TINGKAT KERUSAKAN', leftMargin + statWidth * 3.5, startY + 4.5, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`R: ${totalLightDamage} | S: ${totalMediumDamage} | B: ${totalHeavyDamage}`, leftMargin + statWidth * 3.5, startY + 10.5, { align: 'center' });
+
+  startY += 17;
+
+  // Build Table Rows
+  const tableRows = filteredAssets.map((asset, idx) => {
+    const sevLabel = asset.damageSeverity === 'berat'
+      ? '[BERAT]'
+      : asset.damageSeverity === 'sedang'
+      ? '[SEDANG]'
+      : asset.damageSeverity === 'ringan'
+      ? '[RINGAN]'
+      : '[NIHIL]';
+
+    const damageDetail = asset.damagedQuantity > 0
+      ? `${sevLabel} ${asset.damageStatus || 'Kerusakan fisik'}`
+      : 'Kondisi Baik Sesuai SOP';
+
+    let linkText = '-';
+    if (asset.gdriveLink) {
+      linkText = asset.gdriveLink.length > 30
+        ? `${asset.gdriveLink.substring(0, 28)}...`
+        : asset.gdriveLink;
+    }
+    const notesText = asset.notes ? `\nCatatan: ${asset.notes}` : '';
+
+    const codeText = asset.assetCode || asset.id;
+    const nameWithSpec = asset.brandSpec
+      ? `${asset.itemName}\nSpesifikasi: ${asset.brandSpec}`
+      : asset.itemName;
+
+    const locationText = asset.buildingBlock
+      ? `${asset.dormName}\n${asset.buildingBlock} - ${asset.roomNumber || 'Kamar Siswa'}`
+      : `${asset.dormName}\n${asset.roomNumber || 'Kamar Siswa'}`;
+
+    const fundingText = asset.procurementYear || asset.fundingSource
+      ? `${asset.category}\nThn: ${asset.procurementYear || '-'} (${asset.fundingSource || 'DIPA'})`
+      : asset.category;
+
+    return [
+      String(idx + 1),
+      codeText,
+      nameWithSpec,
+      locationText,
+      fundingText,
+      String(asset.totalQuantity),
+      String(asset.goodQuantity),
+      String(asset.damagedQuantity),
+      damageDetail,
+      asset.actionPlan,
+      `${linkText}${notesText}`
+    ];
+  });
+
+  autoTable(doc, {
+    startY: startY,
+    head: [[
+      'No',
+      'Kode BMN / NIB',
+      'Nama Barang & Spesifikasi Teknis',
+      'Gedung & Lokasi Ruang',
+      'Kategori & Anggaran',
+      'Total',
+      'Baik',
+      'Rusak',
+      'Status Kerusakan Fisik',
+      'Tindak Lanjut Sarpras',
+      'Link GDrive & Catatan'
+    ]],
+    body: tableRows,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [16, 185, 129], // Emerald-600
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7.2,
+      halign: 'center',
+      valign: 'middle',
+      cellPadding: 1.8
+    },
+    styles: {
+      fontSize: 6.5,
+      cellPadding: 1.4,
+      textColor: [30, 41, 59],
+      lineColor: [226, 232, 240],
+      lineWidth: 0.2
+    },
+    columnStyles: {
+      0: { cellWidth: 7, halign: 'center' },
+      1: { cellWidth: 26, fontStyle: 'bold', fontSize: 6.2 },
+      2: { cellWidth: 40, fontStyle: 'bold' },
+      3: { cellWidth: 32 },
+      4: { cellWidth: 26 },
+      5: { cellWidth: 11, halign: 'center', fontStyle: 'bold' },
+      6: { cellWidth: 11, halign: 'center', textColor: [5, 150, 105], fontStyle: 'bold' },
+      7: { cellWidth: 11, halign: 'center', textColor: [225, 29, 72], fontStyle: 'bold' },
+      8: { cellWidth: 40 },
+      9: { cellWidth: 27 },
+      10: { cellWidth: 38 }
+    },
+    didDrawPage: () => {
+      renderHeader();
+    },
+    margin: { left: leftMargin, right: rightMargin, top: 26, bottom: 20 }
+  });
+
+  let finalY = (doc as any).lastAutoTable.finalY + 6;
+
+  // Check if signatures fit on the current page
+  if (finalY + 34 > pageHeight - 12) {
+    doc.addPage();
+    renderHeader();
+    finalY = 32;
+  }
+
+  // 3-Column Signature Block
+  const colWidth = contentWidth / 3;
+  const col1X = leftMargin + colWidth * 0.5;
+  const col2X = leftMargin + colWidth * 1.5;
+  const col3X = leftMargin + colWidth * 2.5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 41, 59);
+
+  doc.text('Petugas Pendata Aset Asrama,', col1X, finalY, { align: 'center' });
+  doc.text('Koordinator / Ketua Kamar,', col2X, finalY, { align: 'center' });
+  doc.text(`Palembang, ${printDateStr}`, col3X, finalY, { align: 'center' });
+  doc.text('Mengetahui, Wali Asrama Mandiri,', col3X, finalY + 4, { align: 'center' });
+
+  finalY += 18;
+
+  const inspectorName = options?.inspectorName || 'Petugas Sarpras / Wali Asuh';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text(`( ${inspectorName} )`, col1X, finalY, { align: 'center' });
+  doc.text('( .................................................. )', col2X, finalY, { align: 'center' });
+  doc.text(config.waliAsrama || 'HISNUL HASHIN, SE', col3X, finalY, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Wali Asuh Pendamping', col1X, finalY + 3.5, { align: 'center' });
+  doc.text('Perwakilan Siswa Asrama', col2X, finalY + 3.5, { align: 'center' });
+  doc.text(config.waliAsramaNip || 'NIP. 197406262025211027', col3X, finalY + 3.5, { align: 'center' });
+
+  // Page Numbers Footer
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Sistem Keasramaan Sekolah Rakyat 31 Palembang — Rekapitulasi Aset & Inventaris Asrama — Halaman ${i} dari ${totalPages}`,
+      pageWidth / 2,
+      pageHeight - 5,
+      { align: 'center' }
+    );
+  }
+
+  const sanitizedDorm = dormFilter.replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Rekapitulasi_Aset_${sanitizedDorm}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// --- 16B. BERITA ACARA KERUSAKAN & PERMOHONAN PERBAIKAN ASET (PORTRAIT A4) ---
+export async function generateSingleDormAssetDamageReportPDF(
+  asset: DormAsset,
+  config: AppConfig
+): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth(); // 210
+  const pageHeight = doc.internal.pageSize.getHeight(); // 297
+  const leftMargin = 16;
+  const rightMargin = 16;
+  const contentWidth = pageWidth - leftMargin - rightMargin; // 178
+
+  // Logos
+  let leftLogo = config.logoKiriUrl || '';
+  let rightLogo = config.logoKananUrl || '';
+  if (!leftLogo) leftLogo = generateProgrammaticLogo('left');
+  if (!rightLogo) rightLogo = generateProgrammaticLogo('right');
+
+  try {
+    if (leftLogo) doc.addImage(leftLogo, 'PNG', leftMargin, 10, 18, 18);
+    if (rightLogo) doc.addImage(rightLogo, 'PNG', pageWidth - rightMargin - 18, 10, 18, 18);
+  } catch (e) {}
+
+  // KOP
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text('KEMENTERIAN SOSIAL REPUBLIK INDONESIA', pageWidth / 2, 13, { align: 'center' });
+  doc.setFontSize(11);
+  doc.text('SEKOLAH RAKYAT TERPADU 31 PALEMBANG', pageWidth / 2, 18, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('PENGELOLAAN SARANA PRASARANA & PEMELIHARAAN ASET ASRAMA', pageWidth / 2, 23, { align: 'center' });
+  doc.text('Jl. Residen H. Najamuddin, Sako, Palembang, Sumatera Selatan', pageWidth / 2, 27, { align: 'center' });
+
+  // Double Line
+  doc.setDrawColor(225, 29, 72); // rose accent
+  doc.setLineWidth(0.8);
+  doc.line(leftMargin, 30, pageWidth - rightMargin, 30);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.line(leftMargin, 31, pageWidth - rightMargin, 31);
+
+  let currentY = 38;
+
+  // Title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('BERITA ACARA KERUSAKAN & PERMOHONAN PERBAIKAN ASET', pageWidth / 2, currentY, { align: 'center' });
+
+  currentY += 4.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  const docNo = `Nomor: ${asset.id}/BA-ASET/SR31/${new Date().getFullYear()}`;
+  doc.text(docNo, pageWidth / 2, currentY, { align: 'center' });
+
+  currentY += 7;
+
+  // Description
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+  const intro = `Pada hari ini, dilaporkan adanya barang inventaris asrama yang mengalami kendala/kerusakan fisik dan memerlukan tindak lanjut perbaikan atau penggantian sarana sebagai berikut:`;
+  const introLines = doc.splitTextToSize(intro, contentWidth);
+  doc.text(introLines, leftMargin, currentY);
+  currentY += introLines.length * 4.2 + 4;
+
+  // Detail Table
+  autoTable(doc, {
+    startY: currentY,
+    theme: 'plain',
+    styles: { fontSize: 8.5, cellPadding: 2, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { cellWidth: 50, fontStyle: 'bold', textColor: [71, 85, 105] },
+      1: { cellWidth: 6, fontStyle: 'bold' },
+      2: { cellWidth: 'auto' }
+    },
+    body: [
+      ['Kode Registrasi BMN / NIB', ':', asset.assetCode || asset.id],
+      ['Nama Barang / Aset BMN', ':', asset.itemName],
+      ['Spesifikasi Teknis / Merk', ':', asset.brandSpec || '-'],
+      ['Kategori Sarpras', ':', asset.category],
+      ['Lokasi Gedung & Lantai / Ruang', ':', `${asset.dormName}${asset.buildingBlock ? ` (${asset.buildingBlock})` : ''} — ${asset.roomNumber || 'Kamar Siswa'}`],
+      ['Tahun & Sumber Anggaran', ':', `${asset.procurementYear || '-'} / ${asset.fundingSource || 'DIPA Kemensos RI'}`],
+      ['Total Unit Inventaris', ':', `${asset.totalQuantity} Unit`],
+      ['Jumlah Kondisi Baik (B)', ':', `${asset.goodQuantity} Unit`],
+      ['Jumlah Unit Rusak', ':', `${asset.damagedQuantity} Unit`],
+      ['Tingkat Kerusakan', ':', asset.damageSeverity === 'tidak_ada' ? 'NIHIL' : asset.damageSeverity.toUpperCase()],
+      ['Rincian Kerusakan Fisik (Rusak Apa)', ':', asset.damageStatus || '-'],
+      ['Rencana Tindak Lanjut Sarpras', ':', asset.actionPlan],
+      ['Tautan GDrive Dokumentasi Foto', ':', asset.gdriveLink || 'Belum diunggah'],
+      ['Catatan Teknis / Rekomendasi', ':', asset.notes || '-'],
+      ['Petugas Pemeriksa Barang', ':', asset.inspectorName || '-'],
+      ['Tanggal Inventarisasi', ':', formatDateIndonesian(asset.inspectionDate, false)]
+    ],
+    margin: { left: leftMargin, right: rightMargin }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 8;
+
+  // QR Code Verification Box (without overlapping anything)
+  try {
+    const qrData = `SR31-ASET|ID:${asset.id}|Dorm:${asset.dormName}|Barang:${asset.itemName}|Rusak:${asset.damagedQuantity}|Severity:${asset.damageSeverity}`;
+    const qrDataUrl = await QRCode.toDataURL(qrData, { width: 80, margin: 1 });
+    doc.addImage(qrDataUrl, 'PNG', pageWidth - rightMargin - 22, currentY, 20, 20);
+  } catch (e) {}
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Demikian Berita Acara Kerusakan ini dibuat dengan sebenarnya untuk diteruskan kepada unit Sarana & Prasarana.', leftMargin, currentY + 4, { maxWidth: contentWidth - 26 });
+
+  currentY += 28;
+
+  // 3-Column Signatures
+  const sigColWidth = contentWidth / 3;
+  const col1 = leftMargin + sigColWidth * 0.5;
+  const col2 = leftMargin + sigColWidth * 1.5;
+  const col3 = leftMargin + sigColWidth * 2.5;
+
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Pelapor / Wali Asuh,', col1, currentY, { align: 'center' });
+  doc.text('Koordinator Kamar,', col2, currentY, { align: 'center' });
+  doc.text('Mengetahui, Wali Asrama,', col3, currentY, { align: 'center' });
+
+  currentY += 20;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text(`( ${asset.inspectorName || 'Wali Asuh Pendamping'} )`, col1, currentY, { align: 'center' });
+  doc.text('( .................................................. )', col2, currentY, { align: 'center' });
+  doc.text(config.waliAsrama || 'HISNUL HASHIN, SE', col3, currentY, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('NIP / NRK: ...................................', col1, currentY + 3.8, { align: 'center' });
+  doc.text('Perwakilan Siswa Asrama', col2, currentY + 3.8, { align: 'center' });
+  doc.text(config.waliAsramaNip || 'NIP. 197406262025211027', col3, currentY + 3.8, { align: 'center' });
+
+  // Footer
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    'Formulir Berita Acara Kerusakan Aset — Sekolah Rakyat 31 Palembang (Kemensos RI)',
+    pageWidth / 2,
+    pageHeight - 8,
+    { align: 'center' }
+  );
+
+  doc.save(`Berita_Acara_Kerusakan_${asset.id}_${asset.itemName.replace(/\s+/g, '_')}.pdf`);
+}
+
+// --- Helper: Draw a single BMN asset sticker on any jsPDF document ---
+async function drawAssetStickerItem(
+  doc: jsPDF,
+  asset: DormAsset,
+  config: AppConfig,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  cachedQrUrl?: string
+): Promise<void> {
+  // Border container
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(x, y, width, height, 1.5, 1.5, 'S');
+
+  // Inner hairline security border
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.15);
+  doc.roundedRect(x + 1, y + 1, width - 2, height - 2, 1, 1, 'S');
+
+  // Header background
+  doc.setFillColor(248, 250, 252);
+  doc.rect(x + 1.2, y + 1.2, width - 2.4, 11, 'F');
+
+  // Header Texts
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text('KEMENTERIAN SOSIAL REPUBLIK INDONESIA', x + width / 2, y + 4.5, { align: 'center' });
+
+  doc.setFontSize(7.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('SEKOLAH RAKYAT TERPADU 31 PALEMBANG', x + width / 2, y + 8, { align: 'center' });
+
+  doc.setFontSize(5.5);
+  doc.setTextColor(4, 120, 87); // Emerald 700
+  doc.text('KARTU KENDALI INVENTARIS ASET BMN ASRAMA', x + width / 2, y + 11, { align: 'center' });
+
+  // Divider line
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.35);
+  doc.line(x + 1.2, y + 12.5, x + width - 1.2, y + 12.5);
+
+  // Generate QR Code if not provided
+  let qrUrl = cachedQrUrl;
+  if (!qrUrl) {
+    try {
+      const qrData = `BMN-SR31|KODE:${asset.assetCode || asset.id}|NAMA:${asset.itemName}|GEDUNG:${asset.dormName}|RUANG:${asset.roomNumber}|KONDISI:${asset.damagedQuantity > 0 ? 'RUSAK' : 'BAIK'}`;
+      qrUrl = await QRCode.toDataURL(qrData, { width: 140, margin: 1 });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // QR Code on right side
+  const qrSize = Math.min(22, height - 20);
+  const qrX = x + width - qrSize - 3;
+  const qrY = y + 14.5;
+  if (qrUrl) {
+    try {
+      doc.addImage(qrUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    } catch (e) {}
+  }
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('SCAN VERIFIKASI', qrX + qrSize / 2, qrY + qrSize + 2.5, { align: 'center' });
+
+  // Text details on left side
+  const textX = x + 3.5;
+  const textMaxW = width - qrSize - 9;
+  let textY = y + 16.5;
+
+  // Kode Register
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('KODE BMN / REGISTER:', textX, textY);
+  textY += 3.5;
+
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(asset.assetCode || asset.id, textX, textY);
+  textY += 4;
+
+  // Nama Barang
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('NAMA BARANG:', textX, textY);
+  textY += 3.5;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(15, 23, 42);
+  const itemLines = doc.splitTextToSize(asset.itemName, textMaxW);
+  doc.text(itemLines[0] || asset.itemName, textX, textY);
+  textY += 3.8;
+
+  // Spesifikasi (if fits)
+  if (asset.brandSpec) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(71, 85, 105);
+    const specLines = doc.splitTextToSize(`Spek: ${asset.brandSpec}`, textMaxW);
+    doc.text(specLines[0], textX, textY);
+    textY += 3.5;
+  }
+
+  // Lokasi Penempatan
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('LOKASI PENEMPATAN:', textX, textY);
+  textY += 3.2;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(doc.splitTextToSize(asset.dormName, textMaxW)[0], textX, textY);
+  textY += 3.2;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(51, 65, 85);
+  const locDetail = `${asset.buildingBlock ? asset.buildingBlock + ' - ' : ''}${asset.roomNumber || 'Kamar Siswa'}`;
+  doc.text(doc.splitTextToSize(locDetail, textMaxW)[0], textX, textY);
+  textY += 3.5;
+
+  // Tahun & Sumber
+  doc.setFontSize(5.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Tahun: ${asset.procurementYear || '-'}  |  Sumber: ${asset.fundingSource || 'DIPA'}`, textX, textY);
+
+  // Bottom Disclaimer
+  const footerY = y + height - 2.5;
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.2);
+  doc.line(x + 2, footerY - 2.2, x + width - 2, footerY - 2.2);
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(4.8);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Barang Milik Negara / Sekolah Rakyat — Dilarang memindahkan tanpa izin Bagian Sarpras', x + width / 2, footerY, { align: 'center' });
+}
+
+// --- 16C. CETAK LABEL STIKER TUNGGAL BMN (UKURAN STANDAR 100 x 60 mm) ---
+export async function generateSingleDormAssetStickerPDF(
+  asset: DormAsset,
+  config: AppConfig
+): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [100, 60]
+  });
+
+  await drawAssetStickerItem(doc, asset, config, 3, 3, 94, 54);
+
+  const safeCode = (asset.assetCode || asset.id).replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Label_Stiker_BMN_${safeCode}.pdf`);
+}
+
+// --- 16D. CETAK LEMBAR STIKER A4 (8 STIKER PER LEMBAR UNTUK KERTAS STIKER / TOM & JERRY) ---
+export async function generateDormAssetStickerSheetPDF(
+  items: DormAsset | DormAsset[],
+  config: AppConfig,
+  title?: string
+): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+
+  // If a single asset is provided, duplicate 8 times for one full sheet
+  const assetList: DormAsset[] = Array.isArray(items) ? items : Array(8).fill(items);
+
+  const colWidth = 92;
+  const rowHeight = 60;
+  const marginX = (pageWidth - colWidth * 2) / 3; // ~8.6mm
+  const marginY = 16;
+  const gapY = (pageHeight - marginY * 2 - rowHeight * 4) / 3; // ~8mm
+
+  let currentIndex = 0;
+
+  while (currentIndex < assetList.length) {
+    if (currentIndex > 0) {
+      doc.addPage();
+    }
+
+    // Page header / cutting guide
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `LEMBAR CETAK STIKER ASET BMN — SEKOLAH RAKYAT TERPADU 31 PALEMBANG (${title || 'KEMENSOS RI'})`,
+      pageWidth / 2,
+      9,
+      { align: 'center' }
+    );
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('Gunting mengikuti garis tepi label stiker • Tempel pada permukaan barang inventaris asrama', pageWidth / 2, 12.5, { align: 'center' });
+
+    // Draw up to 8 labels on this page
+    for (let slot = 0; slot < 8 && currentIndex < assetList.length; slot++, currentIndex++) {
+      const col = slot % 2;
+      const row = Math.floor(slot / 2);
+
+      const x = marginX + col * (colWidth + marginX);
+      const y = marginY + row * (rowHeight + gapY);
+
+      await drawAssetStickerItem(doc, assetList[currentIndex], config, x, y, colWidth, rowHeight);
+    }
+  }
+
+  const safeTitle = (title || 'Aset_Asrama').replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Lembar_Stiker_A4_BMN_${safeTitle}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
 

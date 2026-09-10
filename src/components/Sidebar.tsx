@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Monitor,
   GraduationCap,
   LineChart,
   CheckSquare,
@@ -17,6 +16,10 @@ import {
   QrCode,
   BookOpen,
   CalendarHeart,
+  ClipboardList,
+  Sparkles,
+  PackageCheck,
+  Activity,
   Brain
 } from 'lucide-react';
 
@@ -35,20 +38,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   userRole = 'admin',
-  enableSpecialChronology = false
 }) => {
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
-    { id: 'live-monitor', label: 'Live Monitor (TV)', icon: Monitor },
+    { id: 'live-monitor', label: 'Live Monitor Terpadu', icon: Activity, isSpecial: true },
+    { id: 'special-chronology', label: 'Kronologi & Handover Shift', icon: ClipboardList },
     { id: 'students', label: 'Data Siswa & Profil', icon: Users },
+    { id: 'psychology', label: 'Asesmen Psikologi & Jiwa', icon: Brain, isSpecial: true },
     { id: 'connecting-journal', label: 'Jurnal Penghubung', icon: BookOpen },
+    { id: 'dorm-inspection', label: 'Penilaian Asrama (SOP)', icon: Sparkles },
+    { id: 'dorm-asset', label: 'Aset Asrama (SOP)', icon: PackageCheck },
     { id: 'meeting-minutes', label: 'Notulensi Rapat', icon: FileText },
     { id: 'prayer-attendance', label: 'Absensi & Ceklist', icon: QrCode },
     { id: 'menstruation', label: 'Tracking Menstruasi', icon: CalendarHeart },
     { id: 'violations', label: 'Pelanggaran', icon: AlertTriangle },
-    ...(enableSpecialChronology
-      ? [{ id: 'special-chronology', label: 'Kronologi Kasus', icon: Brain, isSpecial: true }]
-      : []),
     { id: 'leaves', label: 'Surat Izin Keluar', icon: DoorOpen },
     { id: 'medical', label: 'UKS & Rekam Medis', icon: HeartPulse },
     { id: 'report-card', label: 'Rapor & Rekapitulasi', icon: FileSignature, restrictedForGuru: true },

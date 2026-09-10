@@ -48,6 +48,7 @@ import {
   PrayerAttendance,
   ReportCardData
 } from '../types';
+import { DataIntegrityReport } from '../utils/integrityVerifier';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/googleAppsScriptCode';
 import { DEFAULT_DISCIPLINE_LEVELS, DEFAULT_DISCIPLINE_THRESHOLDS, VIOLATION_TEMPLATES } from '../services/storage';
 import { RAPOR_STRUCTURE } from '../services/pdfGenerator';
@@ -105,6 +106,8 @@ interface SettingsTabProps {
   onSavePrayerAttendance?: (records: PrayerAttendance[]) => void;
   onDeletePrayerAttendance?: (id: string) => void;
   onNavigateToSpecialChronology?: () => void;
+  lastIntegrityReport?: DataIntegrityReport | null;
+  onOpenIntegrityReport?: () => void;
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
@@ -116,6 +119,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   isSyncing = false,
   onReconcileShadowData,
   onPurgeDummyDataAndReload,
+  lastIntegrityReport = null,
+  onOpenIntegrityReport,
   studentsCount = 0,
   recordsCount = 0,
   announcement = '',
@@ -615,17 +620,29 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 </p>
               </div>
             </div>
-            {onSync && (
-              <button
-                type="button"
-                onClick={onSync}
-                disabled={isSyncing}
-                className="font-bold text-xs px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center gap-1.5 shadow-sm transition active:scale-95 shrink-0"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>Sync Ulang</span>
-              </button>
-            )}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              {lastIntegrityReport && onOpenIntegrityReport && (
+                <button
+                  type="button"
+                  onClick={onOpenIntegrityReport}
+                  className="font-bold text-xs px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm transition active:scale-95 shrink-0"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Audit Integritas ({lastIntegrityReport.healthScore}%)</span>
+                </button>
+              )}
+              {onSync && (
+                <button
+                  type="button"
+                  onClick={onSync}
+                  disabled={isSyncing}
+                  className="font-bold text-xs px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center gap-1.5 shadow-sm transition active:scale-95 shrink-0"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>Sync Ulang</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 

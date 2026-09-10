@@ -1,6 +1,6 @@
 {
   "name": "Sistem Keasramaan Sekolah Rakyat",
-  "description": "Sistem Manajemen Kedisiplinan Asrama, Ceklist Harian, Jurnal Penghubung Materi & Task Order Guru-Wali Asuh, Pelanggaran, Konseling BK, Izin Pulang, Rapor Keasramaan & Rekapitulasi Multipage PDF.",
+  "description": "Sistem Manajemen Kedisiplinan Asrama, Live Monitor Terpadu (Absensi, Pelanggaran, Handover Shift, UKS Sakit, Perijinan), Penilaian Kebersihan Kamar Asrama (SOP Sekolah Rakyat), Inventaris & Pemantauan Aset BMN Asrama, Ceklist Harian, Jurnal Penghubung Materi Guru-Wali Asuh, Pelanggaran, Konseling BK, Izin Pulang, Rapor Keasramaan & Rekapitulasi Multipage PDF.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

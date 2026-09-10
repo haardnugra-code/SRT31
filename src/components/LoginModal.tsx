@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
-import { GraduationCap, Lock, LogIn, AlertCircle, ShieldCheck, UserCheck } from 'lucide-react';
+import { GraduationCap, Lock, LogIn, AlertCircle, ShieldCheck, UserCheck, Brain, ArrowRight } from 'lucide-react';
 
 interface LoginModalProps {
   isLoggedIn: boolean;
   onLoginSuccess: (role: 'admin' | 'guru') => void;
+  onOpenStudentAssessment?: () => void;
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ isLoggedIn, onLoginSuccess }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({
+  isLoggedIn,
+  onLoginSuccess,
+  onOpenStudentAssessment
+}) => {
   const [selectedRole, setSelectedRole] = useState<'admin' | 'guru'>('admin');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
@@ -138,7 +143,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isLoggedIn, onLoginSucce
           </button>
         </form>
 
-        <div className="mt-6 text-center border-t border-white/10 pt-4 w-full">
+        {onOpenStudentAssessment && (
+          <div className="w-full pt-4 mt-2 border-t border-white/10">
+            <button
+              type="button"
+              onClick={onOpenStudentAssessment}
+              className="w-full p-3 rounded-2xl bg-gradient-to-r from-emerald-600/30 via-teal-600/30 to-emerald-600/30 hover:from-emerald-600/40 hover:to-teal-600/40 border border-emerald-400/40 text-emerald-200 hover:text-white transition flex items-center justify-between group cursor-pointer shadow-lg"
+            >
+              <div className="flex items-center gap-2.5 text-left">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/30 text-emerald-300 flex items-center justify-center shrink-0">
+                  <Brain className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white group-hover:text-emerald-300 transition">
+                    Akses Siswa: Tes Psikologi Mandiri
+                  </p>
+                  <p className="text-[10px] text-slate-300">
+                    SDQ 25 & Resiliensi Tumbuh Kembang Jiwa
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-emerald-300 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </button>
+          </div>
+        )}
+
+        <div className="mt-5 text-center border-t border-white/10 pt-3 w-full">
           <p className="text-[9px] text-slate-400 font-bold tracking-widest">KEMENSOS RI © 2026</p>
         </div>
       </div>

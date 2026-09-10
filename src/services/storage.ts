@@ -1,7 +1,8 @@
-import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog } from '../types';
+import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog, DormInspection, DormInspectionCriterion, DormInspectionItemScore, DormGrade, DormActionRequired, DormAsset, PsychologicalAssessment } from '../types';
 import { consolidateDormList } from '../utils/dormHelper';
+import { DataIntegrityReport } from '../utils/integrityVerifier';
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOscEltpKZ3aZP7h7-ZyzZHb-DUgZ5ZD9LxCrIMRQTscJ9cP0WKKWu5cFtOrISJXGuNA/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxva2GX_N3-ogOwiy0b-VShpbZ-vC_UKR_t6eKPtBX0yvWTnSiBVoud7VdPDNHYzCrkmA/exec";
 
 export const DEFAULT_DISCIPLINE_LEVELS: DisciplineLevelConfig[] = [
   { level: 1, name: 'Tingkat 1 (Pelanggaran Ringan)', pointsDeduction: 5, defaultSanction: 'Teguran lisan & Piket asrama' },
@@ -59,7 +60,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   academicYear: '2025/2026',
   disciplineLevels: DEFAULT_DISCIPLINE_LEVELS,
   disciplineThresholds: DEFAULT_DISCIPLINE_THRESHOLDS,
-  autoResetPointsPerSemester: true
+  autoResetPointsPerSemester: true,
+  enableSpecialChronology: true
 };
 
 export const INITIAL_STUDENTS: Student[] = [];
@@ -190,7 +192,7 @@ export function loadAppConfig(): AppConfig {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u') || parsed.googleScriptUrl.includes('AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF')) {
+      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u') || parsed.googleScriptUrl.includes('AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF') || parsed.googleScriptUrl.includes('AKfycbwOscEltpKZ3aZP7h7-ZyzZHb-DUgZ5ZD9LxCrIMRQTscJ9cP0WKKWu5cFtOrISJXGuNA')) {
         parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
       }
       if (!parsed.waliAsuhList || parsed.waliAsuhList.some((w: string) => w.includes('Bp. Hermawan') || w.includes('Ibu Handayani'))) {
@@ -227,7 +229,7 @@ export function loadStudents(): Student[] {
     try {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter(s => s && s.id);
+        return parsed.filter(s => s && s.id && !s.name?.includes('Siswa Teladan') && !s.name?.includes('Siswa Contoh'));
       }
     } catch (e) {
       console.error(e);
@@ -245,7 +247,9 @@ export function loadViolations(): Violation[] {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(v => v && v.id !== 'v-dummy-heavy-1' && !v.studentName?.includes('Siswa Contoh'));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -262,7 +266,9 @@ export function loadCounseling(): Counseling[] {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(c => c && !c.studentName?.includes('Siswa Contoh'));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -279,7 +285,9 @@ export function loadLeaves(): Leave[] {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(l => l && !l.studentName?.includes('Siswa Contoh'));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -296,7 +304,9 @@ export function loadDailyJournals(): DailyJournal[] {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(j => j && !j.studentName?.includes('Siswa Contoh'));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -333,7 +343,7 @@ export function loadMedicalRecords(): MedicalRecord[] {
     try {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter(m => m && m.id);
+        return parsed.filter(m => m && m.id && !m.studentName?.includes('Siswa Contoh'));
       }
     } catch (e) {
       console.error(e);
@@ -349,17 +359,80 @@ export function saveMedicalRecords(records: MedicalRecord[]): void {
 /**
  * Purges all hardcoded dummy data and shadow cache from local storage.
  */
-export function purgeAllDummyData(): { removedStudents: number; removedRecords: number } {
-  const studentsBefore = loadStudents();
-  const medBefore = loadMedicalRecords();
-  localStorage.removeItem('sr_students');
-  localStorage.removeItem('sr_medical_records');
-  localStorage.setItem('sr_dummy_purged', 'true');
+export function purgeAllDummyData(): { removedCount: number } {
+  const dummyKeys = [
+    'sr_students',
+    'sr_violations',
+    'sr_counseling',
+    'sr_leaves',
+    'sr_daily_journals',
+    'sr_reports',
+    'sr_medical_records',
+    'sr_prayer_attendance',
+    'sr_connecting_journals',
+    'sr_menstruation_records',
+    'sr_special_chronology_cases',
+    'sr_dorm_inspections',
+    'sr_dorm_assets',
+    'sr_meeting_minutes'
+  ];
+
+  let removed = 0;
+  dummyKeys.forEach((key) => {
+    if (localStorage.getItem(key) !== null) {
+      localStorage.removeItem(key);
+      removed++;
+    }
+  });
+
+  localStorage.setItem('sr_dummy_purged_complete', 'true');
   return {
-    removedStudents: studentsBefore.length,
-    removedRecords: medBefore.length
+    removedCount: removed
   };
 }
+
+/**
+ * Actively cleans known dummy/sample records from browser localStorage
+ */
+export function cleanLegacyDummyStorage(): void {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+
+  const filterAndSave = (key: string, isDummy: (item: any) => boolean) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const filtered = parsed.filter(item => !isDummy(item));
+        if (filtered.length === 0) {
+          localStorage.removeItem(key);
+        } else if (filtered.length !== parsed.length) {
+          localStorage.setItem(key, JSON.stringify(filtered));
+        }
+      }
+    } catch (e) {
+      console.error(`Error cleaning ${key}:`, e);
+    }
+  };
+
+  filterAndSave('sr_connecting_journals', j => ['JP-20260825-001', 'JP-20260826-002'].includes(j?.id));
+  filterAndSave('sr_menstruation_records', m => ['MENS-20260824-001', 'MENS-20260821-002', 'MENS-20260818-003'].includes(m?.id));
+  filterAndSave('sr_special_chronology_cases', c => c?.id === 'CASE-2026-001' || c?.violationId === 'v-dummy-heavy-1' || c?.studentName === 'ACHMAD FADILLAH');
+  filterAndSave('sr_dorm_inspections', i => ['insp-1710001', 'insp-1710002'].includes(i?.id));
+  filterAndSave('sr_dorm_assets', a => [
+    'ASSET-PA1-001', 'ASSET-PA1-002', 'ASSET-PA1-003', 'ASSET-PA1-004',
+    'ASSET-PI1-001', 'ASSET-PI1-002', 'ASSET-PI1-003'
+  ].includes(a?.id));
+  filterAndSave('sr_students', s => s?.name?.includes('Siswa Teladan') || s?.name?.includes('Siswa Contoh'));
+  filterAndSave('sr_violations', v => v?.id === 'v-dummy-heavy-1' || v?.studentName?.includes('Siswa Contoh'));
+  filterAndSave('sr_counseling', c => c?.studentName?.includes('Siswa Contoh'));
+  filterAndSave('sr_leaves', l => l?.studentName?.includes('Siswa Contoh'));
+  filterAndSave('sr_medical_records', m => m?.studentName?.includes('Siswa Contoh'));
+  filterAndSave('sr_prayer_attendance', p => p?.studentName?.includes('Siswa Contoh'));
+}
+
+// Auto-run cleanup on module load
+cleanLegacyDummyStorage();
 
 export const INITIAL_PRAYER_ATTENDANCE: PrayerAttendance[] = [];
 
@@ -368,7 +441,9 @@ export function loadPrayerAttendance(): PrayerAttendance[] {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(p => p && !p.studentName?.includes('Siswa Contoh'));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -380,45 +455,16 @@ export function savePrayerAttendance(records: PrayerAttendance[]): void {
   localStorage.setItem('sr_prayer_attendance', JSON.stringify(records));
 }
 
-export const INITIAL_CONNECTING_JOURNALS: ConnectingJournal[] = [
-  {
-    id: 'JP-20260825-001',
-    date: '2026-08-25',
-    targetClass: 'Klasikal (SD)',
-    subject: 'Pend. Agama Islam',
-    teacherName: 'ARI FITRIYANI, S.PD., GR.',
-    teacherNip: '-',
-    learningAchievement: 'tulis menulis',
-    taskOrder: 'Latihan menulis dan menghafal doa harian serta makharijul huruf',
-    deadline: '2026-08-25',
-    followUp: 'Sudah didampingi saat belajar mandiri asrama malam hari, siswa mampu menuliskan 5 kalimat dasar.',
-    caretakerName: 'M ARDIAN NUGRAHA',
-    caretakerNip: 'NIP. 199202042026221001',
-    responseDate: '2026-08-25',
-    status: 'Sudah Ditindaklanjuti'
-  },
-  {
-    id: 'JP-20260826-002',
-    date: '2026-08-26',
-    targetClass: 'Klasikal (SD)',
-    subject: 'Matematika',
-    teacherName: 'ARI FITRIYANI, S.PD., GR.',
-    teacherNip: '-',
-    learningAchievement: 'Operasi hitung perkalian dan pembagian dasar',
-    taskOrder: 'Mohon dibantu pendampingan pengerjaan LKS Matematika Halaman 14 No. 1-10',
-    deadline: '2026-08-26',
-    followUp: '',
-    caretakerName: '',
-    status: 'Menunggu Respon'
-  }
-];
+export const INITIAL_CONNECTING_JOURNALS: ConnectingJournal[] = [];
 
 export function loadConnectingJournals(): ConnectingJournal[] {
   const saved = localStorage.getItem('sr_connecting_journals');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(j => j && !['JP-20260825-001', 'JP-20260826-002'].includes(j.id));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -430,72 +476,16 @@ export function saveConnectingJournals(journals: ConnectingJournal[]): void {
   localStorage.setItem('sr_connecting_journals', JSON.stringify(journals));
 }
 
-export const INITIAL_MENSTRUATION_RECORDS: MenstruationRecord[] = [
-  {
-    id: 'MENS-20260824-001',
-    studentId: 'SR001',
-    studentName: 'NUR REVA ANUGRAH PUTRI',
-    class: 'SMA',
-    dorm: 'Asrama Cut Nyak Dien',
-    startDate: '2026-08-24',
-    startTime: '06:30',
-    status: 'Sedang Haid',
-    symptoms: ['Nyeri Perut / Disminore', 'Pusing / Lemas'],
-    painLevel: 3,
-    medicineOrCare: 'Kompres air hangat di perut & Istirahat di Kamar Asrama',
-    sanitaryPadsProvided: 4,
-    notes: 'Hari ke-2 haid. Diberikan pembalut asrama & izin tidak mengikuti sholat berjamaah.',
-    recordedBy: 'ULPA JAYANTI'
-  },
-  {
-    id: 'MENS-20260821-002',
-    studentId: 'SR002',
-    studentName: 'SELLA MARSELINA',
-    class: 'SMP',
-    dorm: 'Asrama RA Kartini',
-    startDate: '2026-08-20',
-    startTime: '14:15',
-    endDate: '2026-08-25',
-    endTime: '15:30',
-    durationDays: 5.05,
-    durationText: '5 Hari 1 Jam',
-    status: 'Masa Bersuci',
-    symptoms: ['Kram Ringan'],
-    painLevel: 1,
-    notes: 'Darah haid sudah bersih (tanda suci qasshah baidha’). Sedang persiapan mandi wajib bersuci.',
-    recordedBy: 'SRI AGUSTINA'
-  },
-  {
-    id: 'MENS-20260818-003',
-    studentId: 'SR003',
-    studentName: 'AIRA SAPUTRI',
-    class: 'SD',
-    dorm: 'Asrama Dewi Sartika',
-    startDate: '2026-08-18',
-    startTime: '08:00',
-    endDate: '2026-08-24',
-    endTime: '16:00',
-    durationDays: 6.33,
-    durationText: '6 Hari 8 Jam',
-    purificationDate: '2026-08-24',
-    purificationTime: '17:00',
-    purificationVerifiedBy: 'Yuniarti Anggraini',
-    readyForWorshipDate: '2026-08-24T17:30',
-    status: 'Suci / Siap Beribadah',
-    symptoms: ['Sakit Pinggang'],
-    painLevel: 2,
-    sanitaryPadsProvided: 6,
-    notes: 'Telah selesai mandi wajib thaharah dipandu pembina. Sudah suci dan aktif kembali sholat berjamaah serta tadarus Al-Qur\'an.',
-    recordedBy: 'Yuniarti Anggraini'
-  }
-];
+export const INITIAL_MENSTRUATION_RECORDS: MenstruationRecord[] = [];
 
 export function loadMenstruationRecords(): MenstruationRecord[] {
   const saved = localStorage.getItem('sr_menstruation_records');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(m => m && !['MENS-20260824-001', 'MENS-20260821-002', 'MENS-20260818-003'].includes(m.id));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -540,6 +530,24 @@ export function getDaysSinceLastSync(): number | null {
   const now = Date.now();
   const diffMs = now - lastDate;
   return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
+export function saveLastIntegrityReport(report: DataIntegrityReport): void {
+  try {
+    localStorage.setItem('sr_last_integrity_report', JSON.stringify(report));
+  } catch (e) {
+    console.error('Gagal menyimpan laporan verifikasi integritas data', e);
+  }
+}
+
+export function loadLastIntegrityReport(): DataIntegrityReport | null {
+  try {
+    const raw = localStorage.getItem('sr_last_integrity_report');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
 }
 
 // --- Image Compression helper to prevent UI lag ---
@@ -603,6 +611,7 @@ export function clearStorageCache(): { clearedSize: string; keyCount: number } {
     'sr_special_chronology_cases',
     'sr_last_push_time',
     'sr_last_sync_time',
+    'sr_last_integrity_report',
     'sr_auth_status'
   ];
 
@@ -646,83 +655,273 @@ export function saveMeetingMinutes(minutes: MeetingMinute[]): void {
   localStorage.setItem('sr_meeting_minutes', JSON.stringify(minutes));
 }
 
-export const INITIAL_SPECIAL_CHRONOLOGY_CASES: SpecialChronologyCase[] = [
-  {
-    id: 'CASE-2026-001',
-    violationId: 'v-dummy-heavy-1',
-    studentId: 'SR-2025-001',
-    studentName: 'ACHMAD FADILLAH',
-    class: '7A',
-    dorm: 'Asrama Dewantara',
-    caseTitle: 'Kronologi Investigasi & Pemantauan Perilaku Agresi Ekstrem & Eskalasi Konflik',
-    incidentDate: '2026-09-08',
-    caseCategory: 'Pelanggaran Berat Level 3 (Agresi Fisik & Pembangkangan)',
-    caseSeverity: 'Tinggi (High Risk)',
-    status: 'Dalam Pemantauan Intensif',
-    primaryInvestigator: 'M ARDIAN NUGRAHA (Wali Asuh)',
-    initialAssessmentSummary: 'Terjadi insiden perkelahian fisik dan perusakan fasilitas asrama pada malam hari. Siswa menunjukkan agitasi motorik tinggi, ketidakmampuan meregulasi amarah saat diprovokasi teman sebaya, serta mekanisme pertahanan denial dan acting out.',
-    createdAt: '2026-09-08T22:30:00.000Z',
-    updatedAt: '2026-09-09T08:00:00.000Z',
-    shifts: [
-      {
-        id: 'shift-log-1',
-        shift: 'Shift Malam / Dini Hari (21.00 - 06.00)',
-        date: '2026-09-08',
-        time: '23:45',
-        officerName: 'Jepri Julianto',
-        officerRole: 'Wali Asuh Shift',
-        appearanceAndMotor: 'Tampak napas memburu, tangan mengepal, tremor ringan pada jari akibat lonjakan adrenalin, kontak mata tajam dan menghindar saat ditatap.',
-        moodAndAffect: 'Mood: Iritabel, mudah meledak (explosive); Afek: Konstriktif, labil saat ditanya perihal pemicu benturan fisik.',
-        speechAndThoughtPattern: 'Volume suara tinggi di awal, artikulasi cepat dan putus-putus. Pola pikir menunjukkan ide rasionalisasi agresif ("dia yang mulai duluan"). Nihil waham atau halusinasi.',
-        orientationAndConsciousness: 'Compos mentis penuh. Orientasi waktu, ruang asrama, dan orang sangat baik.',
-        triggerFactors: 'Ejekan verbal berulang dari teman sekamar terkait barang pribadi yang hilang memicu ambang frustrasi rendah (low frustration tolerance).',
-        emotionalRegulation: 'Defisit regulasi afek akut. Tidak mampu melakukan self-soothing sehingga melampiaskan secara fisik (acting out).',
-        defenseMechanisms: 'Acting Out (pelampiasan agresi fisik), Proyeksi (menimpakan seluruh kesalahan pada pihak lawan), Denial parsial.',
-        riskLevel: 'Tinggi (Eskalasi / Re-offense Risk)',
-        riskNotes: 'Potensi benturan susulan jika ditempatkan dalam satu kamar dengan korban/lawan bicara. Tidak ditemukan ide suicidality / self-harm.',
-        interventionTechnique: 'Protokol De-eskalasi Krisis Verbal, Teknik Relaksasi Pernapasan Dalam (Box Breathing 4-4-4), Pemisahan Ruang Tidur Sementara ke Bilik Tenang Asrama.',
-        studentResponse: 'Setelah 45 menit isolasi stimulus dan pendampingan empatik, tensi motorik menurun. Siswa mulai menangis (katarsis emosional) dan mengakui kekhilafannya.',
-        handoverNotes: 'Siswa tidur di Kamar Transit B-02. Jangan biarkan berinteraksi tanpa pengawasan dengan siswa lawan. Pantau saat bangun Subuh apakah masih ada afek dendam.'
-      },
-      {
-        id: 'shift-log-2',
-        shift: 'Shift Pagi (06.00 - 14.00)',
-        date: '2026-09-09',
-        time: '07:30',
-        officerName: 'M ARDIAN NUGRAHA',
-        officerRole: 'Konselor BK',
-        appearanceAndMotor: 'Penampilan rapi berbusana seragam, gestur motorik tenang, kontak mata mulai adekuat dan kooperatif.',
-        moodAndAffect: 'Mood: Disforik ringan, ada rasa bersalah dan cemas akan pemanggilan orang tua. Afek: Fleksibel dan selaras.',
-        speechAndThoughtPattern: 'Bicara dengan intonasi wajar dan perlahan. Alur pikir runtut dan koheren, mampu merefleksikan konsekuensi tindakan.',
-        orientationAndConsciousness: 'Compos mentis, daya ingat dan tilikan diri (insight) berada pada Level 4 (sadar bahwa perilakunya salah dan merugikan orang lain).',
-        triggerFactors: 'Kecemasan mendalam terhadap sanksi skorsing atau kemarahan orang tua saat surat panggilan dikirimkan.',
-        emotionalRegulation: 'Mulai terbentuk regulasi mandiri, mampu mendengarkan arahan tanpa interupsi defensif.',
-        defenseMechanisms: 'Sublimasi awal, intelektualisasi, rasionalisasi mulai berkurang digantikan perasaan bersalah yang sehat.',
-        riskLevel: 'Sedang (Perlu Pengawasan)',
-        riskNotes: 'Risiko agresi rendah, namun perlu antisipasi reaksi cemas atau menarik diri saat orang tua tiba di sekolah.',
-        interventionTechnique: 'Cognitive Reframing (Restrukturisasi Kognitif), Konseling Individual Realitas (WDEP System), Persiapan Konferensi Kasus Bersama Kepala Asrama.',
-        studentResponse: 'Sangat kooperatif. Menyatakan siap meminta maaf secara tertulis dan menerima tugas pemulihan disiplin.',
-        handoverNotes: 'Siswa tetap mengikuti jam belajar dengan pemantauan tidak langsung oleh guru kelas. Pada shift siang jadwalkan mediasi terfokus antar-pihak.'
-      }
-    ]
-  }
-];
+export const INITIAL_SPECIAL_CHRONOLOGY_CASES: SpecialChronologyCase[] = [];
 
 export function loadSpecialChronologyCases(): SpecialChronologyCase[] {
   try {
     const saved = localStorage.getItem('sr_special_chronology_cases');
-    if (!saved) {
-      localStorage.setItem('sr_special_chronology_cases', JSON.stringify(INITIAL_SPECIAL_CHRONOLOGY_CASES));
-      return INITIAL_SPECIAL_CHRONOLOGY_CASES;
-    }
-    return JSON.parse(saved);
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(c => c && c.id !== 'CASE-2026-001' && c.violationId !== 'v-dummy-heavy-1' && c.studentName !== 'ACHMAD FADILLAH');
   } catch (error) {
     console.error('Failed to load special chronology cases', error);
-    return INITIAL_SPECIAL_CHRONOLOGY_CASES;
+    return [];
   }
 }
 
 export function saveSpecialChronologyCases(cases: SpecialChronologyCase[]): void {
   localStorage.setItem('sr_special_chronology_cases', JSON.stringify(cases));
 }
+
+// ==========================================
+// SOP PENILAIAN KEBERSIHAN & KERAPIAN ASRAMA
+// ==========================================
+
+export const DEFAULT_SOP_CRITERIA: DormInspectionCriterion[] = [
+  // 1. Penataan Ranjang & Selimut (Bobot 25 Poin)
+  {
+    id: 'ranjang_sprei',
+    category: 'ranjang_selimut',
+    categoryLabel: 'Penataan Ranjang & Selimut',
+    title: 'Kerapian Sprei & Kasur',
+    sopStandard: 'Sprei ditarik kencang tanpa kerutan, keempat sudut diselipkan presisi ke bawah kasur, bersih bebas noda.',
+    maxScore: 8
+  },
+  {
+    id: 'ranjang_selimut',
+    category: 'ranjang_selimut',
+    categoryLabel: 'Penataan Ranjang & Selimut',
+    title: 'Standar Lipatan Selimut SOP',
+    sopStandard: 'Selimut terlipat rapi bentuk persegi presisi standar asrama/militer, diletakkan tepat di ujung ranjang/kaki kasur.',
+    maxScore: 7
+  },
+  {
+    id: 'ranjang_bantal',
+    category: 'ranjang_selimut',
+    categoryLabel: 'Penataan Ranjang & Selimut',
+    title: 'Bantal, Guling & Sarung',
+    sopStandard: 'Sarung bantal dan guling bersih, diposisikan simetris dan rapi pada kepala ranjang.',
+    maxScore: 5
+  },
+  {
+    id: 'ranjang_kolong',
+    category: 'ranjang_selimut',
+    categoryLabel: 'Penataan Ranjang & Selimut',
+    title: 'Kebersihan Kolong Ranjang',
+    sopStandard: 'Kolong ranjang bersih, tidak ada debu/sarang laba-laba, bebas tumpukan pakaian kotor atau sandal berserakan.',
+    maxScore: 5
+  },
+
+  // 2. Lemari & Kebersihan Tingkatan Isi Lemari (Bobot 30 Poin)
+  {
+    id: 'lemari_fisik',
+    category: 'lemari_isi',
+    categoryLabel: 'Lemari & Tingkatan Isi',
+    title: 'Kondisi Fisik Lemari Luar & Dalam',
+    sopStandard: 'Pintu luar dan dalam lemari bersih, engsel baik, tidak ada stiker/coretan liar, daun pintu tertutup rapat.',
+    maxScore: 5
+  },
+  {
+    id: 'lemari_rak_atas',
+    category: 'lemari_isi',
+    categoryLabel: 'Lemari & Tingkatan Isi',
+    title: 'Tingkat Rak Atas (Seragam Sekolah)',
+    sopStandard: 'Seragam OSIS, Pramuka, Batik, dan Olahraga digantung rapi menggunakan hanger menghadap 1 arah yang seragam.',
+    maxScore: 7
+  },
+  {
+    id: 'lemari_rak_tengah',
+    category: 'lemari_isi',
+    categoryLabel: 'Lemari & Tingkatan Isi',
+    title: 'Tingkat Rak Tengah (Pakaian Harian & Ibadah)',
+    sopStandard: 'Pakaian santai harian, kaos, serta mukena/sarung/sajadah terlipat rapi presisi berjejer sesuai klasifikasinya.',
+    maxScore: 7
+  },
+  {
+    id: 'lemari_rak_bawah',
+    category: 'lemari_isi',
+    categoryLabel: 'Lemari & Tingkatan Isi',
+    title: 'Tingkat Rak Bawah (Buku & Bebas Makanan)',
+    sopStandard: 'Buku, alat tulis, perlengkapan mandi tertata rapi; DILARANG KERAS menyimpan makanan basah/sisa makanan.',
+    maxScore: 6
+  },
+  {
+    id: 'lemari_laundry',
+    category: 'lemari_isi',
+    categoryLabel: 'Lemari & Tingkatan Isi',
+    title: 'Pemisahan Pakaian Kotor (Laundry Bag)',
+    sopStandard: 'Baju kotor dimasukkan ke dalam keranjang laundry tertutup, tidak digantung atau bercampur di rak pakaian bersih.',
+    maxScore: 5
+  },
+
+  // 3. Pengecekan Debu & Kebersihan Permukaan (Bobot 25 Poin)
+  {
+    id: 'debu_ventilasi_jendela',
+    category: 'debu_permukaan',
+    categoryLabel: 'Pengecekan Debu & Permukaan',
+    title: 'Kebersihan Ventilasi, Kaca & Kusen Jendela',
+    sopStandard: 'Jalusi ventilasi bebas sawang dan debu tebal, kaca jendela bening bebas noda, kusen dilap bersih.',
+    maxScore: 7
+  },
+  {
+    id: 'debu_meja_ambalan',
+    category: 'debu_permukaan',
+    categoryLabel: 'Pengecekan Debu & Permukaan',
+    title: 'Bebas Debu Meja Belajar, Rak & Atas Lemari',
+    sopStandard: 'Permukaan meja belajar, rak ambalan, dan bagian atas lemari dilap bersih bebas dari lapisan debu.',
+    maxScore: 6
+  },
+  {
+    id: 'debu_plafon_sudut',
+    category: 'debu_permukaan',
+    categoryLabel: 'Pengecekan Debu & Permukaan',
+    title: 'Plafon & Sudut Ruangan Bebas Sawang',
+    sopStandard: 'Langit-langit, ventilasi, dan sudut dinding bersih tanpa sarang laba-laba/sawang.',
+    maxScore: 6
+  },
+  {
+    id: 'debu_lantai_keset',
+    category: 'debu_permukaan',
+    categoryLabel: 'Pengecekan Debu & Permukaan',
+    title: 'Kebersihan Lantai Kamar & Keset Pintu',
+    sopStandard: 'Lantai disapu dan dipel bersih (wangi & tidak lengket), keset di depan pintu kamar bersih dan rata.',
+    maxScore: 6
+  },
+
+  // 4. Kelengkapan & Fasilitas Asrama (Bobot 20 Poin)
+  {
+    id: 'fasilitas_inventaris',
+    category: 'fasilitas_kelengkapan',
+    categoryLabel: 'Kelengkapan & Fasilitas Asrama',
+    title: 'Kelengkapan & Keutuhan Inventaris Kamar',
+    sopStandard: 'Dipan ranjang, kasur, lemari, jendela, dan pintu dalam kondisi baik tanpa coretan/kerusakan fasilitas.',
+    maxScore: 5
+  },
+  {
+    id: 'fasilitas_rak_sepatu',
+    category: 'fasilitas_kelengkapan',
+    categoryLabel: 'Kelengkapan & Fasilitas Asrama',
+    title: 'Kerapian Rak Sepatu & Sandal',
+    sopStandard: 'Sepatu sekolah, sepatu olahraga, dan sandal asrama tertata lurus di rak sepatu depan kamar sesuai nomor.',
+    maxScore: 5
+  },
+  {
+    id: 'fasilitas_jemuran_handuk',
+    category: 'fasilitas_kelengkapan',
+    categoryLabel: 'Kelengkapan & Fasilitas Asrama',
+    title: 'Penataan Handuk & Jemuran Basah',
+    sopStandard: 'Handuk basah dijemur di jemuran luar, dilarang menumpuk atau menggantung handuk basah di kasur/lemari.',
+    maxScore: 5
+  },
+  {
+    id: 'fasilitas_sampah_listrik',
+    category: 'fasilitas_kelengkapan',
+    categoryLabel: 'Kelengkapan & Fasilitas Asrama',
+    title: 'Tempat Sampah & Keamanan Kelistrikan',
+    sopStandard: 'Tempat sampah kamar dikosongkan sebelum beraktivitas, lampu berfungsi normal, tidak ada colokan/kabel liar.',
+    maxScore: 5
+  }
+];
+
+export function calculateDormScore(items: { maxScore: number; score: number }[]): {
+  totalScore: number;
+  grade: DormGrade;
+  gradeLabel: string;
+} {
+  const totalScore = Math.round(items.reduce((acc, curr) => acc + (curr.score || 0), 0));
+  let grade: DormGrade = 'D';
+  let gradeLabel = 'Kurang / Wajib Piket Ulang & Pembinaan';
+
+  if (totalScore >= 86) {
+    grade = 'A';
+    gradeLabel = 'Sangat Baik / Sangat Bersih & Memenuhi SOP';
+  } else if (totalScore >= 71) {
+    grade = 'B';
+    gradeLabel = 'Baik / Rapi & Bersih (Catatan Minor)';
+  } else if (totalScore >= 56) {
+    grade = 'C';
+    gradeLabel = 'Cukup / Perlu Perbaikan & Tindak Lanjut';
+  } else {
+    grade = 'D';
+    gradeLabel = 'Kurang / Tidak Memenuhi SOP (Piket Ulang)';
+  }
+
+  return { totalScore, grade, gradeLabel };
+}
+
+export function getDefaultDormInspectionItems(): DormInspectionItemScore[] {
+  return DEFAULT_SOP_CRITERIA.map((criterion) => ({
+    criterionId: criterion.id,
+    category: criterion.category,
+    title: criterion.title,
+    sopStandard: criterion.sopStandard,
+    maxScore: criterion.maxScore,
+    score: criterion.maxScore, // default full score for fast check
+    isCompliant: true,
+    notes: ''
+  }));
+}
+
+export const INITIAL_DORM_INSPECTIONS: DormInspection[] = [];
+
+export function loadDormInspections(): DormInspection[] {
+  try {
+    const saved = localStorage.getItem('sr_dorm_inspections');
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(i => i && !['insp-1710001', 'insp-1710002'].includes(i.id));
+  } catch (error) {
+    console.error('Failed to load dorm inspections', error);
+    return [];
+  }
+}
+
+export function saveDormInspections(inspections: DormInspection[]): void {
+  localStorage.setItem('sr_dorm_inspections', JSON.stringify(inspections));
+}
+
+export const INITIAL_DORM_ASSETS: DormAsset[] = [];
+
+export function loadDormAssets(): DormAsset[] {
+  try {
+    const saved = localStorage.getItem('sr_dorm_assets');
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+    const dummyAssetIds = [
+      'ASSET-PA1-001', 'ASSET-PA1-002', 'ASSET-PA1-003', 'ASSET-PA1-004',
+      'ASSET-PI1-001', 'ASSET-PI1-002', 'ASSET-PI1-003'
+    ];
+    return parsed.filter(a => a && !dummyAssetIds.includes(a.id));
+  } catch (error) {
+    console.error('Failed to load dorm assets', error);
+    return [];
+  }
+}
+
+export function saveDormAssets(assets: DormAsset[]): void {
+  localStorage.setItem('sr_dorm_assets', JSON.stringify(assets));
+}
+
+export const INITIAL_PSYCHOLOGICAL_ASSESSMENTS: PsychologicalAssessment[] = [];
+
+export function loadPsychologicalAssessments(): PsychologicalAssessment[] {
+  try {
+    const saved = localStorage.getItem('sr_psychological_assessments');
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(p => p && p.id);
+  } catch (error) {
+    console.error('Failed to load psychological assessments', error);
+    return [];
+  }
+}
+
+export function savePsychologicalAssessments(assessments: PsychologicalAssessment[]): void {
+  localStorage.setItem('sr_psychological_assessments', JSON.stringify(assessments));
+}
+
 

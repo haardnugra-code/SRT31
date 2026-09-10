@@ -328,7 +328,10 @@ export interface AppConfig {
 export type ShiftType =
   | 'Shift Pagi (06.00 - 14.00)'
   | 'Shift Siang / Sore (14.00 - 21.00)'
-  | 'Shift Malam / Dini Hari (21.00 - 06.00)';
+  | 'Shift Siang (14.00 - 22.00)'
+  | 'Shift Malam / Dini Hari (21.00 - 06.00)'
+  | 'Shift Malam (22.00 - 06.00)'
+  | string;
 
 export type ClinicalRiskLevel =
   | 'Rendah (Aman)'
@@ -336,17 +339,22 @@ export type ClinicalRiskLevel =
   | 'Tinggi (Eskalasi / Re-offense Risk)'
   | 'Kritis (Bahaya Langsung / Rujukan)';
 
+export type ShiftPriority = 'Biasa' | 'Perhatian' | 'Mendesak';
+export type ShiftHandoverStatus = 'Perlu Tindak Lanjut' | 'Selesai / Diterima';
+
 export type SpecialCaseSeverity =
   | 'Tinggi (High Risk)'
   | 'Kritis (Severe / Crisis)'
-  | 'Investigasi Khusus';
+  | 'Investigasi Khusus'
+  | ShiftPriority;
 
 export type SpecialCaseStatus =
   | 'Dalam Pemantauan Intensif'
   | 'Observasi Stabil'
   | 'Menunggu Sidang Keasramaan'
   | 'Rujukan Psikiater / Faskes Luar'
-  | 'Selesai / Resolusi';
+  | 'Selesai / Resolusi'
+  | ShiftHandoverStatus;
 
 export interface SpecialShiftLog {
   id: string;
@@ -354,48 +362,47 @@ export interface SpecialShiftLog {
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
   officerName: string;
-  officerRole: 'Wali Asuh Shift' | 'Konselor BK' | 'Tim Investigasi Keasramaan' | 'Psikolog / Tenaga Klinis';
+  officerRole?: string;
   
-  // 1. Pemeriksaan Status Mental (Mental Status Examination / MSE Observasi)
-  appearanceAndMotor: string; // Penampilan fisik, kontak mata, tingkat kegelisahan, postur, tanda agitasi motorik
-  moodAndAffect: string; // Afek & suasana perasaan (labil, tumpul, agresif, cemas, defensif, datar, sedih)
-  speechAndThoughtPattern: string; // Arus bicara & pola pikir (koheren, memblokir, curiga/paranoid, impulsif)
-  orientationAndConsciousness: string; // Orientasi & tingkat kesadaran realitas
-  
-  // 2. Analisis Dinamika Psikologis & Mekanisme Pertahanan Diri
-  triggerFactors: string; // Faktor pemicu langsung / stimulus konflik
-  emotionalRegulation: string; // Regulasi emosi (mampu self-soothe vs eskalasi amarah)
-  defenseMechanisms: string; // Mekanisme pertahanan ego (Denial, Rasionalisasi, Proyeksi, Acting Out, Represi, Displacement)
-  
-  // 3. Evaluasi Risiko Klinis & Perilaku (Risk Assessment)
-  riskLevel: ClinicalRiskLevel;
-  riskNotes: string; // Indikasi bahaya (self-harm, agresi fisik, pelarian/kabur, provokasi teman)
-  
-  // 4. Intervensi Konseling & Terapi yang Diberikan
-  interventionTechnique: string; // Teknik konseling/de-eskalasi (De-eskalasi Krisis, Active Listening, Grounding, Reframing, Motivational Interviewing)
-  studentResponse: string; // Respon siswa terhadap konseling
-  
-  // 5. Rekomendasi & Serah Terima Shift (Handover / Hand-off Notes)
+  // Catatan & Handover
+  incidentDetails?: string;
   handoverNotes: string; // Instruksi khusus untuk petugas shift berikutnya
+  
+  // Opsional bidang klinis lama jika ada data lama
+  appearanceAndMotor?: string;
+  moodAndAffect?: string;
+  speechAndThoughtPattern?: string;
+  orientationAndConsciousness?: string;
+  triggerFactors?: string;
+  emotionalRegulation?: string;
+  defenseMechanisms?: string;
+  riskLevel?: ClinicalRiskLevel;
+  riskNotes?: string;
+  interventionTechnique?: string;
+  studentResponse?: string;
 }
 
 export interface SpecialChronologyCase {
   id: string;
-  violationId?: string; // Tautan ke ID Pelanggaran berat jika ada
-  studentId: string;
-  studentName: string;
-  class: string;
-  dorm: string;
-  caseTitle: string; // Judul / nama berkas kasus
-  incidentDate: string; // Tanggal insiden pelanggaran
-  caseCategory: string; // Kategori Pelanggaran Berat
-  caseSeverity: SpecialCaseSeverity;
-  status: SpecialCaseStatus;
-  primaryInvestigator: string; // Pengasuh utama / Penanggung jawab kasus
-  initialAssessmentSummary: string; // Ringkasan latar belakang & analisis awal kasus
-  shifts: SpecialShiftLog[];
-  createdAt: string;
-  updatedAt: string;
+  violationId?: string; // Tautan ke ID Pelanggaran jika ada
+  studentId?: string;
+  studentName?: string;
+  class?: string;
+  dorm?: string;
+  caseTitle: string; // Judul Kejadian / Pokok Bahasan
+  incidentDate: string; // Tanggal insiden / shift
+  incidentTime?: string; // Waktu kejadian / shift (HH:mm)
+  shiftType?: string; // Shift Pagi, Shift Siang, Shift Malam
+  caseCategory?: string; // Kategori Kejadian (Kedisiplinan, Kesehatan, Fasilitas, dll.)
+  caseSeverity?: SpecialCaseSeverity | string; // Prioritas: Biasa / Perhatian / Mendesak
+  status?: SpecialCaseStatus | string; // Status: Perlu Tindak Lanjut / Selesai / Diterima
+  primaryInvestigator: string; // Petugas Jaga Shift (yang menyerahkan)
+  incomingOfficer?: string; // Petugas Shift Penerima
+  initialAssessmentSummary: string; // Uraian Kejadian / Kondisi Selama Shift
+  handoverNotes?: string; // Tugas / Hal yang di-handover ke shift berikutnya
+  shifts?: SpecialShiftLog[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ParentSummonsOptions {
@@ -438,3 +445,168 @@ export interface MeetingMinute {
   createdAt: number;
   updatedAt: number;
 }
+
+export type DormInspectionCategoryKey =
+  | 'ranjang_selimut'
+  | 'lemari_isi'
+  | 'debu_permukaan'
+  | 'fasilitas_kelengkapan';
+
+export interface DormInspectionCriterion {
+  id: string;
+  category: DormInspectionCategoryKey;
+  categoryLabel: string;
+  title: string;
+  sopStandard: string;
+  maxScore: number;
+}
+
+export interface DormInspectionItemScore {
+  criterionId: string;
+  category: DormInspectionCategoryKey;
+  title: string;
+  sopStandard: string;
+  maxScore: number;
+  score: number;
+  isCompliant: boolean;
+  notes?: string;
+}
+
+export type DormGrade = 'A' | 'B' | 'C' | 'D';
+
+export type DormActionRequired =
+  | 'Lulus Standar SOP'
+  | 'Pemberian Apresiasi / Bintang Kamar'
+  | 'Pemberitahuan & Rapikan Mandiri'
+  | 'Piket Ulang Sore Ini'
+  | 'Pembinaan Khusus Wali Asuh'
+  | 'Perbaikan Kerusakan Fasilitas';
+
+export interface DormInspection {
+  id: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  dorm: string; // e.g. "Asrama Dewantara"
+  roomNumber: string; // e.g. "Kamar 01" / "Kamar 02"
+  inspectionType:
+    | 'Inspeksi Rutin Pagi'
+    | 'Sidak Kerapian & Kebersihan'
+    | 'Inspeksi Mingguan (Ro\'an Asrama)'
+    | 'Evaluasi Bulanan Kamar';
+  inspectorName: string;
+  inspectorRole?: string;
+  inspectorNip?: string;
+  roomLeaderName?: string;
+  studentNamesInRoom?: string; // e.g. "Ahmad, Budi, Dimas, Farhan"
+  items: DormInspectionItemScore[];
+  totalScore: number; // 0 - 100
+  grade: DormGrade;
+  gradeLabel: string;
+  findings?: string; // Catatan temuan khusus (misal: pakaian kotor diselip di rak, debu kusen)
+  actionRequired: DormActionRequired;
+  actionDeadline?: string;
+  actionNotes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type DormAssetCategory =
+  | 'Tempat Tidur & Kasur'
+  | 'Lemari & Locker'
+  | 'Meja & Kursi Belajar'
+  | 'Elektronik & Kelistrikan'
+  | 'Sanitasi & Alat Kebersihan'
+  | 'Sarana Kamar & Bangunan'
+  | 'Lainnya';
+
+export type DormAssetDamageSeverity = 'tidak_ada' | 'ringan' | 'sedang' | 'berat';
+
+export type DormAssetActionPlan =
+  | 'Siap Digunakan (Layak)'
+  | 'Perbaikan Mandiri Asrama'
+  | 'Pengajuan Servis/Tukang Sarpras'
+  | 'Pengajuan Penggantian Baru'
+  | 'Penghapusan / Afkir Aset'
+  | 'Sedang Dalam Perbaikan';
+
+export interface DormAsset {
+  id: string;
+  assetCode?: string; // Kode Registrasi / NIB Instansi (e.g. BMN-ASR/PA1/2026/001)
+  dormName: string; // Nama Gedung / Asrama (Manual & Fleksibel, e.g. "Gedung Asrama Putra I (Wisma Dewantara)")
+  buildingBlock?: string; // Blok / Lantai (e.g. "Lantai 1", "Sayap Barat", "Blok A")
+  roomNumber: string; // e.g. "Kamar 01", "Kamar 102", "Area Bersama Asrama"
+  itemName: string; // e.g. "Ranjang / Dipan Susun Besi", "Kasur Busa Inoac"
+  brandSpec?: string; // Merk / Spesifikasi Teknis Fisik BMN
+  category: DormAssetCategory;
+  procurementYear?: string; // Tahun Pengadaan / Perolehan (misal: "2025", "2026")
+  fundingSource?: string; // Sumber Anggaran (e.g. "DIPA Kemensos RI", "APBN", "BOS Rakyat")
+  totalQuantity: number; // e.g. ranjang jumlah berapa
+  goodQuantity: number; // kondisi baik berapa
+  damagedQuantity: number; // rusak berapa
+  damageSeverity: DormAssetDamageSeverity; // tingkat kerusakan
+  damageStatus: string; // status rusak apa (rincian deskripsi kerusakan)
+  gdriveLink?: string; // link gdrive untuk foto dokumentasi kerusakan / kartu inventaris
+  notes?: string; // catatan tambahan
+  actionPlan: DormAssetActionPlan; // rencana tindak lanjut
+  inspectorName: string; // petugas pendata / wali asuh
+  inspectionDate: string; // tanggal pendataan (YYYY-MM-DD)
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// ==========================================
+// ASESMEN PSIKOLOGI & TUMBUH KEMBANG KEJIWAAN ANAK
+// ==========================================
+
+export type PsychologicalTestType =
+  | 'sdq_25' // Strengths and Difficulties Questionnaire
+  | 'resilience_growth_20' // Skala Tumbuh Kembang & Resiliensi Jiwa Siswa
+  | 'mmpi_tni_polri'; // Tes Inventori Kepribadian MMPI (Adaptasi Seleksi TNI/POLRI)
+
+export type PsychologicalClinicalStatus = 'normal' | 'borderline' | 'abnormal';
+
+export interface PsychologicalDimensionScore {
+  dimensionKey: string;
+  dimensionName: string;
+  score: number;
+  maxScore: number;
+  status: PsychologicalClinicalStatus;
+  statusLabel: string;
+  clinicalInterpretation: string;
+  isStrengthScale?: boolean; // e.g. Prososial atau Resiliensi (skor tinggi = semakin baik)
+}
+
+export interface PsychologicalAssessment {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentClass: string;
+  studentDorm: string;
+  testType: PsychologicalTestType;
+  testTitle: string;
+  date: string; // YYYY-MM-DD
+  time?: string;
+  answers: Record<string, number>; // questionId -> score (0, 1, 2, dll)
+  totalScore: number;
+  overallStatus: PsychologicalClinicalStatus;
+  overallStatusLabel: string;
+  dimensionScores: Record<string, PsychologicalDimensionScore>;
+  psychologicalConsiderations: string[]; // Rangkuman pertimbangan kejiwaan anak
+  developmentalInsights: string; // Tumbuh kembang anak & kematangan psikologis
+  prosocialStrengths: string[]; // Kekuatan & faktor protektif anak
+  riskFactors: string[]; // Area kerentanan kejiwaan atau risiko perilaku
+  recommendations: {
+    forCaretaker: string[]; // Untuk Wali Asuh di Asrama
+    forTeacher: string[]; // Untuk Guru Pengampu di Kelas
+    forCounselor: string[]; // Untuk Guru BK / Pendamping Khusus
+    referralAdvice?: string; // Saran jika perlu rujukan ke psikolog/psikiater
+  };
+  filledBy: 'student' | 'counselor_with_student';
+  assessorName: string; // Nama siswa sendiri atau nama wali asuh pendamping
+  notes?: string;
+  referredToCounseling?: boolean; // Flag apakah sudah ditindaklanjuti ke sesi BK
+  counselingSessionId?: string;
+  createdAt: string;
+}
+
+

@@ -68,12 +68,12 @@ export function getCanonicalDormName(rawDorm?: string, knownList?: string[]): st
   }
 
   // If not in candidate list, format cleanly
-  const hasPrefix = /^(asrama|gedung)\s+/i.test(cleaned);
+  const hasPrefix = /^(asrama|gedung|wisma|paviliun|pavilion|mess|barak|blok|kamar|rusunawa|residence|villa|unit)\s+/i.test(cleaned);
   if (hasPrefix) {
     return formatDormWords(cleaned);
   }
 
-  return `Asrama ${formatDormWords(cleaned)}`;
+  return formatDormWords(cleaned);
 }
 
 /**

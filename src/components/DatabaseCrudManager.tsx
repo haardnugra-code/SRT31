@@ -22,7 +22,6 @@ import {
   Megaphone,
   Check,
   X,
-  Sparkles,
   Layers,
   HelpCircle,
   Copy
@@ -613,123 +612,6 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
     onShowToast('Data Dihapus', `Baris record ID ${id} berhasil dihapus dari tabel ${tablesMeta[activeTable].sheetName}.`, 'warning');
   };
 
-  // Seed Realistic CRUD Sample Records for Testing
-  const handleSeedSampleData = () => {
-    const timestamp = Date.now();
-    const today = new Date().toISOString().split('T')[0];
-
-    if (activeTable === 'students') {
-      const sampleStudent: Student = {
-        id: `SR${String(timestamp).slice(-4)}`,
-        name: `Siswa Teladan ${String(timestamp).slice(-3)}`,
-        class: 'SMP',
-        dorm: config.dormList[0] || 'Asrama Terpadu',
-        caretaker: config.waliAsuhList[0]?.split('|')[0] || 'Wali Asuh',
-        rfidTag: `RFID-${String(timestamp).slice(-6)}`,
-        height: 155,
-        weight: 48,
-        gender: 'Laki-Laki',
-        shirtSize: 'M',
-        pantsSize: '30'
-      };
-      onSaveStudent(sampleStudent, false);
-    } else if (activeTable === 'violations') {
-      const st = students[0] || { id: 'SR1001', name: 'Siswa Contoh' };
-      const sampleViolation: Violation = {
-        id: `VIOL-${timestamp}`,
-        studentId: st.id,
-        studentName: st.name,
-        date: today,
-        level: 1,
-        violation: 'Keterlambatan Hadir Apel Pagi',
-        sanction: 'Pembinaan kedisiplinan & membaca surah pendek',
-        note: 'Diberikan pengarahan oleh pembina asrama',
-        reporter: config.waliAsrama || 'Wali Asrama',
-        semester: config.semester || 'Genap',
-        academicYear: config.academicYear || '2025/2026'
-      };
-      onSaveViolation(sampleViolation, false);
-    } else if (activeTable === 'counseling') {
-      const st = students[0] || { id: 'SR1001', name: 'Siswa Contoh' };
-      const sampleCounseling: Counseling = {
-        id: `BK-${timestamp}`,
-        studentId: st.id,
-        studentName: st.name,
-        date: today,
-        time: '13:30 WIB',
-        sessionNumber: 1,
-        location: 'Ruang BK & Konseling',
-        counselor: config.waliAsrama || 'Guru BK',
-        counselingType: 'Konseling Individu',
-        counselingField: 'Pribadi',
-        urgencyLevel: 'Rutin',
-        caseDescription: 'Konsultasi adaptasi belajar dan target hafalan Qur\'an',
-        notes: 'Siswa antusias dan bersedia menyusun jadwal belajar mandiri',
-        studentCommitment: 'Belajar teratur 1 jam setiap malam',
-        followUp: 'Evaluasi jadwal 1 pekan kemudian',
-        status: 'In Progress'
-      };
-      onSaveCounseling(sampleCounseling, false);
-    } else if (activeTable === 'leaves') {
-      const st = students[0] || { id: 'SR1001', name: 'Siswa Contoh' };
-      const sampleLeave: Leave = {
-        id: `IZN-${timestamp}`,
-        studentId: st.id,
-        studentName: st.name,
-        category: 'Izin Keluar Sementara',
-        type: 'Reguler',
-        reason: 'Keperluan administrasi keluarga di kota',
-        leaveDate: today,
-        returnDate: today,
-        caretaker: config.waliAsrama || 'Wali Asrama',
-        status: 'Active',
-        letterNumber: `042/SR31/IZN/${new Date().getFullYear()}`
-      };
-      onSaveLeave(sampleLeave, false);
-    } else if (activeTable === 'medicalRecords') {
-      const st = students[0] || { id: 'SR1001', name: 'Siswa Contoh' };
-      const sampleMed: MedicalRecord = {
-        id: `MED-${timestamp}`,
-        date: today,
-        time: '09:15',
-        studentId: st.id,
-        studentName: st.name,
-        location: 'UKS Asrama',
-        symptoms: 'Sakit tenggorokan dan batuk ringan',
-        diagnosis: 'Faringitis Akut (ISPA Ringan)',
-        treatment: 'Ambroxol syrup & vitamin C 500mg, anjuran istirahat cukup',
-        restDays: 1,
-        isSickLeave: true,
-        status: 'Dalam Perawatan',
-        officer: 'Petugas Medis UKS'
-      };
-      onSaveMedicalRecord(sampleMed);
-    } else if (activeTable === 'prayerAttendance') {
-      const st = students[0] || { id: 'SR1001', name: 'Siswa Contoh' };
-      const samplePrayer: PrayerAttendance = {
-        id: `PRY-${timestamp}`,
-        date: today,
-        studentId: st.id,
-        studentName: st.name,
-        class: st.class || 'SD',
-        dorm: st.dorm || 'Asrama Terpadu',
-        prayerTime: 'Maghrib',
-        status: 'Hadir',
-        timestamp: '18:15:00 WIB',
-        scannedBy: 'Auto RFID Gate'
-      };
-      onSavePrayerAttendance([samplePrayer, ...prayerAttendance]);
-    } else if (activeTable === 'announcements') {
-      onUpdateAnnouncement(`Pengumuman Terpadu (${today}): Seluruh siswa wajib mematuhi jam belajar malam dan menjaga kebersihan asrama.`);
-    }
-
-    onShowToast(
-      'Data Sampel Berhasil Dibuat',
-      `Data sampel untuk tabel ${tablesMeta[activeTable].sheetName} berhasil ditambahkan dan disinkronkan.`,
-      'success'
-    );
-  };
-
   // Export Table Data to JSON File
   const handleExportJSON = () => {
     const jsonStr = JSON.stringify(tableData, null, 2);
@@ -839,16 +721,6 @@ export const DatabaseCrudManager: React.FC<DatabaseCrudManagerProps> = ({
           >
             <Upload className="w-3.5 h-3.5 text-purple-600" />
             <span>Impor JSON</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSeedSampleData}
-            className="flex-1 sm:flex-initial px-3.5 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95"
-            title="Suntikkan / Tambah data sampel realistis untuk menguji alur CRUD"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>Uji Tambah Data Sampel</span>
           </button>
 
           <button

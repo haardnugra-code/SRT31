@@ -149,32 +149,47 @@ export async function generateOfficialLetterPDF(
     }
 
     // Header Text
+    const instansiLines = (config.kopKiri || 'KEMENTERIAN SOSIAL REPUBLIK INDONESIA\nBADAN PENDIDIKAN PENELITIAN DAN PENYULUHAN SOSIAL\nSEKOLAH RAKYAT 31 PALEMBANG').split('\n');
+    const alamatLines = (config.kopKanan || 'Kompleks Balai Budi Perkasa, Jl. Sosial Km. 5, Palembang, Sumatera Selatan\nPos-el: sekolahrakyat31@kemensos.go.id | Asrama Mandiri Terpadu').split('\n');
+    
+    let textY = 14;
+
+    // Instansi (Bold)
     doc.setFont('times', 'bold');
-    doc.setFontSize(10.5);
-    doc.setTextColor(20, 20, 20);
-    doc.text('KEMENTERIAN SOSIAL REPUBLIK INDONESIA', pageWidth / 2, 14, { align: 'center' });
+    instansiLines.forEach((line, index) => {
+      // Make the last line of the institution name larger and optionally reddish like before
+      if (index === instansiLines.length - 1) {
+        doc.setFontSize(12);
+        doc.setTextColor(180, 20, 20);
+      } else {
+        doc.setFontSize(11);
+        doc.setTextColor(20, 20, 20);
+      }
+      doc.text(line.trim(), pageWidth / 2, textY, { align: 'center' });
+      textY += (index === instansiLines.length - 1) ? 4.5 : 4.5;
+    });
 
-    doc.setFontSize(11);
-    doc.text('BADAN PENDIDIKAN PENELITIAN DAN PENYULUHAN SOSIAL', pageWidth / 2, 18.5, { align: 'center' });
-
-    doc.setFontSize(12);
-    doc.setTextColor(180, 20, 20);
-    doc.text('SEKOLAH RAKYAT 31 PALEMBANG', pageWidth / 2, 23.5, { align: 'center' });
-
+    // Alamat (Normal)
     doc.setFont('times', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(50, 50, 50);
-    doc.text('Kompleks Balai Budi Perkasa, Jl. Sosial Km. 5, Palembang, Sumatera Selatan', pageWidth / 2, 27.5, { align: 'center' });
-    doc.text('Pos-el: sekolahrakyat31@kemensos.go.id | Asrama Mandiri Terpadu', pageWidth / 2, 31, { align: 'center' });
+    // Add small gap before address if needed, textY already added 4.5 from last instansi line
+    textY -= 0.5; 
+    alamatLines.forEach((line) => {
+      doc.text(line.trim(), pageWidth / 2, textY, { align: 'center' });
+      textY += 3.5;
+    });
+
+    const lineY = textY + 1;
 
     // Double Border Lines
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.8);
-    doc.line(marginX, 33.5, pageWidth - marginX, 33.5);
+    doc.line(marginX, lineY, pageWidth - marginX, lineY);
     doc.setLineWidth(0.2);
-    doc.line(marginX, 34.5, pageWidth - marginX, 34.5);
+    doc.line(marginX, lineY + 1, pageWidth - marginX, lineY + 1);
 
-    currentY = 40;
+    currentY = lineY + 6.5;
   };
 
   renderKopSurat();

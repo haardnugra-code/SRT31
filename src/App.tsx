@@ -57,7 +57,10 @@ import {
   saveLastPushTime,
   loadLastIntegrityReport,
   saveLastIntegrityReport,
-  purgeAllDummyData
+  purgeAllDummyData,
+  autoSaveJSONSnapshot,
+  pushPendingSyncQueue,
+  clearPendingSyncQueue
 } from './services/storage';
 import { reconcileAndSanitizeShadowData, ShadowDataAuditStats } from './utils/dataSanitizer';
 import { verifyDataIntegrity, DataIntegrityReport, PreviousCountsSnapshot } from './utils/integrityVerifier';
@@ -88,6 +91,7 @@ import { DormAssetTab } from './components/DormAssetTab';
 import { LiveMonitorTab } from './components/LiveMonitorTab';
 import { PsychologicalAssessmentTab } from './components/PsychologicalAssessmentTab';
 import { StudentAssessmentPortalModal } from './components/StudentAssessmentPortalModal';
+import { LetterGeneratorTab } from './components/LetterGeneratorTab';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -338,18 +342,35 @@ export default function App() {
     settings: 'Pengaturan & Kustomisasi Sistem'
   };
 
+  const backupDatabaseToDrive = useCallback(async () => {
+    if (!config.googleScriptUrl) return;
+    try {
+      await fetch(config.googleScriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'backupDrive' }),
+        mode: 'no-cors'
+      });
+      console.log('Automated Drive backup triggered successfully.');
+    } catch (e) {
+      console.warn('Silent notice: automated Drive backup skipped due to network/offline status:', e);
+    }
+  }, [config.googleScriptUrl]);
+
   // --- CRUD Handlers with Atomic LocalStorage Saves & Async Cloud Sync ---
 
-  // 1. Student CRUD
+  // 1. Student CRUD (Real-Time Cloud + Auto-Save JSON + Offline Resilient)
   const handleSaveStudent = useCallback(
     (student: Student, isEdit: boolean) => {
+      const nowIso = new Date().toISOString();
       const cleanedStudent: Student = {
         ...student,
         id: String(student.id).trim(),
         name: String(student.name).trim(),
         rfidTag: student.rfidTag ? String(student.rfidTag).trim() : undefined,
         shirtSize: student.shirtSize ? String(student.shirtSize).trim() : undefined,
-        pantsSize: student.pantsSize ? String(student.pantsSize).trim() : undefined
+        pantsSize: student.pantsSize ? String(student.pantsSize).trim() : undefined,
+        updatedAt: nowIso
       };
 
       setStudents((prev) => {
@@ -365,10 +386,11 @@ export default function App() {
           }
         }
         saveStudents(updated);
+        autoSaveJSONSnapshot();
         return updated;
       });
 
-      // Async cloud post
+      // Real-time Cloud Push or Offline Queue Fallback
       if (config.googleScriptUrl) {
         fetch(config.googleScriptUrl, {
           method: 'POST',
@@ -377,11 +399,30 @@ export default function App() {
             data: cleanedStudent
           })
         })
-        .then(() => recordDataPushSuccess())
-        .catch((err) => console.error(err));
+        .then(() => {
+          recordDataPushSuccess();
+          backupDatabaseToDrive();
+        })
+        .catch((err) => {
+          console.warn('Real-time save cloud pending offline queue:', err);
+          pushPendingSyncQueue({
+            id: cleanedStudent.id,
+            type: 'student',
+            action: isEdit ? 'updateStudent' : 'addStudent',
+            data: cleanedStudent
+          });
+        });
+      } else {
+        // Mode Tanpa Database Cloud: data tetap tersimpan aman di local JSON snapshot & antrian offline
+        pushPendingSyncQueue({
+          id: cleanedStudent.id,
+          type: 'student',
+          action: isEdit ? 'updateStudent' : 'addStudent',
+          data: cleanedStudent
+        });
       }
     },
-    [config.googleScriptUrl, recordDataPushSuccess]
+    [config.googleScriptUrl, recordDataPushSuccess, backupDatabaseToDrive]
   );
 
   const handleDeleteStudent = useCallback(
@@ -393,6 +434,7 @@ export default function App() {
       setStudents((prev) => {
         const updated = prev.filter((s) => String(s.id).trim() !== trimmedId);
         saveStudents(updated);
+        autoSaveJSONSnapshot();
         return updated;
       });
 
@@ -468,11 +510,14 @@ export default function App() {
             data: { id: trimmedId }
           })
         })
-        .then(() => recordDataPushSuccess())
+        .then(() => {
+          recordDataPushSuccess();
+          backupDatabaseToDrive();
+        })
         .catch((err) => console.error(err));
       }
     },
-    [students, config.googleScriptUrl, recordDataPushSuccess]
+    [students, config.googleScriptUrl, recordDataPushSuccess, backupDatabaseToDrive]
   );
 
   // 2. Violation CRUD
@@ -1652,6 +1697,9 @@ export default function App() {
             },
             7000
           );
+          
+          // Auto trigger backup after successful sync
+          backupDatabaseToDrive();
         } else if (isManual) {
           showToast('Sinkronisasi Tertolak', resJson.message || 'Respon dari script backend gagal.', 'error');
         }
@@ -1681,7 +1729,8 @@ export default function App() {
       dormInspections,
       dormAssets,
       specialCases,
-      psychologicalAssessments
+      psychologicalAssessments,
+      backupDatabaseToDrive
     ]
   );
 
@@ -2081,6 +2130,15 @@ export default function App() {
                 onDeleteCase={handleDeleteSpecialCase}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
+              />
+            )}
+
+            {activeTab === 'letter-generator' && (
+              <LetterGeneratorTab
+                students={studentsWithViolationCounts}
+                config={config}
+                onShowToast={showToast}
+                initialStudentId={profileStudentId}
               />
             )}
 

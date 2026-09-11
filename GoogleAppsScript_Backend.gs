@@ -1,30 +1,30 @@
 /**
  * ==============================================================================
- * KODE BACKEND GOOGLE APPS SCRIPT - SISTEM KEASRAMAAN
+ * KODE BACKEND GOOGLE APPS SCRIPT - SISTEM KEASRAMAAN & PENYIMPANAN OTOMATIS JSON
  * ==============================================================================
+ * Fitur:
+ * 1. Manajemen Database Multi-Sheet Otomatis (Siswa, Pelanggaran, Asesmen MMPI, Medis, dll).
+ * 2. Penyimpanan Real-Time Perubahan Data Siswa & Semua Modul.
+ * 3. Penyimpanan Cadangan Otomatis File JSON ke Folder Google Drive ("Backup_JSON").
+ * 4. Penanganan File Lampiran (Foto / Dokumen PDF) ke Folder "Lampiran_Berkas".
+ * 
  * Cara Penggunaan:
- * 1. Buka Google Drive (drive.google.com).
- * 2. Buat Google Apps Script baru (New > More > Google Apps Script).
- * 3. Hapus kode default (Code.gs), lalu paste seluruh kode ini ke dalamnya.
- * 4. Klik tombol "Simpan" (ikon disket).
- * 5. Pilih fungsi `setupEnvironment` di dropdown atas, lalu klik "Jalankan" (Run).
- * 6. Beri izin (Review Permissions) yang diminta oleh Google.
- * 7. Setelah sukses berjalan, pergi ke menu "Terapkan" (Deploy) > "Penerapan Baru" (New deployment).
- * 8. Pilih jenis "Aplikasi Web" (Web App).
- *    - Jalankan sebagai: "Saya (email Anda)"
- *    - Siapa yang memiliki akses: "Siapa saja" (Anyone)
- * 9. Klik "Terapkan" (Deploy). 
- * 10. Salin URL Aplikasi Web yang muncul dan gunakan sebagai endpoint API di aplikasi React Anda.
+ * 1. Buka script.google.com atau Google Apps Script proyek Anda.
+ * 2. Ganti seluruh isi file Code.gs dengan kode ini.
+ * 3. Simpan dan jalankan fungsi `setupEnvironment` (Review Permissions jika diminta).
+ * 4. Terapkan (Deploy) > Kelola Penerapan / Penerapan Baru > Web App (Akses: Siapa Saja).
  * ==============================================================================
  */
 
 const FOLDER_DB_NAME = 'Database_Keasramaan_Siswa';
 const SPREADSHEET_NAME = 'DB_Keasramaan_Master';
+const FOLDER_BACKUP_NAME = 'Backup_JSON';
+const FOLDER_ATTACHMENT_NAME = 'Lampiran_Berkas';
 
-// Skema tabel (Sheet) yang akan dibuat otomatis
+// Skema tabel (Sheet) yang dibuat otomatis
 const SCHEMAS = {
   'Config': ['id', 'schoolName', 'kopKiri', 'kopKanan', 'semester', 'academicYear', 'headmasterName', 'headmasterNip', 'updatedAt'],
-  'Students': ['id', 'nisn', 'rfidTag', 'name', 'class', 'dorm', 'caretaker', 'height', 'weight', 'medicalHistory', 'createdAt', 'updatedAt'],
+  'Students': ['id', 'nisn', 'rfidTag', 'name', 'class', 'dorm', 'caretaker', 'gender', 'height', 'weight', 'medicalHistory', 'parentPhone', 'birthDate', 'shirtSize', 'pantsSize', 'createdAt', 'updatedAt'],
   'Violations': ['id', 'studentId', 'studentName', 'studentClass', 'studentDorm', 'date', 'time', 'location', 'category', 'description', 'points', 'handledBy', 'followUp', 'status', 'createdAt', 'updatedAt'],
   'Counseling': ['id', 'studentId', 'studentName', 'date', 'caseDescription', 'notes', 'followUp', 'counselor', 'status', 'createdAt'],
   'Leaves': ['id', 'studentId', 'studentName', 'studentClass', 'studentDorm', 'leaveDate', 'returnDate', 'reason', 'status', 'approvedBy', 'companion', 'notes', 'createdAt', 'updatedAt'],
@@ -40,156 +40,286 @@ const SCHEMAS = {
 };
 
 /**
- * Fungsi untuk menyiapkan Database Spreadsheet & Folder secara otomatis
+ * Inisialisasi Lingkungan Spreadsheet & Folder Drive
  */
 function setupEnvironment() {
   let folders = DriveApp.getFoldersByName(FOLDER_DB_NAME);
-  let folder;
+  let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(FOLDER_DB_NAME);
   
-  // 1. Buat atau ambil Folder utama
-  if (folders.hasNext()) {
-    folder = folders.next();
-  } else {
-    folder = DriveApp.createFolder(FOLDER_DB_NAME);
-  }
-  
-  // 2. Buat sub-folder untuk lampiran file (PDF/Foto)
-  let attachmentFolders = folder.getFoldersByName('Lampiran_Berkas');
-  if (!attachmentFolders.hasNext()) {
-    folder.createFolder('Lampiran_Berkas');
-  }
+  // Buat sub-folder Lampiran dan Backup JSON
+  let attachFolders = folder.getFoldersByName(FOLDER_ATTACHMENT_NAME);
+  if (!attachFolders.hasNext()) folder.createFolder(FOLDER_ATTACHMENT_NAME);
 
-  // 3. Buat atau ambil File Spreadsheet Master
+  let backupFolders = folder.getFoldersByName(FOLDER_BACKUP_NAME);
+  if (!backupFolders.hasNext()) folder.createFolder(FOLDER_BACKUP_NAME);
+
+  // Buat atau buka Spreadsheet
   let files = folder.getFilesByName(SPREADSHEET_NAME);
-  let ss;
+  let ss = files.hasNext() ? SpreadsheetApp.openById(files.next().getId()) : SpreadsheetApp.create(SPREADSHEET_NAME);
   
-  if (files.hasNext()) {
-    ss = SpreadsheetApp.openById(files.next().getId());
-  } else {
-    ss = SpreadsheetApp.create(SPREADSHEET_NAME);
+  if (!files.hasNext()) {
     let ssFile = DriveApp.getFileById(ss.getId());
     ssFile.moveTo(folder);
   }
   
-  // 4. Setup setiap Sheet (Tab) beserta Header-nya
+  // Setup seluruh Sheet
   for (let sheetName in SCHEMAS) {
-    let sheet = ss.getSheetByName(sheetName);
-    if (!sheet) {
-      sheet = ss.insertSheet(sheetName);
-    }
-    
+    let sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
     let headers = SCHEMAS[sheetName];
-    // Cek apakah header sudah ada
     let currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn() || 1).getValues()[0];
+    
     if (!currentHeaders || currentHeaders[0] === '') {
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-      sheet.getRange(1, 1, 1, headers.length).setBackground('#e2e8f0');
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#e2e8f0');
       sheet.setFrozenRows(1);
     }
   }
   
-  // Hapus Sheet1 bawaan jika masih ada
   let defaultSheet = ss.getSheetByName('Sheet1');
-  if (defaultSheet && ss.getSheets().length > 1) {
-    ss.deleteSheet(defaultSheet);
-  }
+  if (defaultSheet && ss.getSheets().length > 1) ss.deleteSheet(defaultSheet);
   
-  // Simpan ID Spreadsheet ke Properties agar mudah diakses
   PropertiesService.getScriptProperties().setProperty('DB_SS_ID', ss.getId());
-  
-  Logger.log("SETUP BERHASIL!");
-  Logger.log("Folder URL: " + folder.getUrl());
-  Logger.log("Spreadsheet URL: " + ss.getUrl());
+  Logger.log("SETUP BERHASIL!\nSpreadsheet: " + ss.getUrl() + "\nFolder Drive: " + folder.getUrl());
 }
 
 /**
- * Handle HTTP GET - Menerima parameter ?action=...&sheetName=...
+ * Handle HTTP GET
  */
 function doGet(e) {
-  const action = e.parameter.action;
+  const action = e.parameter ? e.parameter.action : '';
   
   if (action === 'ping') {
-    return respondJSON({ status: 'success', message: 'API is online' });
+    return respondJSON({ status: 'success', message: 'Database API Online & Siap Digunakan', timestamp: new Date().toISOString() });
   }
   
-  if (action === 'getAllData') {
+  if (action === 'getAllData' || action === 'fetchData') {
     return respondJSON(fetchAllData());
   }
 
-  return respondJSON({ status: 'error', message: 'Unknown GET action' }, 400);
+  if (action === 'backupDrive' || action === 'backupJSON') {
+    let backupRes = autoSaveDatabaseJSONToDrive();
+    return respondJSON(backupRes);
+  }
+
+  return respondJSON({ status: 'error', message: 'Aksi GET tidak dikenali' }, 400);
 }
 
 /**
- * Handle HTTP POST - Menerima JSON Payload dari React App
+ * Handle HTTP POST (Menerima perubahan real-time & sinkronisasi bulk)
  */
 function doPost(e) {
   try {
     let payload = JSON.parse(e.postData.contents);
     let action = payload.action;
+    let data = payload.data;
     
+    // 1. Bulk Sync
     if (action === 'sync') {
-      let result = handleSyncData(payload.data);
-      return respondJSON({ status: 'success', message: 'Data synced successfully', result: result });
+      let result = handleSyncData(data);
+      // Simpan juga snapshot backup JSON otomatis di Google Drive
+      try { autoSaveDatabaseJSONToDrive(); } catch(err){}
+      return respondJSON({ status: 'success', message: 'Data berhasil disinkronisasi & di-backup JSON', result: result });
     }
     
+    // 2. Real-Time Student Mutation
+    if (action === 'addStudent' || action === 'updateStudent') {
+      upsertSingleRecord('Students', data);
+      return respondJSON({ status: 'success', message: 'Data siswa tersimpan real-time' });
+    }
+    if (action === 'deleteStudent') {
+      deleteSingleRecord('Students', data ? data.id : null);
+      return respondJSON({ status: 'success', message: 'Data siswa berhasil dihapus' });
+    }
+
+    // 3. Real-Time Violations
+    if (action === 'addViolation' || action === 'updateViolation') {
+      upsertSingleRecord('Violations', data);
+      return respondJSON({ status: 'success', message: 'Pelanggaran tersimpan' });
+    }
+    if (action === 'deleteViolation') {
+      deleteSingleRecord('Violations', data ? data.id : null);
+      return respondJSON({ status: 'success', message: 'Pelanggaran dihapus' });
+    }
+
+    // 4. Real-Time Counseling
+    if (action === 'addCounseling' || action === 'updateCounseling') {
+      upsertSingleRecord('Counseling', data);
+      return respondJSON({ status: 'success', message: 'Konseling tersimpan' });
+    }
+    if (action === 'deleteCounseling') {
+      deleteSingleRecord('Counseling', data ? data.id : null);
+      return respondJSON({ status: 'success', message: 'Konseling dihapus' });
+    }
+
+    // 5. Real-Time Leaves (Izin Keluar)
+    if (action === 'addLeave' || action === 'updateLeave') {
+      upsertSingleRecord('Leaves', data);
+      return respondJSON({ status: 'success', message: 'Izin keluar tersimpan' });
+    }
+    if (action === 'deleteLeave') {
+      deleteSingleRecord('Leaves', data ? data.id : null);
+      return respondJSON({ status: 'success', message: 'Izin keluar dihapus' });
+    }
+
+    // 6. Real-Time Medical (Klinik / UKS)
+    if (action === 'addMedicalRecord' || action === 'updateMedicalRecord') {
+      upsertSingleRecord('Medical', data);
+      return respondJSON({ status: 'success', message: 'Rekam medis tersimpan' });
+    }
+    if (action === 'deleteMedicalRecord') {
+      deleteSingleRecord('Medical', data ? data.id : null);
+      return respondJSON({ status: 'success', message: 'Rekam medis dihapus' });
+    }
+
+    // 7. Real-Time Journals
+    if (action === 'addDailyJournal' || action === 'updateDailyJournal') {
+      upsertSingleRecord('DailyJournals', data);
+      return respondJSON({ status: 'success', message: 'Jurnal harian tersimpan' });
+    }
+    if (action === 'deleteDailyJournal') {
+      deleteSingleRecord('DailyJournals', data ? data.id : null);
+      return respondJSON({ status: 'success', message: 'Jurnal harian dihapus' });
+    }
+
+    // 8. Real-Time Prayer Attendance
+    if (action === 'addPrayerAttendance' || action === 'updatePrayerAttendance') {
+      upsertSingleRecord('PrayerAttendance', data);
+      return respondJSON({ status: 'success', message: 'Absensi ibadah tersimpan' });
+    }
+
+    // 9. Real-Time Menstruation
+    if (action === 'addMenstruationRecord' || action === 'updateMenstruationRecord') {
+      upsertSingleRecord('Menstruation', data);
+      return respondJSON({ status: 'success', message: 'Rekam menstruasi tersimpan' });
+    }
+    if (action === 'deleteMenstruationRecord') {
+      deleteSingleRecord('Menstruation', data ? data.id : null);
+      return respondJSON({ status: 'success', message: 'Rekam menstruasi dihapus' });
+    }
+
+    // 10. Real-Time Psychological Assessment (MMPI dll)
+    if (action === 'addPsychologicalAssessment' || action === 'updatePsychologicalAssessment') {
+      upsertSingleRecord('PsychologicalAssessments', data);
+      return respondJSON({ status: 'success', message: 'Asesmen psikologi tersimpan' });
+    }
+    if (action === 'deletePsychologicalAssessment') {
+      deleteSingleRecord('PsychologicalAssessments', data ? data.id : null);
+      return respondJSON({ status: 'success', message: 'Asesmen psikologi dihapus' });
+    }
+
+    // 11. Upload File Lampiran
     if (action === 'uploadFile') {
       let result = handleFileUpload(payload.fileName, payload.base64Data, payload.mimeType, payload.relatedEntityId);
-      return respondJSON({ status: 'success', message: 'File uploaded', fileData: result });
+      return respondJSON({ status: 'success', message: 'File berhasil diunggah', fileData: result });
+    }
+
+    // 12. Backup Manual JSON ke Drive
+    if (action === 'backupDrive' || action === 'backupJSON') {
+      let backupRes = autoSaveDatabaseJSONToDrive();
+      return respondJSON(backupRes);
     }
     
-    return respondJSON({ status: 'error', message: 'Unknown POST action' }, 400);
+    return respondJSON({ status: 'error', message: 'Aksi POST tidak dikenal: ' + action }, 400);
   } catch (error) {
     return respondJSON({ status: 'error', message: error.toString() }, 500);
   }
 }
 
 /**
- * HELPER: Fetch semua data dari seluruh sheet (cocok untuk load pertama kali)
+ * HELPER: Simpan atau update 1 record tunggal secara real-time
+ */
+function upsertSingleRecord(sheetName, record) {
+  if (!record || !record.id) return;
+  let ssId = PropertiesService.getScriptProperties().getProperty('DB_SS_ID');
+  let ss = SpreadsheetApp.openById(ssId);
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return;
+
+  let headers = SCHEMAS[sheetName];
+  let data = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(record.id)) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+
+  let rowArray = headers.map(h => {
+    let val = record[h] || record[h.replace('_JSON', '')];
+    if (typeof val === 'object' && val !== null) return JSON.stringify(val);
+    return val === undefined ? '' : val;
+  });
+
+  if (rowIndex > 0) {
+    sheet.getRange(rowIndex, 1, 1, rowArray.length).setValues([rowArray]);
+  } else {
+    sheet.appendRow(rowArray);
+  }
+}
+
+/**
+ * HELPER: Hapus 1 record berdasarkan ID
+ */
+function deleteSingleRecord(sheetName, id) {
+  if (!id) return;
+  let ssId = PropertiesService.getScriptProperties().getProperty('DB_SS_ID');
+  let ss = SpreadsheetApp.openById(ssId);
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return;
+
+  let data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(id)) {
+      sheet.deleteRow(i + 1);
+      break;
+    }
+  }
+}
+
+/**
+ * HELPER: Fetch semua data dari seluruh sheet
  */
 function fetchAllData() {
   let ssId = PropertiesService.getScriptProperties().getProperty('DB_SS_ID');
   if (!ssId) throw new Error("Database belum disetup. Jalankan setupEnvironment().");
   
   let ss = SpreadsheetApp.openById(ssId);
-  let allData = {};
+  let allData = { status: 'success' };
   
   for (let sheetName in SCHEMAS) {
     let sheet = ss.getSheetByName(sheetName);
-    if (!sheet) continue;
+    if (!sheet) {
+      allData[sheetName] = [];
+      continue;
+    }
     
-    let dataRange = sheet.getDataRange();
-    let values = dataRange.getValues();
-    
+    let values = sheet.getDataRange().getValues();
     if (values.length <= 1) {
       allData[sheetName] = [];
       continue;
     }
     
     let headers = values[0];
-    let rows = values.slice(1);
-    
-    let jsonArray = rows.map(row => {
+    allData[sheetName] = values.slice(1).map(row => {
       let obj = {};
-      headers.forEach((header, index) => {
-        let val = row[index];
-        // Parse kembali field JSON stringify menjadi Object (jika mengandung kata _JSON)
-        if (header.endsWith('_JSON') && val) {
-          try { val = JSON.parse(val); } catch(e) { }
+      headers.forEach((h, i) => {
+        let val = row[i];
+        if (h.endsWith('_JSON') && val) {
+          try { val = JSON.parse(val); } catch(e) {}
         }
-        obj[header] = val;
+        obj[h] = val;
       });
       return obj;
     });
-    
-    allData[sheetName] = jsonArray;
   }
   
   return allData;
 }
 
 /**
- * HELPER: Handle Sinkronisasi (Menyimpan/Update array data ke masing-masing Sheet)
+ * HELPER: Sinkronisasi Bulk Data
  */
 function handleSyncData(syncPayload) {
   let ssId = PropertiesService.getScriptProperties().getProperty('DB_SS_ID');
@@ -207,11 +337,9 @@ function handleSyncData(syncPayload) {
     let existingData = sheet.getDataRange().getValues();
     let existingIds = {};
     
-    // Mapping ID row yang sudah ada (untuk update)
     if (existingData.length > 1) {
       for (let i = 1; i < existingData.length; i++) {
-        let idVal = existingData[i][0]; // Asumsi kolom indeks 0 adalah 'id'
-        existingIds[idVal] = i + 1; // +1 karena index Spreadsheet mulai dari 1
+        existingIds[String(existingData[i][0])] = i + 1;
       }
     }
     
@@ -221,19 +349,15 @@ function handleSyncData(syncPayload) {
     records.forEach(record => {
       let rowArray = headers.map(header => {
         let val = record[header] || record[header.replace('_JSON', '')];
-        if (typeof val === 'object' && val !== null) {
-          return JSON.stringify(val);
-        }
+        if (typeof val === 'object' && val !== null) return JSON.stringify(val);
         return val === undefined ? '' : val;
       });
       
-      let recId = record.id;
+      let recId = String(record.id);
       if (existingIds[recId]) {
-        // Update
         sheet.getRange(existingIds[recId], 1, 1, rowArray.length).setValues([rowArray]);
         updatedCount++;
       } else {
-        // Insert
         sheet.appendRow(rowArray);
         newCount++;
       }
@@ -246,43 +370,59 @@ function handleSyncData(syncPayload) {
 }
 
 /**
- * HELPER: Handle File Upload (Misal PDF Laporan, Foto Pelanggaran) ke sub-folder
+ * HELPER: Otomatis Ekspor Seluruh Database ke File JSON di Google Drive
+ */
+function autoSaveDatabaseJSONToDrive() {
+  let folders = DriveApp.getFoldersByName(FOLDER_DB_NAME);
+  if (!folders.hasNext()) return { status: 'error', message: 'Folder database tidak ditemukan' };
+  
+  let rootFolder = folders.next();
+  let backupFolders = rootFolder.getFoldersByName(FOLDER_BACKUP_NAME);
+  let backupFolder = backupFolders.hasNext() ? backupFolders.next() : rootFolder.createFolder(FOLDER_BACKUP_NAME);
+  
+  let allData = fetchAllData();
+  let timestamp = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd_HH-mm-ss");
+  let fileName = "Database_Keasramaan_" + timestamp + ".json";
+  
+  let jsonContent = JSON.stringify(allData, null, 2);
+  let file = backupFolder.createFile(fileName, jsonContent, MimeType.PLAIN_TEXT);
+  
+  // Simpan juga file 'latest_backup.json' yang selalu update
+  let latestFiles = backupFolder.getFilesByName("latest_database.json");
+  if (latestFiles.hasNext()) {
+    latestFiles.next().setContent(jsonContent);
+  } else {
+    backupFolder.createFile("latest_database.json", jsonContent, MimeType.PLAIN_TEXT);
+  }
+  
+  return {
+    status: 'success',
+    message: 'File JSON otomatis tersimpan ke Google Drive: ' + fileName,
+    fileUrl: file.getUrl(),
+    folderUrl: backupFolder.getUrl()
+  };
+}
+
+/**
+ * HELPER: File Upload
  */
 function handleFileUpload(fileName, base64Data, mimeType, relatedEntityId) {
   let folders = DriveApp.getFoldersByName(FOLDER_DB_NAME);
   if (!folders.hasNext()) throw new Error("Folder utama tidak ditemukan");
   
   let folder = folders.next();
-  let attachFolders = folder.getFoldersByName('Lampiran_Berkas');
-  let attachFolder = attachFolders.hasNext() ? attachFolders.next() : folder.createFolder('Lampiran_Berkas');
+  let attachFolders = folder.getFoldersByName(FOLDER_ATTACHMENT_NAME);
+  let attachFolder = attachFolders.hasNext() ? attachFolders.next() : folder.createFolder(FOLDER_ATTACHMENT_NAME);
   
-  // Pisahkan header base64 (contoh: data:image/png;base64,iVBOR...)
-  let data = base64Data;
-  if (base64Data.indexOf('base64,') !== -1) {
-    data = base64Data.split('base64,')[1];
-  }
+  let data = base64Data.indexOf('base64,') !== -1 ? base64Data.split('base64,')[1] : base64Data;
+  let file = attachFolder.createFile(Utilities.newBlob(Utilities.base64Decode(data), mimeType, fileName));
   
-  let decodedData = Utilities.base64Decode(data);
-  let blob = Utilities.newBlob(decodedData, mimeType, fileName);
-  
-  let file = attachFolder.createFile(blob);
-  
-  // Simpan record ke sheet FileAttachments
-  let ssId = PropertiesService.getScriptProperties().getProperty('DB_SS_ID');
-  let ss = SpreadsheetApp.openById(ssId);
-  let sheet = ss.getSheetByName('FileAttachments');
-  
+  let sheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('DB_SS_ID')).getSheetByName('FileAttachments');
   if (sheet) {
-    let id = Utilities.getUuid();
-    sheet.appendRow([
-      id, fileName, mimeType, file.getUrl(), file.getId(), new Date().toISOString(), relatedEntityId
-    ]);
+    sheet.appendRow([Utilities.getUuid(), fileName, mimeType, file.getUrl(), file.getId(), new Date().toISOString(), relatedEntityId]);
   }
   
-  return {
-    url: file.getUrl(),
-    id: file.getId()
-  };
+  return { url: file.getUrl(), id: file.getId() };
 }
 
 /**

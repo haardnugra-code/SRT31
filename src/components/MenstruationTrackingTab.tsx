@@ -164,25 +164,9 @@ export const MenstruationTrackingTab: React.FC<MenstruationTrackingTabProps> = (
     config.waliAsuhList?.[0]?.split('|')[0] || 'ULPA JAYANTI'
   );
 
-  // Female Students only
-  const femaleStudents = useMemo(() => {
-    return students.filter((s) => {
-      const g = (s.gender || '').toLowerCase();
-      // Female gender matching
-      if (g.includes('p') || g.includes('perempuan') || g.includes('wanita') || g.includes('female')) {
-        return true;
-      }
-      // If gender not specified, check dorm names associated with female
-      const d = (s.dorm || '').toLowerCase();
-      if (d.includes('cut nyak dien') || d.includes('kartini') || d.includes('dewi sartika') || d.includes('putri')) {
-        return true;
-      }
-      return false;
-    });
-  }, [students]);
-
-  // Fallback to all students if female filter is empty
-  const selectableStudents = femaleStudents.length > 0 ? femaleStudents : students;
+  // For the selection dropdown, we will allow all students to be selected
+  // without filtering them out based on gender.
+  const selectableStudents = students;
 
   // Calculate live days of menstruation helper
   const calculateDuration = (startD: string, startT: string = '00:00', endD?: string, endT: string = '23:59') => {

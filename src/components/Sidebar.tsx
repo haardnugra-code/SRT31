@@ -20,7 +20,8 @@ import {
   Sparkles,
   PackageCheck,
   Activity,
-  Brain
+  Brain,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -41,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
+    { id: 'letter-generator', label: 'Generator Surat Resmi', icon: FileSpreadsheet, isSpecial: true },
     { id: 'live-monitor', label: 'Live Monitor Terpadu', icon: Activity, isSpecial: true },
     { id: 'special-chronology', label: 'Kronologi & Handover Shift', icon: ClipboardList },
     { id: 'students', label: 'Data Siswa & Profil', icon: Users },
@@ -78,22 +80,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isOpenMobile ? 'translate-x-0 shadow-2xl shadow-slate-950/90' : '-translate-x-full'
         } md:translate-x-0 transition-transform duration-300 ease-in-out z-50 md:z-30 h-screen md:h-auto`}
       >
-        <div className="p-6 border-b border-slate-800 hidden md:flex items-center gap-3">
-          <div className="bg-red-600 p-2.5 rounded-lg text-white flex items-center justify-center shadow-lg shadow-red-950/50">
+        {/* Header Logo - Clickable to open Generator Surat / Dashboard */}
+        <div 
+          onClick={() => {
+            onSelectTab('letter-generator');
+            onCloseMobile();
+          }}
+          className="p-5 border-b border-slate-800 hidden md:flex items-center gap-3 cursor-pointer hover:bg-slate-800/60 transition group"
+          title="Klik untuk buka Generator Surat Resmi & Administrasi Wali Asuh"
+        >
+          <div className="bg-red-600 group-hover:bg-red-500 p-2.5 rounded-xl text-white flex items-center justify-center shadow-lg shadow-red-950/50 transition transform group-hover:scale-105">
             <GraduationCap className="w-6 h-6" />
           </div>
-          <div>
-            <h1 className="font-bold text-base leading-tight">Sekolah Rakyat</h1>
-            <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">
-              Kemensos RI
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <h1 className="font-bold text-base leading-tight group-hover:text-amber-300 transition">Sekolah Rakyat</h1>
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase flex items-center gap-1.5 mt-0.5">
+              <span>Wali Asuh</span>
+              <span className="text-red-400 font-bold">•</span>
+              <span className="text-amber-400 font-bold">Kemensos RI</span>
             </p>
           </div>
         </div>
 
         <div className="p-4 border-b border-slate-800/80 flex items-center justify-between md:hidden bg-slate-950/80 backdrop-blur-md">
-          <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">
-            Menu Navigasi
-          </span>
+          <div 
+            onClick={() => {
+              onSelectTab('letter-generator');
+              onCloseMobile();
+            }}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <div className="bg-red-600 p-1.5 rounded-lg text-white">
+              <GraduationCap className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-bold text-white tracking-wider uppercase">
+              Wali Asuh SR31
+            </span>
+          </div>
           <button
             onClick={onCloseMobile}
             className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-md transition-colors"

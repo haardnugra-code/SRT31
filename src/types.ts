@@ -20,6 +20,8 @@ export interface Student {
   parentPhone?: string;
   address?: string;
   bloodType?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ViolationTemplate {
@@ -607,6 +609,102 @@ export interface PsychologicalAssessment {
   referredToCounseling?: boolean; // Flag apakah sudah ditindaklanjuti ke sesi BK
   counselingSessionId?: string;
   createdAt: string;
+}
+
+// --- OFFICIAL LETTER GENERATOR & CARETAKER ADMINISTRATION TYPES ---
+
+export type OfficialLetterType =
+  | 'kronologi_kasus_psikologi'
+  | 'permohonan'
+  | 'pengajuan_barang'
+  | 'izin_kerja_staf'
+  | 'undangan_ortu'
+  | 'pernyataan_siswa'
+  | 'keterangan_baik'
+  | 'rujukan_medis_psikologis'
+  | 'surat_bebas';
+
+export interface LetterSupplyItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  estimatedPrice?: number;
+  urgency: 'Sangat Mendesak' | 'Mendesak' | 'Rutin / Cadangan';
+  reason: string;
+}
+
+export interface OfficialLetter {
+  id: string;
+  letterType: OfficialLetterType;
+  letterNumber: string;
+  letterTitle: string;
+  letterDate: string; // YYYY-MM-DD
+  letterCity: string;
+  
+  // Penerima / Tujuan
+  recipientName: string;
+  recipientTitle?: string;
+  recipientOffice?: string;
+  recipientAddress?: string;
+
+  // Pemohon / Pembuat Surat (Wali Asuh / Staf)
+  authorName: string;
+  authorNipOrId?: string;
+  authorRole: string; // e.g., 'Wali Asuh Asrama Putra', 'Wali Asuh Mandiri'
+  authorPhone?: string;
+
+  // Terkait Siswa (Opsional / untuk kronologi / izin / pernyataan)
+  studentId?: string;
+  studentName?: string;
+  studentClass?: string;
+  studentDorm?: string;
+  studentNisn?: string;
+  studentBirthDate?: string;
+  studentParentName?: string;
+  studentParentPhone?: string;
+
+  // Konten Khusus Kasus & Teori Psikologi
+  incidentDate?: string;
+  incidentLocation?: string;
+  problemSummary?: string; // Ringkasan Masalah & Gejala Perilaku
+  psychologyTheoryName?: string; // e.g. "Teori Perkembangan Psikososial Erik Erikson"
+  psychologyTheoryAnalysis?: string; // Uraian Teori Psikologis & Dinamika Mental Siswa
+  actionsTaken?: string; // Tindakan yang telah dilakukan
+  followUpActions?: string; // Upaya & rekomendasi yang akan dilakukan
+
+  // Konten Khusus Pengajuan Barang
+  supplyItems?: LetterSupplyItem[];
+  supplyTotalEstimatedCost?: number;
+  supplyPurpose?: string;
+
+  // Konten Khusus Izin Tidak Masuk Kerja
+  leaveType?: 'Sakit' | 'Keperluan Keluarga' | 'Cuti / Urusan Pribadi' | 'Dinas Luar / Pelatihan';
+  leaveStartDate?: string;
+  leaveEndDate?: string;
+  leaveTotalDays?: number;
+  leaveReason?: string;
+  leaveHandoverStaff?: string; // Petugas pengganti piket
+
+  // Konten Umum / Narasi Surat
+  subject: string; // Perihal
+  enclosure?: string; // Lampiran (e.g., "1 Berkas", "-")
+  bodyIntro?: string;
+  bodyMain?: string;
+  bodyClosing?: string;
+
+  // Pejabat Penandatangan & Mengetahui
+  signPlaceAndDate?: string;
+  signatureAuthorLabel?: string; // e.g. "Wali Asuh Asrama"
+  acknowledgementName?: string; // e.g. "HISNUL HASHIN, SE"
+  acknowledgementNip?: string;
+  acknowledgementTitle?: string; // e.g. "Wali Asrama Mandiri"
+  approvalName?: string; // e.g. "YUNI ARSI, S.Pd"
+  approvalNip?: string;
+  approvalTitle?: string; // e.g. "Kepala Sekolah Rakyat 31"
+
+  createdAt: string;
+  updatedAt?: string;
 }
 
 

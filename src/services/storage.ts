@@ -1,8 +1,8 @@
-import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog, DormInspection, DormInspectionCriterion, DormInspectionItemScore, DormGrade, DormActionRequired, DormAsset, PsychologicalAssessment } from '../types';
+import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog, DormInspection, DormInspectionCriterion, DormInspectionItemScore, DormGrade, DormActionRequired, DormAsset, PsychologicalAssessment, OfficialLetter } from '../types';
 import { consolidateDormList } from '../utils/dormHelper';
 import { DataIntegrityReport } from '../utils/integrityVerifier';
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxva2GX_N3-ogOwiy0b-VShpbZ-vC_UKR_t6eKPtBX0yvWTnSiBVoud7VdPDNHYzCrkmA/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyR_gKImLRcPDtXuv0ufiNBOO9LjuQ8kbGfylF6kagGjFv7WwpK7q7W0nLIBwmzN66E0g/exec";
 
 export const DEFAULT_DISCIPLINE_LEVELS: DisciplineLevelConfig[] = [
   { level: 1, name: 'Tingkat 1 (Pelanggaran Ringan)', pointsDeduction: 5, defaultSanction: 'Teguran lisan & Piket asrama' },
@@ -192,7 +192,7 @@ export function loadAppConfig(): AppConfig {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u') || parsed.googleScriptUrl.includes('AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF') || parsed.googleScriptUrl.includes('AKfycbwOscEltpKZ3aZP7h7-ZyzZHb-DUgZ5ZD9LxCrIMRQTscJ9cP0WKKWu5cFtOrISJXGuNA')) {
+      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxva2GX_N3') || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u') || parsed.googleScriptUrl.includes('AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF') || parsed.googleScriptUrl.includes('AKfycbwOscEltpKZ3aZP7h7-ZyzZHb-DUgZ5ZD9LxCrIMRQTscJ9cP0WKKWu5cFtOrISJXGuNA')) {
         parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
       }
       if (!parsed.waliAsuhList || parsed.waliAsuhList.some((w: string) => w.includes('Bp. Hermawan') || w.includes('Ibu Handayani'))) {
@@ -923,5 +923,165 @@ export function loadPsychologicalAssessments(): PsychologicalAssessment[] {
 export function savePsychologicalAssessments(assessments: PsychologicalAssessment[]): void {
   localStorage.setItem('sr_psychological_assessments', JSON.stringify(assessments));
 }
+
+export function loadOfficialLetters(): OfficialLetter[] {
+  const saved = localStorage.getItem('sr_official_letters');
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed to parse official letters', e);
+    }
+  }
+  return [];
+}
+
+export function saveOfficialLetters(letters: OfficialLetter[]): void {
+  localStorage.setItem('sr_official_letters', JSON.stringify(letters));
+}
+
+// --- AUTOMATIC JSON DATABASE BACKUP & OFFLINE-READY PERSISTENCE ---
+
+export interface FullDatabaseBackup {
+  exportDate: string;
+  version: string;
+  config: AppConfig;
+  students: Student[];
+  violations: Violation[];
+  counseling: Counseling[];
+  leaves: Leave[];
+  dailyJournals: DailyJournal[];
+  medicalRecords: MedicalRecord[];
+  prayerAttendance: PrayerAttendance[];
+  menstruationRecords: MenstruationRecord[];
+  psychologicalAssessments: PsychologicalAssessment[];
+  dormInspections: DormInspection[];
+  dormAssets: DormAsset[];
+  specialChronologies: SpecialChronologyCase[];
+  meetingMinutes: MeetingMinute[];
+  connectingJournals: ConnectingJournal[];
+  officialLetters?: OfficialLetter[];
+}
+
+export function exportFullDatabaseJSON(): FullDatabaseBackup {
+  return {
+    exportDate: new Date().toISOString(),
+    version: '2.5.0',
+    config: loadAppConfig(),
+    students: loadStudents(),
+    violations: loadViolations(),
+    counseling: loadCounseling(),
+    leaves: loadLeaves(),
+    dailyJournals: loadDailyJournals(),
+    medicalRecords: loadMedicalRecords(),
+    prayerAttendance: loadPrayerAttendance(),
+    menstruationRecords: loadMenstruationRecords(),
+    psychologicalAssessments: loadPsychologicalAssessments(),
+    dormInspections: loadDormInspections(),
+    dormAssets: loadDormAssets(),
+    specialChronologies: loadSpecialChronologyCases(),
+    meetingMinutes: loadMeetingMinutes(),
+    connectingJournals: loadConnectingJournals(),
+    officialLetters: loadOfficialLetters()
+  };
+}
+
+export function autoSaveJSONSnapshot(): void {
+  try {
+    const fullBackup = exportFullDatabaseJSON();
+    localStorage.setItem('sr_latest_database_json', JSON.stringify(fullBackup));
+    localStorage.setItem('sr_last_json_autosave_time', new Date().toISOString());
+  } catch (err) {
+    console.error('Failed to auto-save JSON snapshot:', err);
+  }
+}
+
+export function downloadDatabaseJSONFile(): void {
+  const data = exportFullDatabaseJSON();
+  const dateStr = new Date().toISOString().split('T')[0];
+  const timeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+  const filename = `Database_Sekolah_Rakyat_${dateStr}_${timeStr}.json`;
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function importFullDatabaseJSON(jsonString: string): { success: boolean; message: string; count: number } {
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (!parsed || typeof parsed !== 'object') {
+      return { success: false, message: 'Format file JSON tidak valid.', count: 0 };
+    }
+
+    let count = 0;
+    if (Array.isArray(parsed.students)) {
+      saveStudents(parsed.students);
+      count += parsed.students.length;
+    }
+    if (Array.isArray(parsed.violations)) saveViolations(parsed.violations);
+    if (Array.isArray(parsed.counseling)) saveCounseling(parsed.counseling);
+    if (Array.isArray(parsed.leaves)) saveLeaves(parsed.leaves);
+    if (Array.isArray(parsed.dailyJournals)) saveDailyJournals(parsed.dailyJournals);
+    if (Array.isArray(parsed.medicalRecords)) saveMedicalRecords(parsed.medicalRecords);
+    if (Array.isArray(parsed.prayerAttendance)) savePrayerAttendance(parsed.prayerAttendance);
+    if (Array.isArray(parsed.menstruationRecords)) saveMenstruationRecords(parsed.menstruationRecords);
+    if (Array.isArray(parsed.psychologicalAssessments)) savePsychologicalAssessments(parsed.psychologicalAssessments);
+    if (Array.isArray(parsed.dormInspections)) saveDormInspections(parsed.dormInspections);
+    if (Array.isArray(parsed.dormAssets)) saveDormAssets(parsed.dormAssets);
+    if (Array.isArray(parsed.specialChronologies)) saveSpecialChronologyCases(parsed.specialChronologies);
+    if (Array.isArray(parsed.meetingMinutes)) saveMeetingMinutes(parsed.meetingMinutes);
+    if (Array.isArray(parsed.connectingJournals)) saveConnectingJournals(parsed.connectingJournals);
+    if (Array.isArray(parsed.officialLetters)) saveOfficialLetters(parsed.officialLetters);
+    if (parsed.config && typeof parsed.config === 'object') saveAppConfig(parsed.config);
+
+    autoSaveJSONSnapshot();
+    return { success: true, message: `Berhasil memulihkan database dari file JSON (${count} siswa).`, count };
+  } catch (err) {
+    return { success: false, message: 'Gagal mengurai file JSON: ' + String(err), count: 0 };
+  }
+}
+
+// --- PENDING OFFLINE SYNC QUEUE ---
+export interface PendingSyncItem {
+  id: string;
+  type: string;
+  action: string;
+  data: any;
+  timestamp: string;
+}
+
+export function loadPendingSyncQueue(): PendingSyncItem[] {
+  try {
+    const raw = localStorage.getItem('sr_pending_sync_queue');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function pushPendingSyncQueue(item: Omit<PendingSyncItem, 'timestamp'>): void {
+  try {
+    const queue = loadPendingSyncQueue();
+    queue.push({
+      ...item,
+      timestamp: new Date().toISOString()
+    });
+    localStorage.setItem('sr_pending_sync_queue', JSON.stringify(queue));
+  } catch (e) {
+    console.error('Failed to push to sync queue', e);
+  }
+}
+
+export function clearPendingSyncQueue(): void {
+  localStorage.removeItem('sr_pending_sync_queue');
+}
+
 
 

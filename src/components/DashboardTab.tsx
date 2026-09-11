@@ -17,7 +17,8 @@ import {
   FileText,
   ChevronRight,
   QrCode,
-  BookOpen
+  BookOpen,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Student, Violation, Counseling, Leave, MedicalRecord, ConnectingJournal } from '../types';
 import { formatDateIndonesian, parseLocalDate } from '../utils/dateFormatter';
@@ -346,6 +347,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          <button
+            onClick={() => onNavigateTab('letter-generator')}
+            className="flex-1 sm:flex-initial bg-amber-400 text-slate-950 font-black text-xs px-4 py-3 rounded-lg hover:bg-amber-300 transition shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-red-900" /> Generator Surat
+          </button>
           <button
             onClick={() => onNavigateTab('prayer-attendance')}
             className="flex-1 sm:flex-initial bg-slate-950 text-white font-bold text-xs px-4 py-3 rounded-lg hover:bg-slate-900 transition shadow active:scale-95 text-center flex items-center justify-center gap-1.5 border border-white/20"

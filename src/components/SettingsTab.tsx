@@ -31,7 +31,10 @@ import {
   TableProperties,
   Brain,
   Stethoscope,
-  ShieldAlert
+  ShieldAlert,
+  Download,
+  Upload,
+  FileJson
 } from 'lucide-react';
 import {
   AppConfig,
@@ -50,7 +53,13 @@ import {
 } from '../types';
 import { DataIntegrityReport } from '../utils/integrityVerifier';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/googleAppsScriptCode';
-import { DEFAULT_DISCIPLINE_LEVELS, DEFAULT_DISCIPLINE_THRESHOLDS, VIOLATION_TEMPLATES } from '../services/storage';
+import {
+  DEFAULT_DISCIPLINE_LEVELS,
+  DEFAULT_DISCIPLINE_THRESHOLDS,
+  VIOLATION_TEMPLATES,
+  downloadDatabaseJSONFile,
+  importFullDatabaseJSON
+} from '../services/storage';
 import { RAPOR_STRUCTURE } from '../services/pdfGenerator';
 import { ShadowDataAuditStats } from '../utils/dataSanitizer';
 import { consolidateDormList } from '../utils/dormHelper';
@@ -302,14 +311,45 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
     onShowToast('Memproses Backup Google Drive...', 'Mengirim perintah backup ke Google Drive...', 'warning');
     try {
-      await fetch(`${googleScriptUrl.trim()}?action=backupDrive`, {
-        method: 'GET',
+      await fetch(googleScriptUrl.trim(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'backupDrive' }),
         mode: 'no-cors'
       });
       onShowToast('Backup Drive Terkirim', 'Perintah backup Google Drive berhasil dikirim. File JSON tersimpan di folder BACKUP_SEKOLAH_RAKYAT_SR31 di Drive Anda.', 'success');
     } catch (e) {
       onShowToast('Gagal Backup Drive', 'Gagal menghubungi Google Apps Script. Periksa koneksi atau URL script Anda.', 'error');
     }
+  };
+
+  const handleDownloadJSON = () => {
+    try {
+      downloadDatabaseJSONFile();
+      onShowToast('Ekspor Berhasil', 'File cadangan JSON database berhasil diunduh ke perangkat Anda.', 'success');
+    } catch (e) {
+      onShowToast('Gagal Mengunduh', 'Terjadi kesalahan saat mengekspor data JSON.', 'error');
+    }
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (!content) return;
+      const res = importFullDatabaseJSON(content);
+      if (res.success) {
+        onShowToast('Pemulihan Sukses', res.message, 'success');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        onShowToast('Gagal Impor', res.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleUnlockSubmit = (e: React.FormEvent) => {
@@ -1089,6 +1129,27 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 >
                   <Database className="w-3.5 h-3.5 text-amber-600" /> Backup ke Google Drive
                 </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadJSON}
+                  className="text-xs font-bold text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95"
+                  title="Unduh seluruh database dalam format file JSON ke perangkat Anda (Bisa bekerja offline/tanpa internet)"
+                >
+                  <Download className="w-3.5 h-3.5 text-indigo-600" /> Unduh Backup File JSON
+                </button>
+                <label
+                  className="text-xs font-bold text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                  title="Pulihkan seluruh data dari file JSON cadangan"
+                >
+                  <Upload className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Pulihkan dari File JSON</span>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleImportJSON}
+                    className="hidden"
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={() => setActiveSettingsView('database')}

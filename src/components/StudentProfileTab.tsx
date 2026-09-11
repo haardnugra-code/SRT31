@@ -1234,7 +1234,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
                   </div>
 
                   {/* Menstruation Records Snapshot (For Female Students) */}
-                  {currentStudent?.gender === 'Perempuan' && (
+                  {true && (
                     <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">

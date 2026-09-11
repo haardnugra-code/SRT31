@@ -31,6 +31,7 @@ interface SidebarProps {
   onCloseMobile: () => void;
   userRole?: 'admin' | 'guru';
   enableSpecialChronology?: boolean;
+  sidebarOrder?: string[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -39,6 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   userRole = 'admin',
+  sidebarOrder = [],
 }) => {
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
@@ -60,9 +62,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'settings', label: 'Pengaturan Sistem', icon: Sliders, restrictedForGuru: true }
   ];
 
-  const menuItems = userRole === 'guru'
+  let menuItems = userRole === 'guru'
     ? allMenuItems.filter((item) => !item.restrictedForGuru)
     : allMenuItems;
+
+  if (sidebarOrder && sidebarOrder.length > 0) {
+    const orderMap = new Map(sidebarOrder.map((id, index) => [id, index]));
+    menuItems.sort((a, b) => {
+      const indexA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999;
+      const indexB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999;
+      return indexA - indexB;
+    });
+  }
 
   return (
     <>

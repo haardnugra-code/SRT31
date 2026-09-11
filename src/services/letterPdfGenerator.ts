@@ -459,35 +459,25 @@ export async function generateOfficialLetterPDF(
   const colW = contentWidth / 3;
   const sigY = currentY;
 
-  // Column 1: Wali Asuh (Pembuat Surat)
+  // Single Signature: Wali Asuh (Pembuat Surat) - Aligned to the right
+  const sigCenterX = marginX + colW * 2.5;
+
   doc.setFont('times', 'normal');
   doc.setFontSize(9.5);
-  doc.text(letter.signatureAuthorLabel || 'Wali Asuh / Pemohon,', marginX + colW * 0.5, sigY, { align: 'center' });
-
-  // Column 2: Mengetahui Wali Asrama
-  doc.text('Mengetahui,', marginX + colW * 1.5, sigY - 4, { align: 'center' });
-  doc.text(letter.acknowledgementTitle || 'Wali Asrama Mandiri,', marginX + colW * 1.5, sigY, { align: 'center' });
-
-  // Column 3: Menyetujui Kepala Sekolah
-  doc.text('Menyetujui,', marginX + colW * 2.5, sigY - 4, { align: 'center' });
-  doc.text(letter.approvalTitle || 'Kepala Sekolah Rakyat 31,', marginX + colW * 2.5, sigY, { align: 'center' });
+  doc.text(letter.signatureAuthorLabel || 'Wali Asuh / Pemohon,', sigCenterX, sigY, { align: 'center' });
 
   const sigNameY = sigY + 22;
 
   // Sign Names
   doc.setFont('times', 'bold');
-  doc.text(letter.authorName || 'Wali Asuh', marginX + colW * 0.5, sigNameY, { align: 'center' });
-  doc.text(letter.acknowledgementName || config.waliAsrama || 'HISNUL HASHIN, SE', marginX + colW * 1.5, sigNameY, { align: 'center' });
-  doc.text(letter.approvalName || config.kepalaSekolah || 'YUNI ARSI, S.Pd', marginX + colW * 2.5, sigNameY, { align: 'center' });
+  doc.text(letter.authorName || 'Wali Asuh', sigCenterX, sigNameY, { align: 'center' });
 
   // NIP under names
   doc.setFont('times', 'normal');
   doc.setFontSize(8.5);
   if (letter.authorNipOrId) {
-    doc.text(`ID/NIP. ${letter.authorNipOrId}`, marginX + colW * 0.5, sigNameY + 4, { align: 'center' });
+    doc.text(`ID/NIP. ${letter.authorNipOrId}`, sigCenterX, sigNameY + 4, { align: 'center' });
   }
-  doc.text(letter.acknowledgementNip || config.waliAsramaNip || 'NIP. 197406262025211027', marginX + colW * 1.5, sigNameY + 4, { align: 'center' });
-  doc.text(letter.approvalNip || config.kepalaSekolahNip || 'NIP. 197206051999032002', marginX + colW * 2.5, sigNameY + 4, { align: 'center' });
 
   // QR Code Verification
   try {

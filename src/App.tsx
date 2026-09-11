@@ -1865,6 +1865,7 @@ export default function App() {
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           userRole={userRole}
           enableSpecialChronology={config.enableSpecialChronology}
+          sidebarOrder={config.sidebarOrder}
         />
 
         {/* Main Content Area */}

@@ -325,6 +325,7 @@ export interface AppConfig {
   raporStructureCustom?: ReportCategory[];
   autoResetPointsPerSemester?: boolean;
   enableSpecialChronology?: boolean;
+  sidebarOrder?: string[];
 }
 
 export type ShiftType =

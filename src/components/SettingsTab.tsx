@@ -34,7 +34,9 @@ import {
   ShieldAlert,
   Download,
   Upload,
-  FileJson
+  FileJson,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import {
   AppConfig,
@@ -64,6 +66,26 @@ import { RAPOR_STRUCTURE } from '../services/pdfGenerator';
 import { ShadowDataAuditStats } from '../utils/dataSanitizer';
 import { consolidateDormList } from '../utils/dormHelper';
 import { DatabaseCrudManager } from './DatabaseCrudManager';
+
+const DEFAULT_SIDEBAR_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'letter-generator', label: 'Generator Surat Resmi' },
+  { id: 'live-monitor', label: 'Live Monitor Terpadu' },
+  { id: 'special-chronology', label: 'Kronologi & Handover Shift' },
+  { id: 'students', label: 'Data Siswa & Profil' },
+  { id: 'psychology', label: 'Asesmen Psikologi & Jiwa' },
+  { id: 'connecting-journal', label: 'Jurnal Penghubung' },
+  { id: 'dorm-inspection', label: 'Penilaian Asrama (SOP)' },
+  { id: 'dorm-asset', label: 'Aset Asrama (SOP)' },
+  { id: 'meeting-minutes', label: 'Notulensi Rapat' },
+  { id: 'prayer-attendance', label: 'Absensi & Ceklist' },
+  { id: 'menstruation', label: 'Tracking Menstruasi' },
+  { id: 'violations', label: 'Pelanggaran' },
+  { id: 'leaves', label: 'Surat Izin Keluar' },
+  { id: 'medical', label: 'UKS & Rekam Medis' },
+  { id: 'report-card', label: 'Rapor & Rekapitulasi' },
+  { id: 'settings', label: 'Pengaturan Sistem' }
+];
 
 interface SettingsTabProps {
   config: AppConfig;
@@ -186,6 +208,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(config.semester || 'Genap');
   const [academicYear, setAcademicYear] = useState<string>(config.academicYear || '2025/2026');
   const [enableSpecialChronology, setEnableSpecialChronology] = useState<boolean>(!!config.enableSpecialChronology);
+  const [sidebarOrder, setSidebarOrder] = useState<string[]>(
+    config.sidebarOrder && config.sidebarOrder.length > 0
+      ? config.sidebarOrder
+      : DEFAULT_SIDEBAR_ITEMS.map(item => item.id)
+  );
 
   // Announcement State
   const [announcementText, setAnnouncementText] = useState<string>(announcement);
@@ -415,7 +442,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       violationTemplatesCustom: customTemplates,
       raporStructureCustom: customRaporStructure,
       autoResetPointsPerSemester: autoResetPoints,
-      enableSpecialChronology
+      enableSpecialChronology,
+      sidebarOrder
     };
 
     onSaveConfig(updatedConfig);
@@ -504,6 +532,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     const updated = [...disciplineLevels];
     updated[index] = { ...updated[index], [field]: value };
     setDisciplineLevels(updated);
+  };
+
+  const handleMoveSidebarItem = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...sidebarOrder];
+    if (direction === 'up' && index > 0) {
+      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    } else if (direction === 'down' && index < newOrder.length - 1) {
+      [newOrder[index + 1], newOrder[index]] = [newOrder[index], newOrder[index + 1]];
+    }
+    setSidebarOrder(newOrder);
   };
 
   // Helpers for managing Discipline Thresholds
@@ -1233,6 +1271,52 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     <span>{isReconciling ? 'Merekonsiliasi...' : 'Jalankan Anti-Shadow Data'}</span>
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* Sidebar Ordering */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                <Sliders className="w-4 h-4 text-slate-600" /> Urutan Menu Sidebar Utama
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Atur urutan menu yang tampil di sidebar sebelah kiri aplikasi.
+              </p>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                {sidebarOrder.map((itemId, idx) => {
+                  const defaultItem = DEFAULT_SIDEBAR_ITEMS.find(i => i.id === itemId);
+                  if (!defaultItem) return null;
+                  return (
+                    <div key={itemId} className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-xs group">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-slate-400 w-4">{idx + 1}.</span>
+                        <span className="font-bold text-slate-700">{defaultItem.label}</span>
+                      </div>
+                      {!isLocked && (
+                        <div className="flex items-center gap-1 opacity-0 sm:opacity-100 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveSidebarItem(idx, 'up')}
+                            disabled={idx === 0}
+                            className="p-1 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg disabled:opacity-30 transition"
+                            title="Naikkan urutan"
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveSidebarItem(idx, 'down')}
+                            disabled={idx === sidebarOrder.length - 1}
+                            className="p-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-30 transition"
+                            title="Turunkan urutan"
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

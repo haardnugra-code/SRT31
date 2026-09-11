@@ -490,9 +490,7 @@ ${followUpActions}` : bodyMain}
 ${bodyClosing}
 
 Hormat kami,
-Pemohon/Wali Asuh: ${authorName}
-Mengetahui: ${acknowledgementName} (${acknowledgementTitle})
-Menyetujui: ${approvalName} (${approvalTitle})`;
+Pemohon/Wali Asuh: ${authorName}`;
 
     navigator.clipboard.writeText(plainText);
     setIsCopied(true);
@@ -1258,62 +1256,7 @@ Menyetujui: ${approvalName} (${approvalTitle})`;
               </div>
             )}
 
-            {/* 8. PENGATURAN TANDA TANGAN & PEJABAT */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
-              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                <FileCheck className="w-4 h-4 text-emerald-600" />
-                Kolom Penandatangan & Mengetahui
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-800 block">1. Mengetahui: Wali Asrama</span>
-                  <input
-                    type="text"
-                    value={acknowledgementName}
-                    onChange={(e) => setAcknowledgementName(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs font-bold rounded border border-slate-300 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={acknowledgementNip}
-                    onChange={(e) => setAcknowledgementNip(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300 bg-white text-slate-600"
-                  />
-                  <input
-                    type="text"
-                    value={acknowledgementTitle}
-                    onChange={(e) => setAcknowledgementTitle(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300 bg-white text-slate-600"
-                  />
-                </div>
-
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-800 block">2. Menyetujui: Kepala Sekolah</span>
-                  <input
-                    type="text"
-                    value={approvalName}
-                    onChange={(e) => setApprovalName(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs font-bold rounded border border-slate-300 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={approvalNip}
-                    onChange={(e) => setApprovalNip(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300 bg-white text-slate-600"
-                  />
-                  <input
-                    type="text"
-                    value={approvalTitle}
-                    onChange={(e) => setApprovalTitle(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300 bg-white text-slate-600"
-                  />
-                </div>
-              </div>
-            </div>
           </div>
-
-          {/* RIGHT LIVE PREVIEW & ACTION COLUMN (5 cols) */}
           <div className="xl:col-span-5 space-y-4 sticky top-20">
             {/* Action Bar */}
             <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-md flex flex-wrap items-center justify-between gap-2.5">
@@ -1553,7 +1496,7 @@ Menyetujui: ${approvalName} (${approvalTitle})`;
               <p className="my-3 text-justify indent-4">{bodyClosing}</p>
 
               {/* Signatures */}
-              <div className="grid grid-cols-3 gap-2 text-center pt-6 font-sans text-[9.5px]">
+              <div className="flex justify-end text-center pt-6 font-sans text-[9.5px]">
                 <div>
                   <p className="text-slate-600">Wali Asuh / Pemohon,</p>
                   <div className="h-12 flex items-center justify-center">
@@ -1561,26 +1504,6 @@ Menyetujui: ${approvalName} (${approvalTitle})`;
                   </div>
                   <p className="font-bold underline text-slate-900">{authorName}</p>
                   <p className="text-[8px] text-slate-500">{authorRole}</p>
-                </div>
-
-                <div>
-                  <p className="text-slate-600">Mengetahui,</p>
-                  <p className="text-[8px] text-slate-500">{acknowledgementTitle}</p>
-                  <div className="h-10 flex items-center justify-center">
-                    <span className="text-[8px] text-slate-300 italic font-mono">[Tanda Tangan]</span>
-                  </div>
-                  <p className="font-bold underline text-slate-900">{acknowledgementName}</p>
-                  <p className="text-[8px] text-slate-500">{acknowledgementNip}</p>
-                </div>
-
-                <div>
-                  <p className="text-slate-600">Menyetujui,</p>
-                  <p className="text-[8px] text-slate-500">{approvalTitle}</p>
-                  <div className="h-10 flex items-center justify-center">
-                    <span className="text-[8px] text-slate-300 italic font-mono">[Tanda Tangan]</span>
-                  </div>
-                  <p className="font-bold underline text-slate-900">{approvalName}</p>
-                  <p className="text-[8px] text-slate-500">{approvalNip}</p>
                 </div>
               </div>
             </div>

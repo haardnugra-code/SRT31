@@ -21,7 +21,7 @@ import {
   AlertCircle,
   Save,
   Clock,
-  ChevronRight,
+  ChevronRight, RefreshCw,
   BookOpen,
   ArrowRight,
   FileCheck,
@@ -90,11 +90,32 @@ export const LetterGeneratorTab: React.FC<LetterGeneratorTabProps> = ({
 
   // Form State
   const [letterType, setLetterType] = useState<OfficialLetterType>(initialLetterType);
-  const [letterNumber, setLetterNumber] = useState<string>(() => {
+
+  const generateAutoNumber = (letters: OfficialLetter[]) => {
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
-    return `SR31/WA/${month}/${year}/${Math.floor(100 + Math.random() * 900)}`;
-  });
+    const prefix = `SR31/WA/${month}/${year}/`;
+    let maxNum = 0;
+    letters.forEach(letter => {
+      if (letter.letterNumber && letter.letterNumber.startsWith(prefix)) {
+        const parts = letter.letterNumber.split('/');
+        const lastPart = parts[parts.length - 1];
+        const num = parseInt(lastPart, 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+    const nextNum = String(maxNum + 1).padStart(3, '0');
+    return `${prefix}${nextNum}`;
+  };
+
+  const [letterNumber, setLetterNumber] = useState<string>(() => generateAutoNumber(loadOfficialLetters()));
+  
+  const handleRegenerateAutoNumber = () => {
+    setLetterNumber(generateAutoNumber(savedLetters));
+  };
+
   const [letterDate, setLetterDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [letterCity, setLetterCity] = useState<string>('Palembang');
   const [subject, setSubject] = useState<string>('Laporan Kronologi Kasus & Penanganan Psikologis Peserta Didik');
@@ -726,7 +747,17 @@ Pemohon/Wali Asuh: ${authorName}`;
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Nomor Surat</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 flex justify-between items-center">
+                    <span>Nomor Surat</span>
+                    <button
+                      type="button"
+                      onClick={handleRegenerateAutoNumber}
+                      className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      title="Generate Ulang Nomor Surat Otomatis"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Auto
+                    </button>
+                  </label>
                   <input
                     type="text"
                     value={letterNumber}
@@ -1305,24 +1336,19 @@ Pemohon/Wali Asuh: ${authorName}`;
             {/* A4 Realistic Document Paper Preview */}
             <div className="bg-white rounded-2xl border-2 border-slate-300 shadow-2xl p-6 text-slate-900 font-serif text-[11px] leading-relaxed max-h-[80vh] overflow-y-auto print:max-h-none">
               {/* Institutional Kop Header */}
-              <div className="text-center pb-3 border-b-2 border-double border-slate-950 relative">
-                <p className="font-bold text-[11px] uppercase tracking-wider text-slate-900">
-                  Kementerian Sosial Republik Indonesia
-                </p>
-                <p className="font-bold text-[11.5px] uppercase tracking-wide text-slate-900">
-                  Badan Pendidikan Penelitian dan Penyuluhan Sosial
-                </p>
-                <p className="font-black text-sm uppercase text-red-700 tracking-tight">
-                  Sekolah Rakyat 31 Palembang
-                </p>
-                <p className="font-sans text-[9px] text-slate-600 font-normal">
-                  Kompleks Balai Budi Perkasa, Jl. Sosial Km. 5, Palembang, Sumatera Selatan
-                </p>
-                <p className="font-sans text-[8.5px] text-slate-500">
-                  Asrama Mandiri Terpadu | Pos-el: sekolahrakyat31@kemensos.go.id
-                </p>
+              <div className="text-center pb-3 border-b-[3px] border-slate-900 mb-1 relative">
+                <div className="border-b-[1px] border-slate-900 absolute bottom-[-4px] left-0 right-0 w-full" />
+                {(config.kopKiri || 'KEMENTERIAN SOSIAL REPUBLIK INDONESIA').split('\n').map((line, i) => (
+                  <p key={`kiri-${i}`} className="font-bold text-[11px] uppercase tracking-wider text-slate-900">
+                    {line}
+                  </p>
+                ))}
+                {(config.kopKanan || 'SEKOLAH RAKYAT TERPADU 31 PALEMBANG').split('\n').map((line, i) => (
+                  <p key={`kanan-${i}`} className={i === 0 ? "font-black text-sm uppercase text-red-700 tracking-tight pt-0.5" : "font-sans text-[9px] text-slate-600 font-normal"}>
+                    {line}
+                  </p>
+                ))}
               </div>
-
               {/* Date on Right */}
               <div className="text-right pt-3">
                 <span className="font-sans text-[10px]">

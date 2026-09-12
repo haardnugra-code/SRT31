@@ -108,6 +108,16 @@ export default function App() {
 
   // Entities state
   const [config, setConfig] = useState<AppConfig>(loadAppConfig);
+  const [printBranch, setPrintBranch] = useState<"palembang" | "oki">("palembang");
+  const effectiveConfig = useMemo(() => {
+    if (printBranch === "oki") {
+      return {
+        ...config,
+        kopKanan: "SEKOLAH RAKYAT TERINTEGRASI 01 OKI\nDesa Mulyaguna, Serapek, Kecamatan Teluk Gelam\nKabupaten Ogan Komering Ilir Sumatera Selatan 30671"
+      };
+    }
+    return config;
+  }, [config, printBranch]);
   const [students, setStudents] = useState<Student[]>(loadStudents);
   const [violations, setViolations] = useState<Violation[]>(loadViolations);
   const [counseling, setCounseling] = useState<Counseling[]>(loadCounseling);
@@ -1205,9 +1215,15 @@ export default function App() {
 
   // 7. App Config Save
   const handleSaveConfig = useCallback((newConfig: AppConfig) => {
-    setConfig(newConfig);
-    saveAppConfig(newConfig);
-  }, []);
+    const configToSave = { ...newConfig };
+    // Prevent saving overridden print branch values back to the global configuration
+    if (printBranch === 'oki') {
+      configToSave.kopKanan = config.kopKanan;
+      configToSave.kopKiri = config.kopKiri;
+    }
+    setConfig(configToSave);
+    saveAppConfig(configToSave);
+  }, [config, printBranch]);
 
   // --- Shadow Data Prevention & Database Sheet Reconciliation Handler ---
   const handleReconcileShadowData = useCallback(
@@ -1872,7 +1888,7 @@ export default function App() {
         <main className="flex-1 flex flex-col min-w-0">
           <Header
             activeTabTitle={tabTitles[activeTab] || 'Dashboard'}
-            config={config}
+            config={effectiveConfig}
             isSyncing={isSyncing}
             onSync={() => syncCloudData(true)}
             onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
@@ -1881,6 +1897,8 @@ export default function App() {
             connectionStatus={connectionStatus}
             lastPingTime={lastPingTime}
             lastPushTime={lastPushTime}
+            printBranch={printBranch}
+            onSetPrintBranch={setPrintBranch}
             lastSyncTime={lastSyncTime}
             lastIntegrityReport={lastIntegrityReport}
             onOpenIntegrityReport={() => setIsIntegrityModalOpen(true)}
@@ -1918,7 +1936,7 @@ export default function App() {
                 medicalRecords={medicalRecords}
                 leaves={leaves}
                 menstruationRecords={menstruationRecords}
-                config={config}
+                config={effectiveConfig}
                 onNavigateTab={setActiveTab}
                 onShowToast={showToast}
                 onSyncCloud={() => syncCloudData(true)}
@@ -1941,7 +1959,7 @@ export default function App() {
                   setPortalStudentId(sid);
                   setIsStudentAssessmentModalOpen(true);
                 }}
-                config={config}
+                config={effectiveConfig}
                 initialStudentId={profileStudentId}
                 onSaveStudent={handleSaveStudent}
                 onDeleteStudent={handleDeleteStudent}
@@ -1962,7 +1980,7 @@ export default function App() {
                 onDeleteJournal={handleDeleteJournal}
                 leaves={leaves}
                 medicalRecords={medicalRecords}
-                config={config}
+                config={effectiveConfig}
                 initialSubTab={activeTab === 'checklist' ? 'checklist' : 'scanner'}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
@@ -1975,7 +1993,7 @@ export default function App() {
               <MenstruationTrackingTab
                 students={studentsWithViolationCounts}
                 records={menstruationRecords}
-                config={config}
+                config={effectiveConfig}
                 userRole={userRole}
                 onSaveRecord={handleSaveMenstruationRecord}
                 onDeleteRecord={handleDeleteMenstruationRecord}
@@ -1989,7 +2007,7 @@ export default function App() {
                 students={studentsWithViolationCounts}
                 violations={violations}
                 counseling={counseling}
-                config={config}
+                config={effectiveConfig}
                 onSaveStudent={handleSaveStudent}
                 onDeleteStudent={handleDeleteStudent}
                 onOpenViolationForStudent={(sid) => {
@@ -2013,7 +2031,7 @@ export default function App() {
                 students={studentsWithViolationCounts}
                 violations={violations}
                 counseling={counseling}
-                config={config}
+                config={effectiveConfig}
                 initialSubTab={activeTab === 'counseling' ? 'counseling' : 'violations'}
                 onSaveViolation={handleSaveViolation}
                 onDeleteViolation={handleDeleteViolation}
@@ -2031,7 +2049,7 @@ export default function App() {
               <LeavesTab
                 students={studentsWithViolationCounts}
                 leaves={leaves}
-                config={config}
+                config={effectiveConfig}
                 onSaveLeave={handleSaveLeave}
                 onDeleteLeave={handleDeleteLeave}
                 onUpdateStatus={handleUpdateLeaveStatus}
@@ -2048,7 +2066,7 @@ export default function App() {
                 records={medicalRecords}
                 onSaveRecord={handleSaveMedicalRecord}
                 onDeleteRecord={handleDeleteMedicalRecord}
-                config={config}
+                config={effectiveConfig}
                 onReconcileShadowData={handleReconcileShadowData}
                 onShowToast={showToast}
               />
@@ -2058,7 +2076,7 @@ export default function App() {
               <ConnectingJournalTab
                 connectingJournals={connectingJournals}
                 students={studentsWithViolationCounts}
-                config={config}
+                config={effectiveConfig}
                 userRole={userRole}
                 onSaveJournal={handleSaveConnectingJournal}
                 onDeleteJournal={handleDeleteConnectingJournal}
@@ -2070,7 +2088,7 @@ export default function App() {
 
             {activeTab === 'dorm-inspection' && (
               <DormInspectionTab
-                config={config}
+                config={effectiveConfig}
                 students={studentsWithViolationCounts}
                 inspections={dormInspections}
                 onSaveInspection={handleSaveDormInspection}
@@ -2083,7 +2101,7 @@ export default function App() {
 
             {activeTab === 'dorm-asset' && (
               <DormAssetTab
-                config={config}
+                config={effectiveConfig}
                 assets={dormAssets}
                 onSaveAsset={handleSaveDormAsset}
                 onDeleteAsset={handleDeleteDormAsset}
@@ -2097,7 +2115,7 @@ export default function App() {
               <MeetingMinutesTab 
                 showToast={showToast} 
                 askConfirm={askConfirm} 
-                config={config}
+                config={effectiveConfig}
                 meetingMinutes={meetingMinutes}
                 onSaveMinute={handleSaveMeetingMinute}
                 onDeleteMinute={handleDeleteMeetingMinute}
@@ -2112,7 +2130,7 @@ export default function App() {
                 leaves={leaves}
                 medicalRecords={medicalRecords}
                 reports={reports}
-                config={config}
+                config={effectiveConfig}
                 initialSubTab={activeTab === 'recap' ? 'recap' : 'report-card'}
                 onSaveReport={handleSaveReport}
                 onSaveConfig={handleSaveConfig}
@@ -2126,7 +2144,7 @@ export default function App() {
                 students={studentsWithViolationCounts}
                 violations={violations}
                 cases={specialCases}
-                config={config}
+                config={effectiveConfig}
                 onSaveCase={handleSaveSpecialCase}
                 onDeleteCase={handleDeleteSpecialCase}
                 onShowToast={showToast}
@@ -2137,7 +2155,7 @@ export default function App() {
             {activeTab === 'letter-generator' && (
               <LetterGeneratorTab
                 students={studentsWithViolationCounts}
-                config={config}
+                config={effectiveConfig}
                 onShowToast={showToast}
                 initialStudentId={profileStudentId}
               />
@@ -2149,7 +2167,7 @@ export default function App() {
                 assessments={psychologicalAssessments}
                 onSaveAssessment={handleSavePsychologicalAssessment}
                 onDeleteAssessment={handleDeletePsychologicalAssessment}
-                config={config}
+                config={effectiveConfig}
                 onOpenCounselingWithContext={(sid, contextNotes) => {
                   setProfileStudentId(sid);
                   setActiveTab('counseling');

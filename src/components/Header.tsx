@@ -14,7 +14,7 @@ import {
   ExternalLink,
   ChevronDown,
   ShieldCheck,
-  ChevronRight
+  ChevronRight, MapPin
 } from 'lucide-react';
 import { AppConfig } from '../types';
 import { DataIntegrityReport } from '../utils/integrityVerifier';
@@ -28,6 +28,8 @@ interface HeaderProps {
   onLogout: () => void;
   userRole?: 'admin' | 'guru';
   connectionStatus?: 'online' | 'offline' | 'checking';
+  printBranch?: 'palembang' | 'oki';
+  onSetPrintBranch?: (branch: 'palembang' | 'oki') => void;
   lastPingTime?: string | null;
   lastPushTime?: string | null;
   lastSyncTime?: string | null;
@@ -45,6 +47,8 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   userRole = 'admin',
   connectionStatus = 'offline',
+  printBranch = 'palembang',
+  onSetPrintBranch,
   lastPingTime = null,
   lastPushTime = null,
   lastSyncTime = null,
@@ -53,6 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
   onCheckConnection
 }) => {
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
+  const [isPrintMenuOpen, setIsPrintMenuOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Close popover when clicking outside
@@ -316,7 +321,50 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{lastIntegrityReport.healthScore}% Valid</span>
           </button>
         )}
+        {onSetPrintBranch && (
+          <div className="relative hidden sm:flex">
+            <button 
+              type="button" 
+              onClick={() => setIsPrintMenuOpen(!isPrintMenuOpen)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 shadow-sm transition-all"
+            >
+              <MapPin className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden lg:inline">{printBranch === "palembang" ? "Cetak: Palembang" : "Cetak: SRT 01 OKI"}</span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isPrintMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
 
+            {isPrintMenuOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setIsPrintMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-full pt-1.5 w-56 z-50 animate-in fade-in zoom-in duration-100">
+                  <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                    <button 
+                      onClick={() => {
+                        onSetPrintBranch("palembang");
+                        setIsPrintMenuOpen(false);
+                      }} 
+                      className={`w-full text-left px-3 py-2 text-[11px] font-semibold hover:bg-slate-50 transition-colors ${printBranch === "palembang" ? "bg-blue-50/50 text-blue-700" : "text-slate-700"}`}
+                    >
+                      SRT 31 Palembang (Default)
+                    </button>
+                    <button 
+                      onClick={() => {
+                        onSetPrintBranch("oki");
+                        setIsPrintMenuOpen(false);
+                      }} 
+                      className={`w-full text-left px-3 py-2 text-[11px] font-semibold hover:bg-slate-50 transition-colors border-t border-slate-100 ${printBranch === "oki" ? "bg-blue-50/50 text-blue-700" : "text-slate-700"}`}
+                    >
+                      Sekolah Rakyat Terintegrasi 01 OKI
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
         <button
           onClick={onSync}
           disabled={isSyncing}

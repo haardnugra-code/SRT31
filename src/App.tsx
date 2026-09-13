@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { AnimatePresence } from 'motion/react';
 import {
   Student,
   Violation,
@@ -64,6 +65,7 @@ import {
 } from './services/storage';
 import { reconcileAndSanitizeShadowData, ShadowDataAuditStats } from './utils/dataSanitizer';
 import { verifyDataIntegrity, DataIntegrityReport, PreviousCountsSnapshot } from './utils/integrityVerifier';
+import { Volume2, VolumeX } from 'lucide-react';
 
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -179,6 +181,9 @@ export default function App() {
   // Data Integrity Verification Report State
   const [lastIntegrityReport, setLastIntegrityReport] = useState<DataIntegrityReport | null>(loadLastIntegrityReport);
   const [isIntegrityModalOpen, setIsIntegrityModalOpen] = useState<boolean>(false);
+  
+  // Dashboard BGM State
+  const [isDashboardMuted, setIsDashboardMuted] = useState<boolean>(false);
 
   // Toast State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -1865,11 +1870,37 @@ export default function App() {
       />
 
       {/* Login Screen Modal */}
-      <LoginModal 
-        isLoggedIn={isLoggedIn} 
-        onLoginSuccess={handleLoginSuccess} 
-        onOpenStudentAssessment={() => setIsStudentAssessmentModalOpen(true)}
-      />
+      <AnimatePresence>
+        {!isLoggedIn && (
+          <LoginModal 
+            isLoggedIn={isLoggedIn} 
+            onLoginSuccess={handleLoginSuccess} 
+            onOpenStudentAssessment={() => setIsStudentAssessmentModalOpen(true)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Dashboard Background Music */}
+      {isLoggedIn && (
+        <>
+          <div className="absolute inset-0 pointer-events-none opacity-0 invisible overflow-hidden z-[-1]">
+            <iframe
+              width="100%"
+              height="100%"
+              src={`https://www.youtube.com/embed/O0StKlRHVeE?autoplay=1&loop=1&playlist=O0StKlRHVeE&controls=0&showinfo=0&modestbranding=1&enablejsapi=1&mute=${isDashboardMuted ? 1 : 0}`}
+              title="Dashboard BGM"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            />
+          </div>
+          <button
+            onClick={() => setIsDashboardMuted(!isDashboardMuted)}
+            className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-white border border-slate-200 rounded-full shadow-xl flex items-center justify-center text-slate-600 hover:text-red-600 hover:bg-slate-50 transition-all"
+            title={isDashboardMuted ? "Aktifkan Musik" : "Matikan Musik"}
+          >
+            {isDashboardMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
+        </>
+      )}
 
       {/* Main Row Container */}
       <div className="flex flex-col md:flex-row min-h-screen flex-1 relative">

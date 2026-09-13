@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { GraduationCap, Lock, LogIn, AlertCircle, ShieldCheck, UserCheck, Brain, ArrowRight } from 'lucide-react';
+import { GraduationCap, Lock, LogIn, AlertCircle, ShieldCheck, UserCheck, Brain, ArrowRight, Volume2, VolumeX } from 'lucide-react';
+import { motion } from 'motion/react';
+import { KageLandingPage } from '../shaders/landing-pages/LandingPages';
+import '../shaders/threeui.css';
 
 interface LoginModalProps {
   isLoggedIn: boolean;
@@ -15,8 +18,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [selectedRole, setSelectedRole] = useState<'admin' | 'guru'>('admin');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
-
-  if (isLoggedIn) return null;
+  const [isMuted, setIsMuted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,13 +47,48 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 overflow-hidden">
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-20">
-        <h1 className="text-[12rem] md:text-[20rem] font-black text-white tracking-tighter mix-blend-overlay">
-          SRT31
-        </h1>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 1.2, ease: "easeInOut" }}
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
+    >
+      {/* Background Music (YouTube Hidden Embed) */}
+      <div className="absolute inset-0 pointer-events-none opacity-0 invisible overflow-hidden">
+        <iframe
+          width="100%"
+          height="100%"
+          src={`https://www.youtube.com/embed/hN0k8qmgyKQ?autoplay=1&loop=1&playlist=hN0k8qmgyKQ&controls=0&showinfo=0&modestbranding=1&enablejsapi=1&mute=${isMuted ? 1 : 0}`}
+          title="BGM"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        />
       </div>
-      <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-[0_0_40px_rgba(0,0,0,0.5)] relative z-10 flex flex-col items-center">
+
+      <div className="absolute inset-0">
+        <KageLandingPage
+          backgroundCanvasSelector="#gl"
+          className="w-full h-full"
+          primaryColor="#e0231c"
+        />
+      </div>
+      
+      <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-[0_0_40px_rgba(0,0,0,0.5)] relative z-10 flex flex-col items-center">
+        {/* Audio Toggle */}
+        <button
+          type="button"
+          onClick={() => setIsMuted(!isMuted)}
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all z-20 group"
+          title={isMuted ? "Aktifkan Musik" : "Matikan Musik"}
+        >
+          {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 animate-pulse" />}
+          {isMuted && (
+            <span className="absolute right-full mr-2 whitespace-nowrap bg-black/60 px-2 py-1 rounded text-[9px] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              Putar Lagu (BGM)
+            </span>
+          )}
+        </button>
+
         <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center text-white text-2xl shadow-[0_0_15px_rgba(220,38,38,0.5)] mb-3">
           <GraduationCap className="w-8 h-8" />
         </div>
@@ -172,7 +209,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <p className="text-[9px] text-slate-400 font-bold tracking-widest">KEMENSOS RI © 2026</p>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

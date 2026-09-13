@@ -92,3 +92,32 @@
   }
 }
 
+@keyframes scanLine {
+  0% { top: 0%; }
+  100% { top: 100%; }
+}
+
+.animate-scanLine {
+  animation: scanLine 3s linear infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+#qr-reader-element video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* Ensure the scanner UI is hidden when using the direct API */
+#qr-reader-element__dashboard, #qr-reader-element__status_span {
+  display: none !important;
+}
+

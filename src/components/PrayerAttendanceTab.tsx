@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import QRCode from 'qrcode';
-import { Html5Qrcode, Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import {
   Student,
   PrayerAttendance,
@@ -518,7 +518,9 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
   const [availableCameras, setAvailableCameras] = useState<Array<{ id: string; label: string }>>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const qrScannerRef = useRef<Html5Qrcode | null>(null);
+  const isTransitioningRef = useRef<boolean>(false);
+  const [scannerError, setScannerError] = useState<string | null>(null);
 
   // Arduino & Web Serial RFID Scanner Hardware States
   const [isArduinoModalOpen, setIsArduinoModalOpen] = useState<boolean>(false);
@@ -903,55 +905,91 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
 
   // Start / Restart HTML5 QR Code Scanner with facing mode or exact device ID
   useEffect(() => {
-    if (activeSubTab === 'scanner' && isScannerActive) {
-      const timer = setTimeout(() => {
-        try {
-          if (!scannerRef.current) {
-            const videoConstraints: MediaTrackConstraints = selectedCameraId
-              ? { deviceId: { exact: selectedCameraId } }
-              : { facingMode: cameraFacingMode };
+    let isMounted = true;
 
-            const scanner = new Html5QrcodeScanner(
-              'qr-reader-element',
-              {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                videoConstraints: videoConstraints,
-                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-              },
-              /* verbose= */ false
-            );
+    const startScanner = async () => {
+      if (!isScannerActive || !isMounted || isTransitioningRef.current) return;
+      
+      // Ensure the target element exists
+      const element = document.getElementById('qr-reader-element');
+      if (!element) return;
 
-            scanner.render(
-              (decodedText) => {
-                handleProcessScan(decodedText);
-              },
-              () => {
-                // Ignore scanning framing errors
-              }
-            );
-
-            scannerRef.current = scanner;
-          }
-        } catch (e) {
-          console.error('Html5QrcodeScanner init error:', e);
+      isTransitioningRef.current = true;
+      try {
+        // Initialize the scanner instance if not already done
+        if (!qrScannerRef.current) {
+          qrScannerRef.current = new Html5Qrcode('qr-reader-element');
         }
-      }, 300);
 
+        const scanner = qrScannerRef.current;
+
+        // If already scanning, stop it first
+        if (scanner.isScanning) {
+          await scanner.stop();
+        }
+
+        if (!isMounted || !isScannerActive) {
+          isTransitioningRef.current = false;
+          return;
+        }
+
+        const config = {
+          fps: 10,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+            const qrboxSize = Math.floor(minEdgeSize * 0.7);
+            return { width: qrboxSize, height: qrboxSize };
+          },
+          aspectRatio: 1.0
+        };
+
+        const cameraIdOrConfig = selectedCameraId 
+          ? { deviceId: { exact: selectedCameraId } } 
+          : { facingMode: cameraFacingMode };
+
+        await scanner.start(
+          cameraIdOrConfig,
+          config,
+          (decodedText) => handleProcessScan(decodedText),
+          () => {}
+        );
+        
+        if (isMounted) setScannerError(null);
+      } catch (err: any) {
+        console.error('QR Scanner Start Error:', err);
+        if (isMounted) {
+          setScannerError(err?.message || 'Gagal mengakses kamera.');
+          setIsScannerActive(false);
+        }
+      } finally {
+        isTransitioningRef.current = false;
+      }
+    };
+
+    const stopScanner = async () => {
+      if (qrScannerRef.current && qrScannerRef.current.isScanning && !isTransitioningRef.current) {
+        isTransitioningRef.current = true;
+        try {
+          await qrScannerRef.current.stop();
+        } catch (err) {
+          console.error('Failed to stop scanner:', err);
+        } finally {
+          isTransitioningRef.current = false;
+        }
+      }
+    };
+
+    if (isScannerActive && activeSubTab === 'scanner') {
+      const timer = setTimeout(startScanner, 300);
       return () => {
         clearTimeout(timer);
-        if (scannerRef.current) {
-          scannerRef.current.clear().catch((err) => console.error('Clear scanner error', err));
-          scannerRef.current = null;
-        }
+        isMounted = false;
+        stopScanner();
       };
     } else {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch((err) => console.error('Clear scanner error', err));
-        scannerRef.current = null;
-      }
+      stopScanner();
     }
-  }, [activeSubTab, isScannerActive, cameraFacingMode, selectedCameraId, selectedDate, selectedPrayerTime, officerName]);
+  }, [activeSubTab, isScannerActive, cameraFacingMode, selectedCameraId]);
 
   // Bulk Mark Unscanned as Alpa (Fast Session Close)
   const handleBulkMarkUnscannedAsAlpa = (unit?: 'SD' | 'SMP' | 'SMA') => {
@@ -2023,8 +2061,20 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                   <div className="space-y-2">
                     <div
                       id="qr-reader-element"
-                      className="rounded-xl overflow-hidden border-2 border-red-500/40 bg-slate-950 min-h-[250px]"
-                    />
+                      className="rounded-xl overflow-hidden border-2 border-red-500/40 bg-slate-950 min-h-[300px] relative"
+                    >
+                      {/* Scanning Animation Overlay */}
+                      <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+                        <div className="w-48 h-48 border-2 border-red-500/30 rounded-lg relative overflow-hidden">
+                          <div className="absolute top-0 left-0 w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-scanLine" />
+                        </div>
+                      </div>
+                    </div>
+                    {scannerError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" /> {scannerError}
+                      </div>
+                    )}
                     <p className="text-[11px] text-slate-500 text-center font-medium">
                       Arahkan QR Code Kartu Tanda Murid ke depan kamera. Scanner akan membaca kode secara otomatis.
                     </p>

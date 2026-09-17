@@ -431,6 +431,32 @@ function doPost(e) {
       return responseJSON({ status: 'success', message: 'Data presensi dihapus.' });
     }
 
+    // 10. HASIL ASSESMENT (ASSESSMENTS)
+    if (action === 'addAssessment' || action === 'updateAssessment') {
+      saveOrUpdateRow('Assessments', 0, data.id, [
+        data.id,
+        data.date,
+        data.studentId,
+        data.studentName,
+        data.assessmentType || '',
+        data.score || '',
+        data.category || '',
+        data.strengths || '',
+        data.weaknesses || '',
+        data.recommendations || '',
+        data.additionalNotes || '',
+        data.fileUrl || '',
+        data.assessor || '',
+        new Date().toISOString()
+      ]);
+      return responseJSON({ status: 'success', message: 'Hasil Assessment tersimpan ke Sheet Assessments.' });
+    }
+
+    if (action === 'deleteAssessment') {
+      deleteRowById('Assessments', 0, data.id);
+      return responseJSON({ status: 'success', message: 'Data Assessment dihapus.' });
+    }
+
     return responseJSON({ status: 'error', message: 'Aksi tidak dikenali: ' + action });
   } catch (err) {
     return responseJSON({ status: 'error', message: 'Gagal memproses POST: ' + err.toString() });
@@ -461,7 +487,8 @@ function getAllData() {
     announcements: getSheetDataAsObjects(ss, 'Announcements'),
     prayerAttendance: getSheetDataAsObjects(ss, 'PrayerAttendance'),
     connectingJournals: getSheetDataAsObjects(ss, 'ConnectingJournals'),
-    menstruationRecords: getSheetDataAsObjects(ss, 'MenstruationRecords')
+    menstruationRecords: getSheetDataAsObjects(ss, 'MenstruationRecords'),
+    assessments: getSheetDataAsObjects(ss, 'Assessments')
   };
 }
 

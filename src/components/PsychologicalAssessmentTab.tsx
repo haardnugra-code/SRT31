@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
+  FileText,
+
   Brain,
   Plus,
   Search,
@@ -24,20 +26,30 @@ import {
   User
 } from 'lucide-react';
 import {
+
   Student,
   PsychologicalAssessment,
+  AssessmentResult,
   PsychologicalTestType,
   PsychologicalClinicalStatus,
   AppConfig
 } from '../types';
-import { PSYCHOLOGICAL_TESTS } from '../services/psychologicalBattery';
-import { generatePsychologicalReportPDF } from '../services/psychologicalPdfGenerator';
-import { formatDateIndonesian } from '../utils/dateFormatter';
-import { StudentAssessmentPortalModal } from './StudentAssessmentPortalModal';
+import {
+ PSYCHOLOGICAL_TESTS } from '../services/psychologicalBattery';
+import {
+ generatePsychologicalReportPDF } from '../services/psychologicalPdfGenerator';
+import {
+ formatDateIndonesian } from '../utils/dateFormatter';
+import {
+ StudentAssessmentPortalModal } from './StudentAssessmentPortalModal';
+import { AssessmentResultModal } from './AssessmentResultModal';
 
 interface PsychologicalAssessmentTabProps {
   students: Student[];
   assessments: PsychologicalAssessment[];
+  assessmentResults: AssessmentResult[];
+  onSaveAssessmentResult: (assessment: AssessmentResult) => void;
+  onDeleteAssessmentResult: (id: string) => void;
   onSaveAssessment: (assessment: PsychologicalAssessment) => void;
   onDeleteAssessment: (id: string) => void;
   config: AppConfig;
@@ -48,6 +60,9 @@ interface PsychologicalAssessmentTabProps {
 export const PsychologicalAssessmentTab: React.FC<PsychologicalAssessmentTabProps> = ({
   students,
   assessments,
+  assessmentResults,
+  onSaveAssessmentResult,
+  onDeleteAssessmentResult,
   onSaveAssessment,
   onDeleteAssessment,
   config,
@@ -71,6 +86,23 @@ export const PsychologicalAssessmentTab: React.FC<PsychologicalAssessmentTabProp
 
   // Confirm delete modal state
   const [assessmentToDelete, setAssessmentToDelete] = useState<PsychologicalAssessment | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<'psychology' | 'assessmentResults'>('psychology');
+  const [isAssessmentResultModalOpen, setIsAssessmentResultModalOpen] = useState(false);
+  const [assessmentResultToEdit, setAssessmentResultToEdit] = useState<AssessmentResult | undefined>(undefined);
+  const [assessmentResultToDelete, setAssessmentResultToDelete] = useState<AssessmentResult | null>(null);
+
+  const [searchAssessmentResult, setSearchAssessmentResult] = useState('');
+  const filteredAssessmentResults = useMemo(() => {
+    return assessmentResults.filter(a => {
+      const q = searchAssessmentResult.toLowerCase();
+      return (
+        a.studentName.toLowerCase().includes(q) ||
+        a.studentId.toLowerCase().includes(q) ||
+        a.assessmentType.toLowerCase().includes(q)
+      );
+    });
+  }, [assessmentResults, searchAssessmentResult]);
+
 
   // Filtered assessments list
   const filteredAssessments = useMemo(() => {
@@ -168,7 +200,24 @@ export const PsychologicalAssessmentTab: React.FC<PsychologicalAssessmentTabProp
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+  
+          {/* Sub Tab Switcher */}
+          <div className="flex bg-slate-900/50 p-1 rounded-2xl w-full sm:w-auto mt-2">
+            <button
+              onClick={() => setActiveSubTab('psychology')}
+              className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition ${activeSubTab === 'psychology' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-300 hover:text-white'}`}
+            >
+              Tes Psikologi Mandiri
+            </button>
+            <button
+              onClick={() => setActiveSubTab('assessmentResults')}
+              className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${activeSubTab === 'assessmentResults' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-300 hover:text-white'}`}
+            >
+              Hasil Assessment Manual
+            </button>
+          </div>
+
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -195,7 +244,11 @@ export const PsychologicalAssessmentTab: React.FC<PsychologicalAssessmentTabProp
         </div>
       </div>
 
-      {/* Metrics Row */}
+      
+      {activeSubTab === 'psychology' && (
+        <>
+          {/* Metrics Row */}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
@@ -666,7 +719,155 @@ export const PsychologicalAssessmentTab: React.FC<PsychologicalAssessmentTabProp
         onShowToast={onShowToast}
       />
 
-      {/* Delete Confirmation Modal */}
+      
+        </>
+      )}
+
+      {activeSubTab === 'assessmentResults' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="relative w-full sm:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Cari nama, NISN, atau jenis assessment..."
+                value={searchAssessmentResult}
+                onChange={(e) => setSearchAssessmentResult(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:ring-amber-500 focus:border-amber-500 shadow-sm"
+              />
+            </div>
+            <button
+              onClick={() => {
+                setAssessmentResultToEdit(undefined);
+                setIsAssessmentResultModalOpen(true);
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-xl text-sm font-bold shadow-sm flex items-center justify-center gap-2 transition"
+            >
+              <Plus className="w-4 h-4" />
+              Input Hasil Assessment Baru
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold text-slate-600">Tanggal</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600">Siswa</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600">Jenis / Kategori</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600">Skor</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600">Assessor</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredAssessmentResults.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                        <FileText className="w-12 h-12 mx-auto mb-3 text-slate-200" />
+                        <p>Belum ada data hasil assessment yang diinput.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAssessmentResults.map((a) => (
+                      <tr key={a.id} className="hover:bg-slate-50/50 transition">
+                        <td className="px-4 py-3 text-slate-600">{a.date}</td>
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-slate-800">{a.studentName}</p>
+                          <p className="text-xs text-slate-500 font-mono">{a.studentId}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-slate-700">{a.assessmentType}</p>
+                          <p className="text-xs text-slate-500">{a.category}</p>
+                        </td>
+                        <td className="px-4 py-3 font-bold text-amber-600">{a.score || '-'}</td>
+                        <td className="px-4 py-3 text-slate-600">{a.assessor || '-'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex justify-center items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setAssessmentResultToEdit(a);
+                                setIsAssessmentResultModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                              title="Edit Data"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setAssessmentResultToDelete(a)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                              title="Hapus Data"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
+      <AssessmentResultModal
+        isOpen={isAssessmentResultModalOpen}
+        onClose={() => {
+          setIsAssessmentResultModalOpen(false);
+          setAssessmentResultToEdit(undefined);
+        }}
+        students={students}
+        onSave={(data) => {
+          onSaveAssessmentResult(data);
+          onShowToast('Berhasil', 'Data hasil assessment tersimpan', 'success');
+        }}
+        initialData={assessmentResultToEdit}
+      />
+
+      {assessmentResultToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setAssessmentResultToDelete(null)} />
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm z-10 text-center shadow-xl animate-in fade-in zoom-in duration-200">
+            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900 mb-2">Hapus Assessment?</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              Data hasil assessment <b>{assessmentResultToDelete.studentName}</b> akan dihapus permanen.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setAssessmentResultToDelete(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteAssessmentResult(assessmentResultToDelete.id);
+                  setAssessmentResultToDelete(null);
+                  onShowToast('Data Terhapus', 'Hasil assessment berhasil dihapus.', 'info');
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Psychology Test Confirmation */}
+
       {assessmentToDelete && (
         <div className="fixed inset-0 z-[130] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-200">

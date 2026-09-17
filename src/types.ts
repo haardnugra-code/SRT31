@@ -579,6 +579,22 @@ export interface PsychologicalDimensionScore {
   isStrengthScale?: boolean; // e.g. Prososial atau Resiliensi (skor tinggi = semakin baik)
 }
 
+export interface AssessmentResult {
+  id: string;
+  date: string;
+  studentId: string;
+  studentName: string;
+  assessmentType: string;
+  score: string;
+  category: string;
+  strengths: string;
+  weaknesses: string;
+  recommendations: string;
+  additionalNotes: string;
+  fileUrl: string;
+  assessor: string;
+}
+
 export interface PsychologicalAssessment {
   id: string;
   studentId: string;

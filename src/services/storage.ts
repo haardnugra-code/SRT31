@@ -1,4 +1,4 @@
-import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog, DormInspection, DormInspectionCriterion, DormInspectionItemScore, DormGrade, DormActionRequired, DormAsset, PsychologicalAssessment, OfficialLetter } from '../types';
+import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, AppConfig, TaskItem, MedicalRecord, DisciplineLevelConfig, DisciplineStatusThreshold, ViolationTemplateItem, PrayerAttendance, ConnectingJournal, MenstruationRecord, MeetingMinute, SpecialChronologyCase, SpecialShiftLog, DormInspection, DormInspectionCriterion, DormInspectionItemScore, DormGrade, DormActionRequired, DormAsset, PsychologicalAssessment, OfficialLetter, AssessmentResult } from '../types';
 import { consolidateDormList } from '../utils/dormHelper';
 import { DataIntegrityReport } from '../utils/integrityVerifier';
 
@@ -903,6 +903,25 @@ export function loadDormAssets(): DormAsset[] {
 
 export function saveDormAssets(assets: DormAsset[]): void {
   localStorage.setItem('sr_dorm_assets', JSON.stringify(assets));
+}
+
+export const INITIAL_ASSESSMENT_RESULTS: AssessmentResult[] = [];
+
+export function loadAssessmentResults(): AssessmentResult[] {
+  try {
+    const saved = localStorage.getItem('sr_assessment_results');
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(p => p && p.id);
+  } catch (error) {
+    console.error('Failed to load assessment results', error);
+    return [];
+  }
+}
+
+export function saveAssessmentResults(results: AssessmentResult[]): void {
+  localStorage.setItem('sr_assessment_results', JSON.stringify(results));
 }
 
 export const INITIAL_PSYCHOLOGICAL_ASSESSMENTS: PsychologicalAssessment[] = [];

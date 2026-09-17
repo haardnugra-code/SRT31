@@ -17,7 +17,8 @@ import {
   SpecialChronologyCase,
   DormInspection,
   DormAsset,
-  PsychologicalAssessment
+  PsychologicalAssessment,
+  AssessmentResult
 } from './types';
 import {
   loadAppConfig,
@@ -52,6 +53,8 @@ import {
   saveDormAssets,
   loadPsychologicalAssessments,
   savePsychologicalAssessments,
+  loadAssessmentResults,
+  saveAssessmentResults,
   loadLastSyncTime,
   saveLastSyncTime,
   loadLastPushTime,
@@ -139,6 +142,7 @@ export default function App() {
   const [dormInspections, setDormInspections] = useState<DormInspection[]>(loadDormInspections);
   const [dormAssets, setDormAssets] = useState<DormAsset[]>(loadDormAssets);
   const [psychologicalAssessments, setPsychologicalAssessments] = useState<PsychologicalAssessment[]>(loadPsychologicalAssessments);
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>(loadAssessmentResults);
   const [isStudentAssessmentModalOpen, setIsStudentAssessmentModalOpen] = useState<boolean>(false);
   const [portalStudentId, setPortalStudentId] = useState<string | undefined>(undefined);
 
@@ -164,6 +168,7 @@ export default function App() {
       return next;
     });
   }, []);
+
 
   const [announcement, setAnnouncement] = useState<string>(() => {
     return localStorage.getItem('sr_announcement_text') ||
@@ -371,6 +376,58 @@ export default function App() {
       console.warn('Silent notice: automated Drive backup skipped due to network/offline status:', e);
     }
   }, [config.googleScriptUrl]);
+
+
+  const handleSaveAssessmentResult = useCallback((assessment: AssessmentResult) => {
+    setAssessmentResults((prev) => {
+      const idx = prev.findIndex((a) => a.id === assessment.id);
+      let next: AssessmentResult[];
+      if (idx >= 0) {
+        next = [...prev];
+        next[idx] = assessment;
+      } else {
+        next = [assessment, ...prev];
+      }
+      saveAssessmentResults(next);
+      return next;
+    });
+    if (config.googleScriptUrl) {
+      fetch(config.googleScriptUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'updateAssessment',
+          data: assessment
+        })
+      })
+      .then(() => {
+        recordDataPushSuccess();
+        backupDatabaseToDrive();
+      })
+      .catch((err) => console.error(err));
+    }
+  }, [config.googleScriptUrl, recordDataPushSuccess, backupDatabaseToDrive]);
+
+  const handleDeleteAssessmentResult = useCallback((id: string) => {
+    setAssessmentResults((prev) => {
+      const next = prev.filter((a) => a.id !== id);
+      saveAssessmentResults(next);
+      return next;
+    });
+    if (config.googleScriptUrl) {
+      fetch(config.googleScriptUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'deleteAssessment',
+          data: { id }
+        })
+      })
+      .then(() => {
+        recordDataPushSuccess();
+        backupDatabaseToDrive();
+      })
+      .catch((err) => console.error(err));
+    }
+  }, [config.googleScriptUrl, recordDataPushSuccess, backupDatabaseToDrive]);
 
   // --- CRUD Handlers with Atomic LocalStorage Saves & Async Cloud Sync ---
 
@@ -1392,6 +1449,7 @@ export default function App() {
              prayerAttendance: resJson.PrayerAttendance || [],
              menstruationRecords: resJson.Menstruation || [],
              psychologicalAssessments: resJson.PsychologicalAssessments || [],
+             assessmentResults: resJson.assessments || [],
              specialCases: resJson.SpecialChronology || [],
              dormInspections: resJson.DormInspection || [],
              dormAssets: resJson.DormAsset || [],
@@ -1610,6 +1668,25 @@ export default function App() {
             saveMeetingMinutes(resJson.meetingMinutes);
           }
 
+          let fetchedAssessmentResults: AssessmentResult[] = assessmentResults;
+          if (resJson.assessmentResults) {
+            fetchedAssessmentResults = resJson.assessmentResults.map((a: any) => ({
+              id: a['ID Assessment'] || a.id || '',
+              date: a['Tanggal'] || a.date || '',
+              studentId: a['NISN/ID'] || a.studentId || '',
+              studentName: a['Nama Siswa'] || a.studentName || '',
+              assessmentType: a['Jenis Assessment'] || a.assessmentType || '',
+              score: a['Skor'] || a.score || '',
+              category: a['Kategori'] || a.category || '',
+              strengths: a['Kelebihan'] || a.strengths || '',
+              weaknesses: a['Kekurangan'] || a.weaknesses || '',
+              recommendations: a['Rekomendasi'] || a.recommendations || '',
+              additionalNotes: a['Catatan Tambahan'] || a.additionalNotes || '',
+              fileUrl: a['URL Berkas (Drive)'] || a.fileUrl || '',
+              assessor: a['Penguji / Assesor'] || a.assessor || ''
+            }));
+          }
+
           // AUTOMATIC SHADOW DATA PREVENTION RECONCILIATION
           const reconciled = reconcileAndSanitizeShadowData(
             activeStudentsList,
@@ -1643,6 +1720,8 @@ export default function App() {
 
           setPrayerAttendance(reconciled.prayerAttendance);
           savePrayerAttendance(reconciled.prayerAttendance);
+          setAssessmentResults(fetchedAssessmentResults);
+          saveAssessmentResults(fetchedAssessmentResults);
 
           setReports(reconciled.reports);
           saveReports(reconciled.reports);
@@ -1695,6 +1774,7 @@ export default function App() {
                   DailyJournals: reconciled.dailyJournals,
                   PrayerAttendance: reconciled.prayerAttendance,
                   PsychologicalAssessments: psychologicalAssessments,
+                  Assessments: assessmentResults,
                   DormInspection: dormInspections,
                   DormAsset: dormAssets,
                   SpecialChronology: specialCases,
@@ -2207,6 +2287,9 @@ export default function App() {
               <PsychologicalAssessmentTab
                 students={studentsWithViolationCounts}
                 assessments={psychologicalAssessments}
+                assessmentResults={assessmentResults}
+                onSaveAssessmentResult={handleSaveAssessmentResult}
+                onDeleteAssessmentResult={handleDeleteAssessmentResult}
                 onSaveAssessment={handleSavePsychologicalAssessment}
                 onDeleteAssessment={handleDeletePsychologicalAssessment}
                 config={effectiveConfig}

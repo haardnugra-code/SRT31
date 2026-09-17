@@ -55,10 +55,12 @@ interface DormAssetTabProps {
 
 // Preset Rekomendasi Format Asrama Standar Instansi Kemensos / Sekolah Rakyat
 export const INSTITUTIONAL_DORM_PRESETS = [
-  'Gedung Asrama Putra I (Wisma Dewantara)',
-  'Gedung Asrama Putra II (Wisma Soekarno)',
-  'Gedung Asrama Putri I (Wisma Kartini)',
-  'Gedung Asrama Putri II (Wisma Cut Nyak Dien)',
+  'Wisma Dewantara',
+  'Wisma Pattimura',
+  'Wisma Teuku Umar',
+  'Wisma Cut Nyak Dien',
+  'Wisma RA Kartini',
+  'Wisma Dewi Sartika',
   'Paviliun / Wisma Tamu & Pembina Asrama',
   'Gedung Rusunawa Asrama Terpadu',
   'Area Fasilitas & Penunjang Asrama'

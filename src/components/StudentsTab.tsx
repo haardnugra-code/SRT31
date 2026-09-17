@@ -16,7 +16,8 @@ import {
   ExternalLink,
   UserCheck,
   User,
-  Users
+  Users,
+  Zap
 } from 'lucide-react';
 import {
   Student,
@@ -28,7 +29,8 @@ import {
   ReportCardData,
   MedicalRecord,
   Leave,
-  PrayerAttendance
+  PrayerAttendance,
+  ConnectingJournal
 } from '../types';
 import { calculateStudentDisciplineScore } from '../services/storage';
 import { formatDateIndonesian } from '../utils/dateFormatter';
@@ -61,6 +63,8 @@ interface StudentsTabProps {
   onOpenViolationForStudent?: (studentId: string) => void;
   onOpenCounselingForStudent?: (studentId: string) => void;
   onOpenProfileForStudent?: (studentId: string) => void;
+  onSaveViolation?: (violation: Violation) => void;
+  onSaveConnectingJournal?: (journal: ConnectingJournal) => void;
   onShowToast: (title: string, message: string, type?: 'success' | 'warning' | 'error') => void;
   onAskConfirm: (title: string, message: string) => Promise<boolean>;
 }
@@ -84,6 +88,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   onOpenViolationForStudent,
   onOpenCounselingForStudent,
   onOpenProfileForStudent,
+  onSaveViolation,
+  onSaveConnectingJournal,
   onShowToast,
   onAskConfirm
 }) => {
@@ -123,6 +129,75 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   // Modal State for Add/Edit Student
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+
+  // Quick Report State
+  const [quickReportStudent, setQuickReportStudent] = useState<Student | null>(null);
+  const [quickReportType, setQuickReportType] = useState<'violation' | 'journal'>('violation');
+  const [qrLevel, setQrLevel] = useState<string>('1');
+  const [qrViolation, setQrViolation] = useState<string>('');
+  const [qrSanction, setQrSanction] = useState<string>('');
+  const [qrNote, setQrNote] = useState<string>('');
+  const [qrSubject, setQrSubject] = useState<string>('Bimbingan Asrama');
+  const [qrAchievement, setQrAchievement] = useState<string>('');
+  const [qrTaskOrder, setQrTaskOrder] = useState<string>('');
+
+  const handleOpenQuickReport = (student: Student) => {
+    setQuickReportStudent(student);
+    setQuickReportType('violation');
+    setQrLevel('1');
+    setQrViolation('');
+    setQrSanction('');
+    setQrNote('');
+    setQrAchievement('');
+    setQrTaskOrder('');
+  };
+
+  const handleSubmitQuickReport = () => {
+    if (!quickReportStudent) return;
+    
+    if (quickReportType === 'violation') {
+      if (!qrViolation) {
+        onShowToast('Gagal', 'Pelanggaran harus diisi', 'error');
+        return;
+      }
+      if (onSaveViolation) {
+        onSaveViolation({
+          id: `V-${Date.now()}`,
+          studentId: quickReportStudent.id,
+          studentName: quickReportStudent.name,
+          date: new Date().toISOString().split('T')[0],
+          level: Number(qrLevel),
+          violation: qrViolation,
+          sanction: qrSanction,
+          note: qrNote,
+          reporter: config.waliAsrama || 'Pengasuh'
+        });
+        onShowToast('Berhasil', 'Pelanggaran berhasil dicatat', 'success');
+      }
+    } else {
+      if (!qrAchievement) {
+        onShowToast('Gagal', 'Catatan capaian/instruksi harus diisi', 'error');
+        return;
+      }
+      if (onSaveConnectingJournal) {
+        onSaveConnectingJournal({
+          id: `CJ-${Date.now()}`,
+          date: new Date().toISOString().split('T')[0],
+          targetClass: quickReportStudent.class,
+          studentId: quickReportStudent.id,
+          studentName: quickReportStudent.name,
+          subject: qrSubject,
+          teacherName: config.waliAsrama || 'Pengasuh',
+          learningAchievement: qrAchievement,
+          taskOrder: qrTaskOrder
+        });
+        onShowToast('Berhasil', 'Jurnal berhasil dicatat', 'success');
+      }
+    }
+    
+    setQuickReportStudent(null);
+  };
+
   const [formName, setFormName] = useState('');
   const [formNisn, setFormNisn] = useState('');
   const [formRfidTag, setFormRfidTag] = useState('');
@@ -694,23 +769,30 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 </div>
 
                 {/* Card Action Buttons */}
-                <div className="pt-1 grid grid-cols-2 gap-1.5">
+                <div className="pt-1 grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => handleSelectProfile(s.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 px-2 rounded-lg transition-all shadow-xs flex items-center justify-center gap-1"
-                    title="Buka Profil & Portofolio Siswa"
+                    className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold py-2 px-1 rounded-lg transition-all shadow-xs flex items-center justify-center gap-1"
+                    title="Profil"
                   >
-                    <UserCheck className="w-3.5 h-3.5" /> Profil
+                    <UserCheck className="w-3.5 h-3.5 shrink-0" /> Profil
                   </button>
-
+                  <button
+                    onClick={() => handleOpenQuickReport(s)}
+                    className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold py-2 px-1 rounded-lg transition-all shadow-xs flex items-center justify-center gap-1"
+                    title="Lapor Cepat"
+                  >
+                    <Zap className="w-3.5 h-3.5 shrink-0" /> Lapor
+                  </button>
                   <button
                     onClick={() => {
                       setSelectedStudentForHistory(s);
                       setHistoryTab('violations');
                     }}
-                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-2 rounded-lg transition-all shadow-xs flex items-center justify-center gap-1"
+                    className="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold py-2 px-1 rounded-lg transition-all shadow-xs flex items-center justify-center gap-1"
+                    title="Riwayat"
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Riwayat
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Riwayat
                   </button>
                 </div>
               </div>
@@ -1282,6 +1364,158 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           </div>
         </div>
       )}
+
+      {/* Quick Report Modal */}
+      {quickReportStudent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setQuickReportStudent(null)} />
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg z-10 flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-br from-slate-900 to-slate-800 text-white flex justify-between items-start">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-extrabold text-lg tracking-tight">Quick Report</h3>
+                </div>
+                <p className="text-sm font-medium text-slate-300">
+                  {quickReportStudent.name} <span className="opacity-50">({quickReportStudent.class})</span>
+                </p>
+              </div>
+              <button 
+                onClick={() => setQuickReportStudent(null)}
+                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Type Selector */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50">
+              <div className="flex gap-2 p-1 bg-slate-200/50 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setQuickReportType('violation')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    quickReportType === 'violation' 
+                      ? 'bg-white text-red-600 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <AlertTriangle className="w-4 h-4 inline-block mr-1.5" />
+                  Pelanggaran
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickReportType('journal')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    quickReportType === 'journal' 
+                      ? 'bg-white text-amber-600 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <FileText className="w-4 h-4 inline-block mr-1.5" />
+                  Jurnal / Catatan
+                </button>
+              </div>
+            </div>
+
+            {/* Form Content */}
+            <div className="p-4 sm:p-5 overflow-y-auto max-h-[50vh]">
+              {quickReportType === 'violation' ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Tingkat (Level)</label>
+                    <select
+                      value={qrLevel}
+                      onChange={(e) => setQrLevel(e.target.value)}
+                      className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-red-500 focus:ring-red-500"
+                    >
+                      {[1, 2, 3, 4, 5].map(lvl => (
+                        <option key={lvl} value={lvl}>Tingkat {lvl}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Pelanggaran <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={qrViolation}
+                      onChange={(e) => setQrViolation(e.target.value)}
+                      className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-red-500 focus:ring-red-500 placeholder-slate-400"
+                      placeholder="Contoh: Terlambat sholat subuh..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Sanksi / Tindakan</label>
+                    <input
+                      type="text"
+                      value={qrSanction}
+                      onChange={(e) => setQrSanction(e.target.value)}
+                      className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-red-500 focus:ring-red-500 placeholder-slate-400"
+                      placeholder="Contoh: Teguran lisan..."
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Kategori / Subjek</label>
+                    <input
+                      type="text"
+                      value={qrSubject}
+                      onChange={(e) => setQrSubject(e.target.value)}
+                      className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-amber-500 focus:ring-amber-500 placeholder-slate-400"
+                      placeholder="Contoh: Bimbingan Karakter..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Capaian / Catatan <span className="text-red-500">*</span></label>
+                    <textarea
+                      value={qrAchievement}
+                      onChange={(e) => setQrAchievement(e.target.value)}
+                      rows={2}
+                      className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-amber-500 focus:ring-amber-500 placeholder-slate-400 resize-none"
+                      placeholder="Tuliskan catatan perkembangan anak..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Instruksi Khusus (Opsional)</label>
+                    <textarea
+                      value={qrTaskOrder}
+                      onChange={(e) => setQrTaskOrder(e.target.value)}
+                      rows={2}
+                      className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-amber-500 focus:ring-amber-500 placeholder-slate-400 resize-none"
+                      placeholder="Tuliskan instruksi pendampingan khusus jika ada..."
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setQuickReportStudent(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitQuickReport}
+                className={`px-5 py-2 text-xs font-bold text-white rounded-xl shadow-sm transition flex items-center gap-2 ${
+                  quickReportType === 'violation' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Simpan Entri
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       </>
       )}
     </div>

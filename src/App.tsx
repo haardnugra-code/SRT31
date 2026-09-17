@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Student,
   Violation,
@@ -1937,7 +1937,16 @@ export default function App() {
           />
 
           <div className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8 overflow-y-auto">
-            {activeTab === 'dashboard' && (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="w-full h-full"
+              >
+                {activeTab === 'dashboard' && (
               <DashboardTab
                 students={studentsWithViolationCounts}
                 violations={violations}
@@ -2052,6 +2061,8 @@ export default function App() {
                   setProfileStudentId(sid);
                   setActiveTab('profile');
                 }}
+                onSaveViolation={handleSaveViolation}
+                onSaveConnectingJournal={handleSaveConnectingJournal}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
               />
@@ -2251,6 +2262,8 @@ export default function App() {
                 onNavigateToSpecialChronology={() => setActiveTab('special-chronology')}
               />
             )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>

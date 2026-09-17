@@ -2,7 +2,7 @@ import { Student, Violation, Counseling, Leave, DailyJournal, ReportCardData, Ap
 import { consolidateDormList } from '../utils/dormHelper';
 import { DataIntegrityReport } from '../utils/integrityVerifier';
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyR_gKImLRcPDtXuv0ufiNBOO9LjuQ8kbGfylF6kagGjFv7WwpK7q7W0nLIBwmzN66E0g/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVMR4c0faY6buNSmJ4pfhnLsBia8RPths-EUPwD2i-29mXpKxTYFTtUDsSYnSiVgL_og/exec";
 
 export const DEFAULT_DISCIPLINE_LEVELS: DisciplineLevelConfig[] = [
   { level: 1, name: 'Tingkat 1 (Pelanggaran Ringan)', pointsDeduction: 5, defaultSanction: 'Teguran lisan & Piket asrama' },
@@ -192,7 +192,7 @@ export function loadAppConfig(): AppConfig {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxva2GX_N3') || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u') || parsed.googleScriptUrl.includes('AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF') || parsed.googleScriptUrl.includes('AKfycbwOscEltpKZ3aZP7h7-ZyzZHb-DUgZ5ZD9LxCrIMRQTscJ9cP0WKKWu5cFtOrISJXGuNA')) {
+      if (!parsed.googleScriptUrl || parsed.googleScriptUrl.includes('AKfycbxva2GX_N3') || parsed.googleScriptUrl.includes('AKfycbxY9ZA1VhD') || parsed.googleScriptUrl.includes('AKfycbyDHNJ7u3aARImefzTXq') || parsed.googleScriptUrl.includes('AKfycbwcXGzz') || parsed.googleScriptUrl.includes('AKfycbxJCN9pcsTSEq') || parsed.googleScriptUrl.includes('AKfycbzqPLLlbq7MvWG55u') || parsed.googleScriptUrl.includes('AKfycbyLuQMTdlNs5vk9-9mQIcuMx0QodSuzau2HoZI_ekbJLT6yh0qJpJYRPZEl6QFItbDF') || parsed.googleScriptUrl.includes('AKfycbwOscEltpKZ3aZP7h7-ZyzZHb-DUgZ5ZD9LxCrIMRQTscJ9cP0WKKWu5cFtOrISJXGuNA') || parsed.googleScriptUrl.includes('AKfycbyR_gKImLRcPDtXuv0ufiNBOO9LjuQ8kbGfylF6kagGjFv7WwpK7q7W0nLIBwmzN66E0g')) {
         parsed.googleScriptUrl = DEFAULT_SCRIPT_URL;
       }
       if (!parsed.waliAsuhList || parsed.waliAsuhList.some((w: string) => w.includes('Bp. Hermawan') || w.includes('Ibu Handayani'))) {

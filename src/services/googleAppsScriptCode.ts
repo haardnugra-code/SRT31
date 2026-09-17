@@ -85,6 +85,15 @@ function doPost(e) {
     var action = payload.action;
     var data = payload.data || {};
     
+    // BACKUP JSON SECARA OTOMATIS KE DRIVE UNTUK SELURUH FORM SUBMISSION
+    if (action !== 'ping' && action !== 'setupSheet' && action !== 'setupSheets') {
+      try {
+        saveJsonBackupToDrive(action, payload);
+      } catch (err) {
+        Logger.log('Gagal menyimpan JSON ke Drive: ' + err.toString());
+      }
+    }
+    
     if (action === 'ping') {
       return responseJSON({ status: 'success', message: 'Koneksi Web App Google Apps Script Terverifikasi!' });
     }
@@ -579,6 +588,10 @@ function setupSheet() {
       color: '#ec4899', // Pink Menstruasi
       headers: ['ID Rekam', 'NISN/ID', 'Nama Siswa', 'Kelas', 'Asrama', 'Mulai Tgl', 'Mulai Jam', 'Selesai Tgl', 'Selesai Jam', 'Durasi Haid', 'Tgl Bersuci', 'Jam Bersuci', 'Diverifikasi Oleh', 'Status Siklus', 'Keluhan / Gejala', 'Skala Nyeri', 'Tindakan UKS', 'Jml Pembalut', 'Siap Ibadah Tgl', 'Terakhir Diperbarui']
     },
+    'Assessments': {
+      color: '#f59e0b', // Amber Hasil Assessment
+      headers: ['ID Assessment', 'Tanggal', 'NISN/ID', 'Nama Siswa', 'Jenis Assessment', 'Skor', 'Kategori', 'Kelebihan', 'Kekurangan', 'Rekomendasi', 'Catatan Tambahan', 'URL Berkas (Drive)', 'Penguji / Assesor', 'Terakhir Diperbarui']
+    },
     'BackupLogs': {
       color: '#334155', // Log Backup
       headers: ['ID Log', 'Waktu Backup', 'Nama File Backup', 'Tipe Backup', 'URL File Google Drive', 'URL Folder Drive', 'Total Siswa', 'Total Rekam Data', 'Status']
@@ -637,7 +650,8 @@ var SUBFOLDERS = {
   STUDENT_PHOTOS: "📁 2_FOTO_PROFIL_SISWA",
   COUNSELING_DOCS: "📁 3_DOKUMEN_BERITA_ACARA_BK",
   VIOLATION_EVIDENCE: "📁 4_BUKTI_FOTO_PELANGGARAN",
-  MEDICAL_FILES: "📁 5_SURAT_MEDIS_UKS"
+  MEDICAL_FILES: "📁 5_SURAT_MEDIS_UKS",
+  JSON_BACKUPS: "📁 6_JSON_RAW_BACKUPS"
 };
 
 /**
@@ -787,6 +801,17 @@ function getOrCreateDriveSubfolder(parentFolder, subfolderName) {
   } else {
     return parentFolder.createFolder(subfolderName);
   }
+}
+
+function saveJsonBackupToDrive(action, payload) {
+  var rootFolder = getOrCreateDriveFolder(ROOT_FOLDER_NAME);
+  var targetSubfolderName = SUBFOLDERS.JSON_BACKUPS || '📁 6_JSON_RAW_BACKUPS';
+  var targetFolder = getOrCreateDriveSubfolder(rootFolder, targetSubfolderName);
+  var now = new Date();
+  var timestamp = Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT+7", "yyyyMMdd_HHmmss");
+  var fileName = action + "_" + timestamp + ".json";
+  var blob = Utilities.newBlob(JSON.stringify(payload, null, 2), 'application/json', fileName);
+  targetFolder.createFile(blob);
 }
 
 // ==============================================================================

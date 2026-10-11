@@ -34,6 +34,7 @@ import {
   ShieldAlert,
   Download,
   Upload,
+  CloudUpload,
   FileJson,
   ArrowUp,
   ArrowDown
@@ -314,6 +315,23 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     setTimeout(() => setIsCopied(false), 3000);
   };
 
+  const handleDownloadScriptCode = () => {
+    try {
+      const blob = new Blob([GOOGLE_APPS_SCRIPT_CODE], { type: 'text/javascript;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Code_Backend_Keasramaan_SR.gs';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      onShowToast('File Diunduh', 'File Code_Backend_Keasramaan_SR.gs berhasil diunduh ke komputer Anda.', 'success');
+    } catch (e) {
+      onShowToast('Gagal Mengunduh', 'Terjadi kesalahan saat mengunduh file script.', 'error');
+    }
+  };
+
   const handleRunSetupSheet = async () => {
     if (!googleScriptUrl.trim()) {
       onShowToast('Koneksi Gagal', 'Masukkan URL Google Apps Script Web App terlebih dahulu.', 'error');
@@ -325,9 +343,43 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         method: 'GET',
         mode: 'no-cors'
       });
-      onShowToast('Setup Sheet Terkirim', 'Perintah setupSheet berhasil dikirim. Tab & Header Google Sheet otomatis dibuat/disesuaikan.', 'success');
+      onShowToast('Setup Sheet Terkirim', 'Perintah setupSheet berhasil dikirim. 18 Tab & Header Google Sheet otomatis dibuat/disesuaikan.', 'success');
     } catch (e) {
       onShowToast('Gagal Setup Sheet', 'Gagal menghubungi Google Apps Script. Periksa koneksi atau URL script Anda.', 'error');
+    }
+  };
+
+  const handleSetupDriveFolders = async () => {
+    if (!googleScriptUrl.trim()) {
+      onShowToast('Koneksi Gagal', 'Masukkan URL Google Apps Script Web App terlebih dahulu.', 'error');
+      return;
+    }
+    onShowToast('Membuat Folder Drive...', 'Mengirim perintah pembuatan 8 folder Google Drive...', 'warning');
+    try {
+      await fetch(`${googleScriptUrl.trim()}?action=setupDriveFolders`, {
+        method: 'GET',
+        mode: 'no-cors'
+      });
+      onShowToast('Folder Drive Dibuat', 'Perintah pembuatan struktur 8 Folder Google Drive berhasil dikirim.', 'success');
+    } catch (e) {
+      onShowToast('Gagal Membuat Folder', 'Gagal menghubungi Google Apps Script. Periksa koneksi atau URL script Anda.', 'error');
+    }
+  };
+
+  const handleSetupDailyTrigger = async () => {
+    if (!googleScriptUrl.trim()) {
+      onShowToast('Koneksi Gagal', 'Masukkan URL Google Apps Script Web App terlebih dahulu.', 'error');
+      return;
+    }
+    onShowToast('Memasang Trigger Harian...', 'Mengaktifkan jadwal backup harian (23:00 WIB) di Google Apps Script...', 'warning');
+    try {
+      await fetch(`${googleScriptUrl.trim()}?action=setupTrigger`, {
+        method: 'GET',
+        mode: 'no-cors'
+      });
+      onShowToast('Trigger Aktif', 'Pemicu jadwal backup otomatis harian ke Google Drive berhasil diaktifkan.', 'success');
+    } catch (e) {
+      onShowToast('Gagal Memasang Trigger', 'Gagal menghubungi Google Apps Script. Periksa koneksi atau URL script Anda.', 'error');
     }
   };
 
@@ -344,7 +396,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         body: JSON.stringify({ action: 'backupDrive' }),
         mode: 'no-cors'
       });
-      onShowToast('Backup Drive Terkirim', 'Perintah backup Google Drive berhasil dikirim. File JSON tersimpan di folder BACKUP_SEKOLAH_RAKYAT_SR31 di Drive Anda.', 'success');
+      onShowToast('Backup Drive Terkirim', 'Perintah backup Google Drive berhasil dikirim. File JSON & salinan Spreadsheet tersimpan di folder cadangan Google Drive Anda.', 'success');
     } catch (e) {
       onShowToast('Gagal Backup Drive', 'Gagal menghubungi Google Apps Script. Periksa koneksi atau URL script Anda.', 'error');
     }
@@ -1866,49 +1918,62 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               {/* Installation steps */}
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-900 space-y-2.5">
                 <h4 className="font-bold flex items-center gap-1.5 text-xs text-amber-950">
-                  <Sparkles className="w-4 h-4 text-amber-600" /> Panduan Otomatisasi Google Sheet & Google Drive:
+                  <Sparkles className="w-4 h-4 text-amber-600" /> Panduan Setup Database Sheet & Google Drive Otomatis:
                 </h4>
                 <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-amber-900/90 pl-1 font-medium leading-relaxed">
-                  <li>Buka Google Drive Anda, lalu buat <strong>Google Spreadsheet baru</strong> (Beri nama misal: <em>DATABASE SISTEM SEKOLAH RAKYAT 31</em>).</li>
+                  <li>Buka Google Drive Anda (drive.google.com), lalu buat <strong>Google Spreadsheet baru</strong> (Beri nama misal: <em>DATABASE SISTEM KEASRAMAAN SEKOLAH RAKYAT</em>).</li>
                   <li>Klik menu <strong>Ekstensi (Extensions)</strong> → <strong>Apps Script</strong>.</li>
-                  <li>Hapus semua isi kode bawaan, lalu tempelkan (paste) seluruh kode script di bawah ini.</li>
+                  <li>Hapus semua isi kode bawaan, lalu tempelkan (paste) seluruh kode script di bawah ini (atau klik <strong>Unduh File Code.gs</strong>).</li>
                   <li>
-                    Pilih fungsi <strong>setupSheet</strong> di dropdown atas editor Apps Script lalu klik <strong>Jalankan (Run)</strong> untuk membuat seluruh 9 Tab/Sheet resmi & folder Google Drive secara otomatis.
+                    Pilih fungsi <strong>setupSheet</strong> di dropdown atas editor Apps Script lalu klik <strong>Jalankan (Run)</strong>. Berikan izin akun Google Anda. Seluruh <strong>18 Tab Database</strong> & <strong>8 Folder Google Drive</strong> serta <strong>Jadwal Backup Otomatis Harian (23:00 WIB)</strong> akan dibuat seketika!
                   </li>
                   <li>
                     Klik <strong>Terapkan (Deploy)</strong> → <strong>Penerapan baru (New deployment)</strong> → Pilih jenis <strong>Aplikasi Web (Web App)</strong>.
                   </li>
                   <li>
-                    Atur <em>Yang memiliki akses (Who has access)</em> ke: <strong className="text-red-700 underline font-extrabold">Siapa Saja (Anyone)</strong>.
+                    Atur <em>Jalankan sebagai (Execute as)</em> ke: <strong>Saya (Me)</strong>, dan <em>Yang memiliki akses (Who has access)</em> ke: <strong className="text-red-700 underline font-extrabold">Siapa Saja (Anyone)</strong>.
                   </li>
-                  <li>Salin URL Web App yang dihasilkan lalu tempelkan di kolom <em>Google Apps Script Web App URL</em> di Pengaturan Sistem ini.</li>
+                  <li>Salin URL Web App yang berakhiran <em>/exec</em> lalu tempelkan di kolom <em>Google Apps Script Web App URL</em> di bawah.</li>
                 </ol>
-                <div className="pt-2 border-t border-amber-200/70 text-[10px] text-amber-800 flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                  <span>File backup harian akan tersimpan otomatis ke folder <strong>BACKUP_SEKOLAH_RAKYAT_SR31</strong> di Google Drive Anda.</span>
+                <div className="pt-2 border-t border-amber-200/70 text-[10px] text-amber-800 flex items-center justify-between flex-wrap gap-2">
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <Database className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                    Folder Induk Drive: <strong>SISTEM_KEASRAMAAN_SEKOLAH_RAKYAT_31</strong> (Cadangan JSON & Salinan Spreadsheet otomatis tiap hari).
+                  </span>
+                  <span className="bg-amber-200/60 px-2 py-0.5 rounded text-[10px] font-bold text-amber-900">
+                    Auto-Sync Jam 23:00 WIB
+                  </span>
                 </div>
               </div>
 
-              {/* Code Box with Copy Button */}
+              {/* Code Box with Copy & Download Button */}
               <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 text-slate-100 font-mono text-[11px] shadow-lg">
-                <div className="bg-slate-950 px-4 py-2.5 border-b border-slate-800 flex items-center justify-between text-slate-400 text-[10px]">
+                <div className="bg-slate-950 px-4 py-2.5 border-b border-slate-800 flex items-center justify-between text-slate-400 text-[10px] flex-wrap gap-2">
                   <span className="flex items-center gap-1.5 font-bold text-slate-300">
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" /> Code.gs (Full CRUD Backend)
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" /> Code.gs (Full 18 Sheets CRUD & Drive Backend)
                   </span>
-                  <button
-                    onClick={handleCopyScriptCode}
-                    className="bg-red-600 hover:bg-red-500 text-white font-sans font-bold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95 shadow"
-                  >
-                    {isCopied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5" /> Berhasil Disalin!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" /> Salin Kode GS
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleDownloadScriptCode}
+                      className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-sans font-bold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95 shadow cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5 text-amber-400" /> Unduh Code.gs
+                    </button>
+                    <button
+                      onClick={handleCopyScriptCode}
+                      className="bg-red-600 hover:bg-red-500 text-white font-sans font-bold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95 shadow cursor-pointer"
+                    >
+                      {isCopied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" /> Berhasil Disalin!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" /> Salin Kode GS
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <pre className="p-4 max-h-80 overflow-y-auto whitespace-pre text-slate-200 select-all leading-relaxed">
                   {GOOGLE_APPS_SCRIPT_CODE}
@@ -1918,15 +1983,39 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
             {/* Modal Footer */}
             <div className="p-4 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
-              <button
-                onClick={handleRunSetupSheet}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow flex items-center gap-1.5 transition active:scale-95"
-              >
-                <Sparkles className="w-4 h-4" /> Uji Remote Setup Sheet Sekarang
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleRunSetupSheet}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                  title="Membuat seluruh 18 tab sheet dan header resmi"
+                >
+                  <Sparkles className="w-3.5 h-3.5" /> Inisialisasi 18 Sheet
+                </button>
+                <button
+                  onClick={handleSetupDriveFolders}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                  title="Membuat 8 subfolder Google Drive resmi"
+                >
+                  <CloudUpload className="w-3.5 h-3.5" /> Buat Folder Drive
+                </button>
+                <button
+                  onClick={handleTriggerDriveBackup}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                  title="Simpan backup JSON & Spreadsheet sekarang"
+                >
+                  <Database className="w-3.5 h-3.5" /> Backup ke Drive
+                </button>
+                <button
+                  onClick={handleSetupDailyTrigger}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                  title="Pasang jadwal otomatis jam 23:00 malam"
+                >
+                  <Clock className="w-3.5 h-3.5" /> Pasang Trigger 23:00
+                </button>
+              </div>
               <button
                 onClick={() => setIsScriptModalOpen(false)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl transition active:scale-95 ml-auto"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl transition active:scale-95 ml-auto cursor-pointer"
               >
                 Tutup Panduan
               </button>

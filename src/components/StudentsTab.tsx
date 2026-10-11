@@ -17,7 +17,8 @@ import {
   UserCheck,
   User,
   Users,
-  Zap
+  Zap,
+  CreditCard
 } from 'lucide-react';
 import {
   Student,
@@ -356,7 +357,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         shirtSize: shirtVal,
         pantsSize: pantsVal,
         gender: formGender,
-        parentPhone: formParentPhone.trim() || undefined
+        parentPhone: formParentPhone.trim() || undefined,
+        balance: existing?.balance !== undefined ? existing.balance : 0
       };
       onSaveStudent(updatedStudent, true);
       onShowToast('Berhasil', `Data ${name} berhasil diperbarui.`, 'success');
@@ -378,7 +380,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         pantsSize: pantsVal,
         gender: formGender,
         parentPhone: formParentPhone.trim() || undefined,
-        violationCount: 0
+        violationCount: 0,
+        balance: 0
       };
       onSaveStudent(newStudent, false);
       onShowToast('Registrasi Berhasil', `${name} berhasil terdaftar.`, 'success');
@@ -766,6 +769,28 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       {s.shirtSize ? `Baju ${s.shirtSize}` : 'Baju -'} • {s.pantsSize ? `Cln ${s.pantsSize}` : 'Cln -'}
                     </span>
                   </div>
+                </div>
+
+                {/* E-Money Balance & RFID Tag Badge */}
+                <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-2.5 flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-amber-600" />
+                    <div>
+                      <span className="text-slate-500 block text-[9px] font-bold uppercase tracking-wider">
+                        Saldo Kartu Siswa
+                      </span>
+                      <span className="font-black text-amber-700 text-xs">
+                        Rp {(s.balance ?? 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  </div>
+                  {s.rfidTag ? (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white text-emerald-700 border border-emerald-200" title="RFID UID">
+                      RFID: {s.rfidTag}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-slate-400">Kartu Fisik Aktif</span>
+                  )}
                 </div>
 
                 {/* Card Action Buttons */}

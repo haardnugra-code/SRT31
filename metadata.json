@@ -1,6 +1,6 @@
 {
   "name": "Sistem Keasramaan Sekolah Rakyat",
-  "description": "Sistem Manajemen Kedisiplinan Asrama, Generator Surat Resmi (Kronologi Kasus Berbasis Teori Psikologi Anak, Pengajuan Barang Logistik ke Wali Asrama, Izin Kerja Staf, Permohonan, Undangan Ortu), Live Monitor Terpadu, Penilaian Asrama (SOP), Aset Asrama, Jurnal Penghubung, Pelanggaran, Konseling BK, Izin Pulang, Rapor Keasramaan & Rekapitulasi Multipage PDF.",
+  "description": "Aplikasi Desktop & Sistem Manajemen Kedisiplinan Asrama, Kasir & Kartu Siswa E-Money (Alat Pembayaran Transaksi Asrama), Generator Surat Resmi, Live Monitor Terpadu, Penilaian Asrama (SOP), Aset Asrama, Jurnal Penghubung, Pelanggaran, Konseling BK, Izin Pulang, Asesmen Psikologi, Rapor Keasramaan & Rekapitulasi Multipage PDF.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

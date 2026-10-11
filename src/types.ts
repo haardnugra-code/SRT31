@@ -20,6 +20,7 @@ export interface Student {
   parentPhone?: string;
   address?: string;
   bloodType?: string;
+  balance?: number; // Saldo uang saku kartu siswa (e-money), default 0
   createdAt?: string;
   updatedAt?: string;
 }
@@ -723,5 +724,25 @@ export interface OfficialLetter {
   createdAt: string;
   updatedAt?: string;
 }
+
+export type TransactionType = 'PAYMENT' | 'TOPUP';
+
+export interface CardTransaction {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentClass?: string;
+  studentDorm?: string;
+  rfidTag?: string;
+  type: TransactionType;
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  merchant: string; // Kantin Asrama, Koperasi Siswa, Laundry Asrama, Toko Asrama, Fotokopi / ATK, Kasir Asrama
+  description: string; // Keterangan belanja atau top-up
+  cashierName?: string; // Nama kasir / wali asuh
+  timestamp: string; // Waktu transaksi ISO string
+}
+
 
 

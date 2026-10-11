@@ -18,7 +18,8 @@ import {
   DormInspection,
   DormAsset,
   PsychologicalAssessment,
-  AssessmentResult
+  AssessmentResult,
+  CardTransaction
 } from './types';
 import {
   loadAppConfig,
@@ -64,7 +65,9 @@ import {
   purgeAllDummyData,
   autoSaveJSONSnapshot,
   pushPendingSyncQueue,
-  clearPendingSyncQueue
+  clearPendingSyncQueue,
+  loadCardTransactions,
+  saveCardTransactions
 } from './services/storage';
 import { reconcileAndSanitizeShadowData, ShadowDataAuditStats } from './utils/dataSanitizer';
 import { verifyDataIntegrity, DataIntegrityReport, PreviousCountsSnapshot } from './utils/integrityVerifier';
@@ -97,6 +100,7 @@ import { LiveMonitorTab } from './components/LiveMonitorTab';
 import { PsychologicalAssessmentTab } from './components/PsychologicalAssessmentTab';
 import { StudentAssessmentPortalModal } from './components/StudentAssessmentPortalModal';
 import { LetterGeneratorTab } from './components/LetterGeneratorTab';
+import { CardPaymentTab } from './components/CardPaymentTab';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -166,6 +170,30 @@ export default function App() {
       const next = prev.filter((a) => a.id !== id);
       savePsychologicalAssessments(next);
       return next;
+    });
+  }, []);
+
+  const [cardTransactions, setCardTransactions] = useState<CardTransaction[]>(loadCardTransactions);
+
+  const handleAddCardTransaction = useCallback((transaction: CardTransaction) => {
+    setCardTransactions((prev) => {
+      const updated = [transaction, ...prev];
+      saveCardTransactions(updated);
+      autoSaveJSONSnapshot();
+      return updated;
+    });
+  }, []);
+
+  const handleResetAllBalances = useCallback(() => {
+    setStudents((prev) => {
+      const updated = prev.map((s) => ({
+        ...s,
+        balance: 0,
+        updatedAt: new Date().toISOString()
+      }));
+      saveStudents(updated);
+      autoSaveJSONSnapshot();
+      return updated;
     });
   }, []);
 
@@ -352,6 +380,7 @@ export default function App() {
     checklist: 'Jurnal & Ceklist Anak Asuh',
     menstruation: 'Tracking Menstruasi, Masa Bersuci & Ibadah Asrama Putri',
     students: 'Data Induk Murid Sekolah Rakyat',
+    'card-payment': 'Kasir & Pembayaran Kartu Siswa (Alat Transaksi Asrama)',
     violations: 'Pelanggaran',
     'special-chronology': 'Kronologi Kejadian & Handover Shift',
     counseling: 'Pendampingan BK & Konseling',
@@ -2014,6 +2043,7 @@ export default function App() {
             lastIntegrityReport={lastIntegrityReport}
             onOpenIntegrityReport={() => setIsIntegrityModalOpen(true)}
             onCheckConnection={checkConnection}
+            onShowToast={showToast}
           />
 
           <div className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8 overflow-y-auto">
@@ -2145,6 +2175,19 @@ export default function App() {
                 onSaveConnectingJournal={handleSaveConnectingJournal}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
+              />
+            )}
+
+            {activeTab === 'card-payment' && (
+              <CardPaymentTab
+                students={students}
+                onUpdateStudent={handleSaveStudent}
+                transactions={cardTransactions}
+                onAddTransaction={handleAddCardTransaction}
+                onResetAllBalances={handleResetAllBalances}
+                config={effectiveConfig}
+                userRole={userRole}
+                onShowToast={showToast}
               />
             )}
 

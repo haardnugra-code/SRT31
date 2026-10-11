@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   GraduationCap,
   LineChart,
@@ -21,8 +21,13 @@ import {
   PackageCheck,
   Activity,
   Brain,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Monitor,
+  Download,
+  CreditCard
 } from 'lucide-react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
+import { DesktopInstallModal } from './DesktopInstallModal';
 
 interface SidebarProps {
   activeTab: string;
@@ -42,12 +47,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   userRole = 'admin',
   sidebarOrder = [],
 }) => {
+  const { isInstalled } = usePWAInstall();
+  const [isDesktopModalOpen, setIsDesktopModalOpen] = useState(false);
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
     { id: 'letter-generator', label: 'Generator Surat Resmi', icon: FileSpreadsheet, isSpecial: true },
     { id: 'live-monitor', label: 'Live Monitor Terpadu', icon: Activity, isSpecial: true },
     { id: 'special-chronology', label: 'Kronologi & Handover Shift', icon: ClipboardList },
     { id: 'students', label: 'Data Siswa & Profil', icon: Users },
+    { id: 'card-payment', label: 'Kasir & Kartu Siswa', icon: CreditCard, isSpecial: true },
     { id: 'psychology', label: 'Asesmen Psikologi & Jiwa', icon: Brain, isSpecial: true },
     { id: 'connecting-journal', label: 'Jurnal Penghubung', icon: BookOpen },
     { id: 'dorm-inspection', label: 'Penilaian Asrama (SOP)', icon: Sparkles },
@@ -170,6 +178,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
+        {/* Desktop App Status & Guide Modal Opener */}
+        <div className="px-4 py-2 border-t border-slate-800/60">
+          <button
+            onClick={() => setIsDesktopModalOpen(true)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 text-xs transition active:scale-95 cursor-pointer"
+            title="Info Aplikasi Desktop & Pintasan Keyboard"
+          >
+            <div className="flex items-center gap-2">
+              <Monitor className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="font-semibold text-xs">
+                {isInstalled ? 'Mode Desktop Aktif' : 'Aplikasi Desktop'}
+              </span>
+            </div>
+            {isInstalled ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            ) : (
+              <Download className="w-3.5 h-3.5 text-slate-400" />
+            )}
+          </button>
+        </div>
+
         <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-center space-y-1">
           <div className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1 bg-slate-800 text-slate-300 border border-slate-700">
             Role: <span className={userRole === 'guru' ? 'text-amber-400' : 'text-red-400'}>{userRole === 'guru' ? 'Guru Pengampu' : 'Pengampu / Wali Asuh'}</span>
@@ -183,6 +212,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <p className="text-[9px] text-slate-600">TA 2025/2026</p>
         </div>
       </aside>
+
+      {/* Desktop Installation Guide & Shortcut Modal */}
+      <DesktopInstallModal
+        isOpen={isDesktopModalOpen}
+        onClose={() => setIsDesktopModalOpen(false)}
+      />
     </>
   );
 };

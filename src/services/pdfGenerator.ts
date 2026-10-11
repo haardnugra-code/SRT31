@@ -2279,31 +2279,31 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   }
 
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(4);
+  doc.setFontSize(3.8);
   doc.setTextColor(71, 85, 105); // slate-600
-  doc.text('QR ABSENSI', photoX + photoW / 2, photoY + photoH - 1.2, { align: 'center' });
+  doc.text('QR BAYAR & ABSEN', photoX + photoW / 2, photoY + photoH - 1.2, { align: 'center' });
 
   // 4. Student Details Section (Simple Layout without dividing lines)
   const detailsX = photoX + photoW + 3.5;
-  let lineY = offsetY + 17.5;
+  let lineY = offsetY + 16.5;
 
   // Student Name
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(255, 255, 255);
   const truncatedName = doc.splitTextToSize(student.name || 'Nama Siswa', w - detailsX - 3);
   doc.text(truncatedName[0], detailsX, lineY);
-  lineY += 4.5;
+  lineY += 4.0;
 
   // NISN / Student ID
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(5.5);
+  doc.setFontSize(5);
   doc.setTextColor(148, 163, 184); // slate-400
   doc.text('NISN / ID:', detailsX, lineY);
   doc.setFont('Helvetica', 'bold');
   doc.setTextColor(241, 245, 249); // slate-100
   doc.text(student.id || '-', detailsX + 11, lineY);
-  lineY += 4.0;
+  lineY += 3.6;
 
   // Class & Dorm
   doc.setFont('Helvetica', 'normal');
@@ -2312,7 +2312,7 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   doc.setFont('Helvetica', 'bold');
   doc.setTextColor(241, 245, 249); // slate-100
   doc.text(`${student.class} (${student.dorm || 'Asrama'})`, detailsX + 15, lineY);
-  lineY += 4.0;
+  lineY += 3.6;
 
   // Wali Asuh
   doc.setFont('Helvetica', 'normal');
@@ -2323,17 +2323,28 @@ async function drawStudentCardPage(doc: jsPDF, student: Student, config: AppConf
   const rawCaretaker = student.caretaker ? String(student.caretaker).trim() : '';
   const caretakerText = rawCaretaker ? (rawCaretaker.length > 22 ? rawCaretaker.substring(0, 22) + '...' : rawCaretaker) : '-';
   doc.text(caretakerText, detailsX + 11, lineY);
-  lineY += 4.5;
+  lineY += 4.0;
 
   // RFID Tag Pill (Simple Soft Fill without line border)
   doc.setFillColor(6, 78, 59); // emerald-900
-  doc.roundedRect(detailsX, lineY - 2.5, 38, 4.8, 1, 1, 'F');
+  doc.roundedRect(detailsX, lineY - 2.2, 43, 3.8, 0.8, 0.8, 'F');
 
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(5);
+  doc.setFontSize(4.5);
   doc.setTextColor(110, 231, 183); // emerald-300
-  const rfidDisplay = student.rfidTag ? `RFID UID: ${student.rfidTag}` : 'SMART RFID CARD ENABLED';
-  doc.text(rfidDisplay, detailsX + 2, lineY + 0.8);
+  const rfidDisplay = student.rfidTag ? `RFID: ${student.rfidTag}` : 'SMART RFID ENABLED';
+  doc.text(rfidDisplay, detailsX + 1.8, lineY + 0.5);
+  lineY += 4.2;
+
+  // E-Money / Payment Card Balance Badge
+  doc.setFillColor(30, 41, 59); // slate-800
+  doc.roundedRect(detailsX, lineY - 2.2, 43, 3.8, 0.8, 0.8, 'F');
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(4.3);
+  doc.setTextColor(251, 191, 36); // amber-400
+  const curBal = typeof student.balance === 'number' ? student.balance : 0;
+  doc.text(`KARTU BAYAR | SALDO: Rp ${curBal.toLocaleString('id-ID')}`, detailsX + 1.8, lineY + 0.5);
 
   // 5. Simple Footer (No border lines)
   const footerY = offsetY + h - 5.5;

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AppConfig } from '../types';
 import { DataIntegrityReport } from '../utils/integrityVerifier';
+import { DesktopHeaderBar } from './DesktopHeaderBar';
 
 interface HeaderProps {
   activeTabTitle: string;
@@ -36,6 +37,7 @@ interface HeaderProps {
   lastIntegrityReport?: DataIntegrityReport | null;
   onOpenIntegrityReport?: () => void;
   onCheckConnection?: () => void;
+  onShowToast?: (title: string, message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -54,7 +56,8 @@ export const Header: React.FC<HeaderProps> = ({
   lastSyncTime = null,
   lastIntegrityReport = null,
   onOpenIntegrityReport,
-  onCheckConnection
+  onCheckConnection,
+  onShowToast
 }) => {
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
   const [isPrintMenuOpen, setIsPrintMenuOpen] = useState(false);
@@ -365,6 +368,9 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         )}
+        {/* Desktop Application Controller & Quick Tools */}
+        <DesktopHeaderBar onShowToast={onShowToast} />
+
         <button
           onClick={onSync}
           disabled={isSyncing}

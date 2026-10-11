@@ -19,7 +19,7 @@ import {
   DormAsset,
   PsychologicalAssessment,
   AssessmentResult,
-  CardTransaction
+  OfficialLetter
 } from './types';
 import {
   loadAppConfig,
@@ -38,6 +38,7 @@ import {
   saveConnectingJournals,
   loadMeetingMinutes,
   saveMeetingMinutes,
+  saveOfficialLetters,
   loadReports,
   saveReports,
   loadMedicalRecords,
@@ -65,9 +66,7 @@ import {
   purgeAllDummyData,
   autoSaveJSONSnapshot,
   pushPendingSyncQueue,
-  clearPendingSyncQueue,
-  loadCardTransactions,
-  saveCardTransactions
+  clearPendingSyncQueue
 } from './services/storage';
 import { reconcileAndSanitizeShadowData, ShadowDataAuditStats } from './utils/dataSanitizer';
 import { verifyDataIntegrity, DataIntegrityReport, PreviousCountsSnapshot } from './utils/integrityVerifier';
@@ -100,7 +99,6 @@ import { LiveMonitorTab } from './components/LiveMonitorTab';
 import { PsychologicalAssessmentTab } from './components/PsychologicalAssessmentTab';
 import { StudentAssessmentPortalModal } from './components/StudentAssessmentPortalModal';
 import { LetterGeneratorTab } from './components/LetterGeneratorTab';
-import { CardPaymentTab } from './components/CardPaymentTab';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -163,7 +161,17 @@ export default function App() {
       savePsychologicalAssessments(next);
       return next;
     });
-  }, []);
+
+    if (config.googleScriptUrl) {
+      fetch(config.googleScriptUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'addAssessment',
+          data: assessment
+        })
+      }).catch((err) => console.error(err));
+    }
+  }, [config.googleScriptUrl]);
 
   const handleDeletePsychologicalAssessment = useCallback((id: string) => {
     setPsychologicalAssessments((prev) => {
@@ -171,31 +179,17 @@ export default function App() {
       savePsychologicalAssessments(next);
       return next;
     });
-  }, []);
 
-  const [cardTransactions, setCardTransactions] = useState<CardTransaction[]>(loadCardTransactions);
-
-  const handleAddCardTransaction = useCallback((transaction: CardTransaction) => {
-    setCardTransactions((prev) => {
-      const updated = [transaction, ...prev];
-      saveCardTransactions(updated);
-      autoSaveJSONSnapshot();
-      return updated;
-    });
-  }, []);
-
-  const handleResetAllBalances = useCallback(() => {
-    setStudents((prev) => {
-      const updated = prev.map((s) => ({
-        ...s,
-        balance: 0,
-        updatedAt: new Date().toISOString()
-      }));
-      saveStudents(updated);
-      autoSaveJSONSnapshot();
-      return updated;
-    });
-  }, []);
+    if (config.googleScriptUrl) {
+      fetch(config.googleScriptUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'deleteAssessment',
+          data: { id }
+        })
+      }).catch((err) => console.error(err));
+    }
+  }, [config.googleScriptUrl]);
 
 
   const [announcement, setAnnouncement] = useState<string>(() => {
@@ -380,7 +374,6 @@ export default function App() {
     checklist: 'Jurnal & Ceklist Anak Asuh',
     menstruation: 'Tracking Menstruasi, Masa Bersuci & Ibadah Asrama Putri',
     students: 'Data Induk Murid Sekolah Rakyat',
-    'card-payment': 'Kasir & Pembayaran Kartu Siswa (Alat Transaksi Asrama)',
     violations: 'Pelanggaran',
     'special-chronology': 'Kronologi Kejadian & Handover Shift',
     counseling: 'Pendampingan BK & Konseling',
@@ -388,6 +381,7 @@ export default function App() {
     medical: 'Klinik UKS & Rekam Medis Keasramaan',
     'report-card': 'Rapor & Rekapitulasi',
     recap: 'Rapor & Rekapitulasi',
+    'kemensos-report': 'Format Pencatatan & Pelaporan Kemensos RI & Sekolah Rakyat',
     settings: 'Pengaturan & Kustomisasi Sistem'
   };
 
@@ -975,15 +969,28 @@ export default function App() {
         saveSpecialChronologyCases(updated);
         return updated;
       });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: isEdit ? 'updateSpecialCase' : 'addSpecialCase',
+            data: item
+          })
+        })
+        .then(() => recordDataPushSuccess('specialCases'))
+        .catch((err) => console.error(err));
+      }
+
       showToast(
         isEdit ? 'Catatan Shift Diperbarui' : 'Catatan Kejadian & Handover Disimpan',
         isEdit
-          ? 'Catatan kejadian dan serah terima tugas berhasil diperbarui.'
-          : 'Catatan kejadian shift dan instruksi serah terima tugas (handover) berhasil didokumentasikan.',
+          ? 'Catatan kejadian dan serah terima tugas berhasil diperbarui di aplikasi & Google Sheets.'
+          : 'Catatan kejadian shift dan instruksi serah terima tugas (handover) berhasil didokumentasikan ke Google Sheets.',
         'success'
       );
     },
-    [showToast]
+    [showToast, config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteSpecialCase = useCallback(
@@ -993,9 +1000,22 @@ export default function App() {
         saveSpecialChronologyCases(updated);
         return updated;
       });
-      showToast('Kasus Dihapus', 'Berkas kronologi kasus berhasil dihapus dari sistem.', 'info');
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteSpecialCase',
+            data: { id }
+          })
+        })
+        .then(() => recordDataPushSuccess('specialCases'))
+        .catch((err) => console.error(err));
+      }
+
+      showToast('Kasus Dihapus', 'Berkas kronologi kasus berhasil dihapus dari sistem & Google Sheets.', 'info');
     },
-    [showToast]
+    [showToast, config.googleScriptUrl, recordDataPushSuccess]
   );
 
   // Dorm Inspection CRUD
@@ -1007,8 +1027,20 @@ export default function App() {
         saveDormInspections(updated);
         return updated;
       });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'addDormInspection',
+            data: inspection
+          })
+        })
+        .then(() => recordDataPushSuccess('dormInspections'))
+        .catch((err) => console.error(err));
+      }
     },
-    []
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteDormInspection = useCallback(
@@ -1018,8 +1050,20 @@ export default function App() {
         saveDormInspections(updated);
         return updated;
       });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteDormInspection',
+            data: { id }
+          })
+        })
+        .then(() => recordDataPushSuccess('dormInspections'))
+        .catch((err) => console.error(err));
+      }
     },
-    []
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   // Dorm Asset CRUD
@@ -1033,8 +1077,20 @@ export default function App() {
         saveDormAssets(updated);
         return updated;
       });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'addDormAsset',
+            data: asset
+          })
+        })
+        .then(() => recordDataPushSuccess('dormAssets'))
+        .catch((err) => console.error(err));
+      }
     },
-    []
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteDormAsset = useCallback(
@@ -1044,8 +1100,20 @@ export default function App() {
         saveDormAssets(updated);
         return updated;
       });
+
+      if (config.googleScriptUrl) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'deleteDormAsset',
+            data: { id }
+          })
+        })
+        .then(() => recordDataPushSuccess('dormAssets'))
+        .catch((err) => console.error(err));
+      }
     },
-    []
+    [config.googleScriptUrl, recordDataPushSuccess]
   );
 
   const handleDeleteConnectingJournal = useCallback(
@@ -1174,10 +1242,19 @@ export default function App() {
       savePrayerAttendance(records);
       showToast('Presensi Disimpan', 'Data presensi berhasil diperbarui.', 'success');
       
-      // Disable sending all records to GAS on every local state update to prevent crashing/network flood
-      // We will only do this during Cloud Sync or batch sync, not every time a single scan happens.
+      if (config.googleScriptUrl && records.length > 0) {
+        fetch(config.googleScriptUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'saveAttendance',
+            data: records.slice(0, 50)
+          })
+        })
+        .then(() => recordDataPushSuccess('prayerAttendance'))
+        .catch((err) => console.error(err));
+      }
     },
-    [showToast]
+    [showToast, config.googleScriptUrl, recordDataPushSuccess]
   );
 
 
@@ -1460,42 +1537,50 @@ export default function App() {
       }
 
       try {
-                // Call the new GAS API
+                // Call the GAS API to get all data from Google Sheet
         const response = await fetch(`${config.googleScriptUrl}?action=getAllData`);
         const resJson = await response.json();
 
-        
         if (resJson.status === 'success' || !resJson.status) {
-          // Map new GAS keys to App.tsx expected keys
-          const mappedRes = {
-             status: 'success',
-             students: resJson.Students || [],
-             violations: resJson.Violations || [],
-             counseling: resJson.Counseling || [],
-             leaves: resJson.Leaves || [],
-             medicalRecords: resJson.Medical || [],
-             journals: resJson.DailyJournals || [],
-             prayerAttendance: resJson.PrayerAttendance || [],
-             menstruationRecords: resJson.Menstruation || [],
-             psychologicalAssessments: resJson.PsychologicalAssessments || [],
-             assessmentResults: resJson.assessments || [],
-             specialCases: resJson.SpecialChronology || [],
-             dormInspections: resJson.DormInspection || [],
-             dormAssets: resJson.DormAsset || [],
-             announcements: []
-          };
-          
-          // Re-assign to resJson so the rest of the function works exactly as before
-          Object.assign(resJson, mappedRes);
+          // Extract all 18 tables supporting both lowercase (standard GAS) and uppercase/variant keys
+          const rawStudents: any[] = resJson.students || resJson.Students || [];
+          const rawViolations: any[] = resJson.violations || resJson.Violations || [];
+          const rawCounseling: any[] = resJson.counseling || resJson.Counseling || [];
+          const rawLeaves: any[] = resJson.leaves || resJson.Leaves || [];
+          const rawJournals: any[] = resJson.dailyJournals || resJson.DailyJournals || resJson.journals || [];
+          const rawMedical: any[] = resJson.medicalRecords || resJson.MedicalRecords || resJson.Medical || [];
+          const rawReports: any[] = resJson.reportCards || resJson.ReportCards || [];
+          const rawAnnouncements: any[] = resJson.announcements || resJson.Announcements || [];
+          const rawPrayer: any[] = resJson.prayerAttendance || resJson.PrayerAttendance || [];
+          const rawConnecting: any[] = resJson.connectingJournals || resJson.ConnectingJournals || [];
+          const rawMenstruation: any[] = resJson.menstruationRecords || resJson.MenstruationRecords || resJson.Menstruation || [];
+          const rawAssessments: any[] = resJson.assessments || resJson.Assessments || [];
+          const rawSpecialCases: any[] = resJson.specialCases || resJson.SpecialCases || resJson.SpecialChronology || [];
+          const rawDormInspections: any[] = resJson.dormInspections || resJson.DormInspections || resJson.DormInspection || [];
+          const rawDormAssets: any[] = resJson.dormAssets || resJson.DormAssets || resJson.DormAsset || [];
+          const rawMeetingMinutes: any[] = resJson.meetingMinutes || resJson.MeetingMinutes || [];
+          const rawOfficialLetters: any[] = resJson.officialLetters || resJson.OfficialLetters || [];
 
-          if (resJson.announcements && Array.isArray(resJson.announcements) && resJson.announcements.length > 0) {
-            const activeMsgs = resJson.announcements
+          // Helper safe JSON parser
+          const tryParse = (str: any, fallback: any = {}) => {
+            if (!str) return fallback;
+            if (typeof str === 'object') return str;
+            try {
+              return JSON.parse(str);
+            } catch (e) {
+              return fallback;
+            }
+          };
+
+          // 1. Announcements
+          if (Array.isArray(rawAnnouncements) && rawAnnouncements.length > 0) {
+            const activeMsgs = rawAnnouncements
               .filter((a: any) => {
                 const statusVal = a['Status Aktif'] ?? a['Status'] ?? a['status'] ?? a['aktif'] ?? a['Aktif'] ?? 'Aktif';
                 const s = String(statusVal).trim().toLowerCase();
                 return s === 'aktif' || s === 'true' || s === '1' || s === 'ya' || s === 'yes' || s === '';
               })
-              .map((a: any) => a['Pesan'] ?? a['pesan'] ?? a['Pengumuman'] ?? a['pengumuman'] ?? a['Isi'] ?? '')
+              .map((a: any) => a['Isi Pesan Running Text'] ?? a['Pesan'] ?? a['pesan'] ?? a['Pengumuman'] ?? a['pengumuman'] ?? a['Isi'] ?? '')
               .filter((msg: string) => String(msg).trim() !== '');
 
             if (activeMsgs.length > 0) {
@@ -1505,19 +1590,17 @@ export default function App() {
             }
           }
 
+          // 2. Students: When Sheet has students, adopt them fully as Master Student list!
           let activeStudentsList: Student[] = students;
-
-          if (resJson.students && resJson.students.length > 0) {
-            const fetchedStudents: Student[] = resJson.students
+          if (Array.isArray(rawStudents) && rawStudents.length > 0) {
+            const fetchedStudents: Student[] = rawStudents
               .map((s: any, idx: number) => {
-                // Flexible field accessor across column variations
                 const getVal = (...keys: string[]) => {
                   for (const k of keys) {
                     if (s[k] !== undefined && s[k] !== null && String(s[k]).trim() !== '') {
                       return String(s[k]).trim();
                     }
                   }
-                  // Case-insensitive match on keys
                   const lowerKeys = keys.map((k) => k.toLowerCase());
                   for (const actualKey of Object.keys(s)) {
                     if (lowerKeys.includes(actualKey.toLowerCase()) && s[actualKey] !== undefined && s[actualKey] !== null && String(s[actualKey]).trim() !== '') {
@@ -1530,7 +1613,6 @@ export default function App() {
                 let id = getVal('NISN/ID', 'NISN', 'ID', 'id', 'NIS', 'NIPD', 'No. Induk', 'ID Siswa', 'No', 'NO', 'No.');
                 let name = getVal('Nama Lengkap', 'Nama Siswa', 'Nama Murid', 'Nama', 'name', 'Siswa', 'NAMA', 'NAMA LENGKAP', 'Siswa/i');
 
-                // Auto-fallback for missing ID or Name
                 if (!id && name) {
                   id = `SR-${String(idx + 1).padStart(4, '0')}`;
                 }
@@ -1550,7 +1632,7 @@ export default function App() {
                 return {
                   id,
                   name,
-                  class: getVal('Jenjang', 'Jenjang Pendidikan', 'Kelas', 'class', 'Tingkat') || 'SD',
+                  class: (getVal('Jenjang', 'Jenjang Pendidikan', 'Kelas', 'class', 'Tingkat') || 'SD') as any,
                   dorm: getVal('Asrama', 'Lokasi Asrama', 'Gedung Asrama', 'dorm', 'Gedung') || (config.dormList[0] || 'Asrama Terpadu'),
                   caretaker: getVal('Wali Asuh', 'Wali', 'caretaker', 'Pendamping') || '',
                   rfidTag: rfid || undefined,
@@ -1565,155 +1647,401 @@ export default function App() {
               })
               .filter((st: Student) => Boolean(st.id || st.name));
 
-            activeStudentsList = fetchedStudents;
+            if (fetchedStudents.length > 0) {
+              activeStudentsList = fetchedStudents;
+            }
           }
 
+          // 3. Violations: When Sheet has violations, adopt them
           let fetchedViolations: Violation[] = violations;
-          if (resJson.violations) {
-            fetchedViolations = resJson.violations.map((v: any) => ({
-              id: v['ID Kasus'] || v['id'] || '',
-              date: v['Tanggal'] || v['date'] || '',
-              studentId: v['NISN/ID'] || v['studentId'] || '',
-              studentName: v['Nama Siswa'] || v['studentName'] || '',
-              level: parseInt(v['Tingkat'] || v['level']) || 1,
-              violation: v['Bentuk Pelanggaran'] || v['violation'] || '',
-              sanction: v['Rekomendasi Sanksi'] || v['sanction'] || v['Sanksi'] || '',
-              note: v['Catatan Kronologi'] || v['note'] || '',
-              reporter: v['Pelapor'] || v['reporter'] || '',
-              photo: v['URL Berkas Bukti'] || v['photo'] || ''
-            }));
+          if (Array.isArray(rawViolations)) {
+            if (rawViolations.length > 0) {
+              fetchedViolations = rawViolations.map((v: any) => ({
+                id: v['ID Kasus'] || v['id'] || v['ID'] || '',
+                date: v['Tanggal'] || v['date'] || '',
+                studentId: v['NISN/ID'] || v['studentId'] || '',
+                studentName: v['Nama Siswa'] || v['studentName'] || '',
+                level: parseInt(v['Tingkat Poin'] || v['Tingkat'] || v['level']) || 1,
+                violation: v['Bentuk Pelanggaran'] || v['violation'] || '',
+                sanction: v['Rekomendasi Sanksi'] || v['sanction'] || v['Sanksi'] || '',
+                note: v['Catatan Kronologi'] || v['Catatan'] || v['note'] || '',
+                reporter: v['Pelapor'] || v['reporter'] || '',
+                photo: v['URL Bukti Foto (Drive)'] || v['URL Berkas Bukti'] || v['photo'] || ''
+              }));
+            } else if (rawStudents.length > 0) {
+              fetchedViolations = [];
+            }
           }
 
+          // 4. Counseling: When Sheet has counseling, adopt them
           let fetchedCounseling: Counseling[] = counseling;
-          if (resJson.counseling) {
-            fetchedCounseling = resJson.counseling.map((c: any) => ({
-              id: c['ID Sesi'] || c['id'] || '',
-              date: c['Tanggal'] || c['date'] || '',
-              studentId: c['NISN/ID'] || c['studentId'] || '',
-              studentName: c['Nama Siswa'] || c['studentName'] || '',
-              caseDescription: c['Permasalahan'] || c['caseDescription'] || '',
-              notes: c['Hasil Sesi Konseling'] || c['Hasil Sesi'] || c['notes'] || '',
-              followUp: c['Rencana Tindak Lanjut'] || c['followUp'] || '',
-              counselor: c['Konselor/Wali'] || c['Konselor'] || c['counselor'] || '',
-              status: c['Status'] || c['status'] || 'Open'
-            }));
+          if (Array.isArray(rawCounseling)) {
+            if (rawCounseling.length > 0) {
+              fetchedCounseling = rawCounseling.map((c: any) => ({
+                id: c['ID Sesi'] || c['id'] || '',
+                date: c['Tanggal'] || c['date'] || '',
+                studentId: c['NISN/ID'] || c['studentId'] || '',
+                studentName: c['Nama Siswa'] || c['studentName'] || '',
+                caseDescription: c['Topik Permasalahan'] || c['Permasalahan'] || c['caseDescription'] || '',
+                notes: c['Dinamika Sesi & Hasil Pembinaan'] || c['Hasil Sesi Konseling'] || c['Hasil Sesi'] || c['notes'] || '',
+                followUp: c['Rencana Tindak Lanjut (RTL)'] || c['Rencana Tindak Lanjut'] || c['followUp'] || '',
+                counselor: c['Guru BK / Konselor'] || c['Konselor/Wali'] || c['Konselor'] || c['counselor'] || '',
+                status: c['Status Kasus'] || c['Status'] || c['status'] || 'Open'
+              }));
+            } else if (rawStudents.length > 0) {
+              fetchedCounseling = [];
+            }
           }
 
+          // 5. Leaves: When Sheet has leaves, adopt them
           let fetchedLeaves: Leave[] = leaves;
-          if (resJson.leaves) {
-            fetchedLeaves = resJson.leaves.map((l: any) => ({
-              id: l['ID Surat'] || l['id'] || '',
-              studentId: l['NISN/ID'] || l['studentId'] || '',
-              studentName: l['Nama Siswa'] || l['studentName'] || '',
-              type: l['Kategori Izin'] || l['Jenis Kepulangan'] || l['type'] || 'Reguler',
-              reason: l['Alasan'] || l['reason'] || '',
-              leaveDate: l['Tgl Berangkat'] || l['leaveDate'] || '',
-              returnDate: l['Tgl Kembali'] || l['returnDate'] || '',
-              caretaker: l['Wali Asuh Pendamping'] || l['Wali Asuh'] || l['caretaker'] || '',
-              status: l['Status'] || l['status'] || 'Active'
-            }));
+          if (Array.isArray(rawLeaves)) {
+            if (rawLeaves.length > 0) {
+              fetchedLeaves = rawLeaves.map((l: any) => ({
+                id: l['ID Surat'] || l['id'] || '',
+                studentId: l['NISN/ID'] || l['studentId'] || '',
+                studentName: l['Nama Siswa'] || l['studentName'] || '',
+                type: l['Kategori Izin'] || l['Jenis Kepulangan'] || l['type'] || 'Reguler',
+                reason: l['Alasan Kepulangan'] || l['Alasan'] || l['reason'] || '',
+                leaveDate: l['Tgl Berangkat'] || l['leaveDate'] || '',
+                returnDate: l['Tgl Kembali'] || l['returnDate'] || '',
+                caretaker: l['Wali Asuh Pendamping'] || l['Wali Asuh'] || l['caretaker'] || '',
+                status: l['Status Izin'] || l['Status'] || l['status'] || 'Active'
+              }));
+            } else if (rawStudents.length > 0) {
+              fetchedLeaves = [];
+            }
           }
 
+          // 6. DailyJournals
           let fetchedJournals: DailyJournal[] = dailyJournals;
-          if (resJson.dailyJournals) {
-            fetchedJournals = resJson.dailyJournals.map((j: any) => ({
-              id: j['ID Jurnal'] || j['id'] || '',
-              date: j['Tanggal'] || j['date'] || '',
-              studentId: j['NISN/ID'] || j['studentId'] || '',
-              studentName: j['Nama Siswa'] || j['studentName'] || '',
-              timeRange: j['Rentang Waktu'] || j['timeRange'] || '',
-              tasksCompleted: parseInt(j['Total Selesai'] || j['tasksCompleted']) || 0,
-              totalTasks: parseInt(j['Total Tugas'] || j['totalTasks']) || 0,
-              notes: j['Catatan Wali'] || j['notes'] || '',
-              tasksSnapshot: j['Detail Snapshot (JSON)'] ? JSON.parse(j['Detail Snapshot (JSON)']) : []
-            }));
+          if (Array.isArray(rawJournals)) {
+            if (rawJournals.length > 0) {
+              fetchedJournals = rawJournals.map((j: any) => ({
+                id: j['ID Jurnal'] || j['id'] || '',
+                date: j['Tanggal'] || j['date'] || '',
+                studentId: j['NISN/ID'] || j['studentId'] || '',
+                studentName: j['Nama Siswa'] || j['studentName'] || '',
+                timeRange: j['Rentang Waktu'] || j['timeRange'] || '',
+                tasksCompleted: parseInt(j['Total Tugas Selesai'] || j['Total Selesai'] || j['tasksCompleted']) || 0,
+                totalTasks: parseInt(j['Total Target Tugas'] || j['Total Tugas'] || j['totalTasks']) || 0,
+                notes: j['Catatan Wali Asuh'] || j['Catatan Wali'] || j['notes'] || '',
+                tasksSnapshot: tryParse(j['Detail Snapshot JSON'] || j['Detail Snapshot (JSON)'], [])
+              }));
+            } else if (rawStudents.length > 0) {
+              fetchedJournals = [];
+            }
           }
 
+          // 7. MedicalRecords
+          let fetchedMedical: MedicalRecord[] = medicalRecords;
+          if (Array.isArray(rawMedical)) {
+            if (rawMedical.length > 0) {
+              fetchedMedical = rawMedical.map((m: any) => ({
+                id: m['ID Rekam Medis'] || m['id'] || '',
+                studentId: m['NISN/ID'] || m['studentId'] || '',
+                studentName: m['Nama Siswa'] || m['studentName'] || '',
+                date: m['Tanggal Rawat'] || m['Tanggal'] || m['date'] || '',
+                time: m['Waktu/Jam'] || m['time'] || '',
+                location: m['Lokasi Penanganan'] || m['Lokasi'] || m['location'] || '',
+                symptoms: m['Gejala & Keluhan'] || m['Gejala'] || m['symptoms'] || '',
+                diagnosis: m['Diagnosa Medis'] || m['Diagnosa'] || m['diagnosis'] || '',
+                treatment: m['Tindakan & Terapi Obat'] || m['Tindakan/Obat'] || m['treatment'] || '',
+                restDays: parseInt(m['Lama Istirahat (Hari)'] || m['restDays']) || 0,
+                isSickLeave: m['Surat Izin Sakit?'] === 'Ya' || m['Izin Istirahat?'] === 'Ya' || m['isSickLeave'] === true,
+                status: m['Status Pemulihan'] || m['status'] || '',
+                officer: m['Petugas Medis'] || m['officer'] || '',
+                temperature: m['Suhu Tubuh (°C)'] || m['Suhu Tubuh'] || m['temperature'] || '',
+                vitalSigns: m['Tanda Vital / Tekanan Darah'] || m['Tanda Vital/Tekanan Darah'] || m['vitalSigns'] || '',
+                notes: m['Catatan Medis Tambahan'] || m['Catatan Medis'] || m['notes'] || ''
+              }));
+            } else if (rawStudents.length > 0) {
+              fetchedMedical = [];
+            }
+          }
+
+          // 8. Prayer Attendance
+          let fetchedPrayer: PrayerAttendance[] = prayerAttendance;
+          if (Array.isArray(rawPrayer)) {
+            if (rawPrayer.length > 0) {
+              fetchedPrayer = rawPrayer.map((p: any) => ({
+                id: p['ID Presensi'] || p['id'] || `PRAY-${Date.now()}-${Math.random()}`,
+                date: p['Tanggal'] || p['date'] || '',
+                studentId: p['NISN/ID'] || p['studentId'] || '',
+                studentName: p['Nama Siswa'] || p['studentName'] || '',
+                class: (p['Kelas'] || p['class'] || 'SD') as any,
+                dorm: p['Gedung Asrama'] || p['dorm'] || 'Asrama Terpadu',
+                prayerTime: (p['Sesi Presensi'] || p['prayerTime'] || p['session'] || 'Subuh') as any,
+                timestamp: p['Waktu Scan'] || p['timestamp'] || p['time'] || '05:00:00',
+                status: (p['Status Kehadiran'] || p['Status'] || p['status'] || 'Hadir') as any,
+                note: p['Catatan'] || p['note'] || '',
+                scannedBy: p['Petugas / Scan By'] || p['scannedBy'] || p['officer'] || ''
+              }));
+            } else if (rawStudents.length > 0) {
+              fetchedPrayer = [];
+            }
+          }
+
+          // 9. Report Cards
           let fetchedReports: Record<string, ReportCardData> = reports;
-          if (resJson.reportCards) {
+          if (Array.isArray(rawReports) && rawReports.length > 0) {
             fetchedReports = {};
-            resJson.reportCards.forEach((r: any) => {
+            rawReports.forEach((r: any) => {
               const studentId = r['NISN/ID'] || r['studentId'] || '';
               if (studentId) {
                 fetchedReports[studentId] = {
-                  grades: JSON.parse(r['Predikat Nilai (JSON)'] || '{}'),
-                  descriptions: JSON.parse(r['Deskripsi Nilai (JSON)'] || '{}'),
-                  specialNote: r['Catatan Perkembangan'] || r['specialNote'] || '',
-                  customCaretaker: r['Wali Asuh TTD'] || r['customCaretaker'] || '',
+                  grades: tryParse(r['Predikat Nilai JSON'] || r['Predikat Nilai (JSON)'], {}),
+                  descriptions: tryParse(r['Deskripsi Nilai JSON'] || r['Deskripsi Nilai (JSON)'], {}),
+                  specialNote: r['Catatan Perkembangan Khusus'] || r['Catatan Perkembangan'] || r['specialNote'] || '',
+                  customCaretaker: r['Wali Asuh Penandatangan'] || r['Wali Asuh TTD'] || r['customCaretaker'] || '',
                   customCaretakerNip: r['NIP Wali Asuh'] || r['customCaretakerNip'] || ''
                 };
               }
             });
           }
 
-          let fetchedMedical: MedicalRecord[] = medicalRecords;
-          if (resJson.medicalRecords) {
-            fetchedMedical = resJson.medicalRecords.map((m: any) => ({
-              id: m['ID Rekam Medis'] || m['id'] || '',
-              studentId: m['NISN/ID'] || m['studentId'] || '',
-              studentName: m['Nama Siswa'] || m['studentName'] || '',
-              date: m['Tanggal'] || m['date'] || '',
-              time: m['Waktu/Jam'] || m['time'] || '',
-              location: m['Lokasi'] || m['location'] || '',
-              symptoms: m['Gejala'] || m['symptoms'] || '',
-              diagnosis: m['Diagnosa'] || m['diagnosis'] || '',
-              treatment: m['Tindakan/Obat'] || m['treatment'] || '',
-              restDays: parseInt(m['Lama Istirahat (Hari)'] || m['restDays']) || 0,
-              isSickLeave: m['Izin Istirahat?'] === 'Ya' || m['isSickLeave'] === true,
-              status: m['Status Pemulihan'] || m['status'] || '',
-              officer: m['Petugas Medis'] || m['officer'] || '',
-              temperature: m['Suhu Tubuh'] || m['temperature'] || '',
-              vitalSigns: m['Tanda Vital/Tekanan Darah'] || m['vitalSigns'] || '',
-              notes: m['Catatan Medis'] || m['notes'] || ''
-            }));
-          }
-
+          // 10. Connecting Journals
           let fetchedConnecting: ConnectingJournal[] = connectingJournals;
-          if (resJson.connectingJournals) {
-            fetchedConnecting = resJson.connectingJournals.map((cj: any) => ({
-              id: cj['ID Jurnal'] || cj['id'] || '',
-              date: cj['Tanggal'] || cj['date'] || '',
-              targetClass: cj['Target/Kelas'] || cj['targetClass'] || 'Klasikal (SD)',
-              studentId: cj['NISN/ID'] || cj['studentId'] || undefined,
-              studentName: cj['Nama Siswa'] || cj['studentName'] || undefined,
-              subject: cj['Mata Pelajaran'] || cj['subject'] || '',
-              teacherName: cj['Nama Guru'] || cj['teacherName'] || '',
-              teacherNip: cj['NIP Guru'] || cj['teacherNip'] || '-',
-              learningAchievement: cj['Capaian Materi'] || cj['learningAchievement'] || '',
-              taskOrder: cj['Task Order'] || cj['taskOrder'] || '',
-              deadline: cj['Batas Waktu'] || cj['deadline'] || '',
-              followUp: cj['Tindak Lanjut'] || cj['followUp'] || '',
-              caretakerName: cj['Wali Asuh'] || cj['caretakerName'] || '',
-              caretakerNip: cj['NIP Wali Asuh'] || cj['caretakerNip'] || '',
-              responseDate: cj['Tgl Respon'] || cj['responseDate'] || '',
-              status: cj['Status'] || cj['status'] || 'Menunggu Respon',
-              notes: cj['Catatan Tambahan'] || cj['notes'] || ''
-            }));
-            setConnectingJournals(fetchedConnecting);
-            saveConnectingJournals(fetchedConnecting);
-          }
-          if (resJson.meetingMinutes) {
-            setMeetingMinutes(resJson.meetingMinutes);
-            saveMeetingMinutes(resJson.meetingMinutes);
+          if (Array.isArray(rawConnecting)) {
+            if (rawConnecting.length > 0) {
+              fetchedConnecting = rawConnecting.map((cj: any) => ({
+                id: cj['ID Jurnal'] || cj['id'] || '',
+                date: cj['Tanggal'] || cj['date'] || '',
+                targetClass: cj['Target Kelas'] || cj['Target/Kelas'] || cj['targetClass'] || 'Klasikal (SD)',
+                studentId: cj['NISN/ID Siswa'] || cj['NISN/ID'] || cj['studentId'] || undefined,
+                studentName: cj['Nama Siswa'] || cj['studentName'] || undefined,
+                subject: cj['Mata Pelajaran'] || cj['subject'] || '',
+                teacherName: cj['Nama Guru'] || cj['teacherName'] || '',
+                teacherNip: cj['NIP Guru'] || cj['teacherNip'] || '-',
+                learningAchievement: cj['Capaian Materi'] || cj['learningAchievement'] || '',
+                taskOrder: cj['Task Order Asrama'] || cj['Task Order'] || cj['taskOrder'] || '',
+                deadline: cj['Batas Waktu'] || cj['deadline'] || '',
+                followUp: cj['Tindak Lanjut'] || cj['followUp'] || '',
+                caretakerName: cj['Wali Asuh'] || cj['caretakerName'] || '',
+                caretakerNip: cj['NIP Wali Asuh'] || cj['caretakerNip'] || '',
+                responseDate: cj['Tanggal Respon'] || cj['Tgl Respon'] || cj['responseDate'] || '',
+                status: cj['Status'] || cj['status'] || 'Menunggu Respon',
+                notes: cj['Catatan Tambahan'] || cj['notes'] || ''
+              }));
+              setConnectingJournals(fetchedConnecting);
+              saveConnectingJournals(fetchedConnecting);
+            } else if (rawStudents.length > 0) {
+              fetchedConnecting = [];
+              setConnectingJournals([]);
+              saveConnectingJournals([]);
+            }
           }
 
+          // 11. Menstruation Records
+          if (Array.isArray(rawMenstruation)) {
+            if (rawMenstruation.length > 0) {
+              const fetchedMenstruation: MenstruationRecord[] = rawMenstruation.map((mr: any) => ({
+                id: mr['ID Rekam'] || mr['id'] || '',
+                studentId: mr['NISN/ID'] || mr['studentId'] || '',
+                studentName: mr['Nama Siswa'] || mr['studentName'] || '',
+                class: mr['Kelas'] || mr['class'] || '',
+                dorm: mr['Asrama'] || mr['dorm'] || '',
+                startDate: mr['Mulai Tgl'] || mr['startDate'] || '',
+                startTime: mr['Mulai Jam'] || mr['startTime'] || '',
+                endDate: mr['Selesai Tgl'] || mr['endDate'] || '',
+                endTime: mr['Selesai Jam'] || mr['endTime'] || '',
+                durationText: mr['Durasi Haid'] || mr['durationText'] || '',
+                purificationDate: mr['Tgl Bersuci'] || mr['purificationDate'] || '',
+                purificationTime: mr['Jam Bersuci'] || mr['purificationTime'] || '',
+                purificationVerifiedBy: mr['Diverifikasi Oleh'] || mr['purificationVerifiedBy'] || '',
+                status: mr['Status Siklus'] || mr['status'] || '',
+                symptoms: mr['Keluhan / Gejala'] ? String(mr['Keluhan / Gejala']).split(',').map((s: string) => s.trim()) : [],
+                painLevel: mr['Skala Nyeri'] || mr['painLevel'] || '',
+                medicineOrCare: mr['Tindakan UKS'] || mr['medicineOrCare'] || '',
+                sanitaryPadsProvided: mr['Jml Pembalut'] || mr['sanitaryPadsProvided'] || '',
+                readyForWorshipDate: mr['Siap Ibadah Tgl'] || mr['readyForWorshipDate'] || ''
+              }));
+              setMenstruationRecords(fetchedMenstruation);
+              saveMenstruationRecords(fetchedMenstruation);
+            } else if (rawStudents.length > 0) {
+              setMenstruationRecords([]);
+              saveMenstruationRecords([]);
+            }
+          }
+
+          // 12. Meeting Minutes
+          if (Array.isArray(rawMeetingMinutes)) {
+            if (rawMeetingMinutes.length > 0) {
+              const fetchedMinutes: MeetingMinute[] = rawMeetingMinutes.map((mm: any) => ({
+                id: mm['ID Notula'] || mm['id'] || `MIN-${Date.now()}-${Math.random()}`,
+                agenda: mm['Agenda Rapat'] || mm['agenda'] || '',
+                date: mm['Tanggal'] || mm['date'] || '',
+                time: mm['Waktu/Jam'] || mm['time'] || '',
+                location: mm['Lokasi'] || mm['location'] || '',
+                leader: mm['Pimpinan Rapat'] || mm['leader'] || '',
+                attendees: tryParse(mm['Daftar Hadir JSON'], mm.attendees || []),
+                decisions: mm['Catatan & Keputusan Rapat'] || mm['decisions'] || mm['notes'] || '',
+                status: (mm.status || 'published') as any,
+                createdAt: typeof mm.createdAt === 'number' ? mm.createdAt : Date.now(),
+                updatedAt: typeof mm.updatedAt === 'number' ? mm.updatedAt : Date.now()
+              }));
+              setMeetingMinutes(fetchedMinutes);
+              saveMeetingMinutes(fetchedMinutes);
+            } else if (rawStudents.length > 0) {
+              setMeetingMinutes([]);
+              saveMeetingMinutes([]);
+            }
+          }
+
+          // 13. Assessment Results
           let fetchedAssessmentResults: AssessmentResult[] = assessmentResults;
-          if (resJson.assessmentResults) {
-            fetchedAssessmentResults = resJson.assessmentResults.map((a: any) => ({
-              id: a['ID Assessment'] || a.id || '',
-              date: a['Tanggal'] || a.date || '',
-              studentId: a['NISN/ID'] || a.studentId || '',
-              studentName: a['Nama Siswa'] || a.studentName || '',
-              assessmentType: a['Jenis Assessment'] || a.assessmentType || '',
-              score: a['Skor'] || a.score || '',
-              category: a['Kategori'] || a.category || '',
-              strengths: a['Kelebihan'] || a.strengths || '',
-              weaknesses: a['Kekurangan'] || a.weaknesses || '',
-              recommendations: a['Rekomendasi'] || a.recommendations || '',
-              additionalNotes: a['Catatan Tambahan'] || a.additionalNotes || '',
-              fileUrl: a['URL Berkas (Drive)'] || a.fileUrl || '',
-              assessor: a['Penguji / Assesor'] || a.assessor || ''
+          if (Array.isArray(rawAssessments)) {
+            if (rawAssessments.length > 0) {
+              fetchedAssessmentResults = rawAssessments.map((a: any) => ({
+                id: a['ID Assessment'] || a.id || '',
+                date: a['Tanggal'] || a.date || '',
+                studentId: a['NISN/ID'] || a.studentId || '',
+                studentName: a['Nama Siswa'] || a.studentName || '',
+                assessmentType: a['Jenis Assessment'] || a.assessmentType || '',
+                score: a['Skor'] || a.score || '',
+                category: a['Kategori'] || a.category || '',
+                strengths: a['Kelebihan'] || a.strengths || '',
+                weaknesses: a['Kekurangan'] || a.weaknesses || '',
+                recommendations: a['Rekomendasi'] || a.recommendations || '',
+                additionalNotes: a['Catatan Tambahan'] || a.additionalNotes || '',
+                fileUrl: a['URL Berkas (Drive)'] || a.fileUrl || '',
+                assessor: a['Penguji / Assesor'] || a.assessor || ''
+              }));
+              setAssessmentResults(fetchedAssessmentResults);
+              saveAssessmentResults(fetchedAssessmentResults);
+            } else if (rawStudents.length > 0) {
+              setAssessmentResults([]);
+              saveAssessmentResults([]);
+            }
+          }
+
+          // 14. Special Cases (Kronologi Kasus Khusus & Handover Shift)
+          if (Array.isArray(rawSpecialCases)) {
+            if (rawSpecialCases.length > 0) {
+              const fetchedSpecial: SpecialChronologyCase[] = rawSpecialCases.map((sc: any) => ({
+                id: sc['ID Kasus'] || sc['id'] || '',
+                incidentDate: sc['Tanggal Kejadian'] || sc['incidentDate'] || '',
+                incidentTime: sc['Waktu'] || sc['incidentTime'] || '',
+                caseTitle: sc['Judul Kasus / Pokok Bahasan'] || sc['caseTitle'] || '',
+                studentId: sc['NISN/ID'] || sc['studentId'] || '',
+                studentName: sc['Nama Siswa'] || sc['studentName'] || '',
+                class: sc['Kelas'] || sc['class'] || '',
+                dorm: sc['Asrama'] || sc['dorm'] || '',
+                shiftType: sc['Tipe Shift'] || sc['shiftType'] || '',
+                caseCategory: sc['Kategori Kasus'] || sc['caseCategory'] || '',
+                caseSeverity: sc['Tingkat Urgensi'] || sc['caseSeverity'] || 'Biasa',
+                status: sc['Status'] || sc['status'] || 'Perlu Tindak Lanjut',
+                primaryInvestigator: sc['Petugas Penyerah Shift'] || sc['primaryInvestigator'] || '',
+                incomingOfficer: sc['Petugas Penerima Shift'] || sc['incomingOfficer'] || '',
+                initialAssessmentSummary: sc['Ringkasan / Uraian Kejadian'] || sc['initialAssessmentSummary'] || '',
+                handoverNotes: sc['Handover Notes'] || sc['handoverNotes'] || '',
+                shifts: tryParse(sc['Log Riwayat Shift JSON'], [])
+              }));
+              setSpecialCases(fetchedSpecial);
+              saveSpecialChronologyCases(fetchedSpecial);
+            } else if (rawStudents.length > 0) {
+              setSpecialCases([]);
+              saveSpecialChronologyCases([]);
+            }
+          }
+
+          // 15. Dorm Inspections (Penilaian SOP Kebersihan Asrama)
+          if (Array.isArray(rawDormInspections)) {
+            if (rawDormInspections.length > 0) {
+              const fetchedInspections: DormInspection[] = rawDormInspections.map((di: any) => ({
+                id: di['ID Inspeksi'] || di['id'] || '',
+                date: di['Tanggal'] || di['date'] || '',
+                time: di['Waktu/Jam'] || di['time'] || '',
+                dorm: di['Gedung Asrama'] || di['dorm'] || '',
+                roomNumber: di['Nomor Kamar'] || di['roomNumber'] || '',
+                inspectionType: di['Jenis Inspeksi'] || di['inspectionType'] || 'Inspeksi Rutin Pagi',
+                inspectorName: di['Nama Penilai'] || di['inspectorName'] || '',
+                inspectorRole: di['Jabatan Penilai'] || di['inspectorRole'] || '',
+                inspectorNip: di['NIP Penilai'] || di['inspectorNip'] || '',
+                roomLeaderName: di['Ketua Kamar'] || di['roomLeaderName'] || '',
+                studentNamesInRoom: di['Daftar Nama Siswa di Kamar'] || di['studentNamesInRoom'] || '',
+                totalScore: Number(di['Total Skor (0-100)'] || di['totalScore']) || 0,
+                grade: di['Predikat Huruf'] || di['grade'] || 'B',
+                gradeLabel: di['Label Predikat'] || di['gradeLabel'] || 'Baik',
+                findings: di['Catatan Temuan Khusus'] || di['findings'] || '',
+                actionRequired: di['Tindak Lanjut SOP'] || di['actionRequired'] || 'Pertahankan Kerapian (SOP Terpenuhi)',
+                actionDeadline: di['Batas Waktu'] || di['actionDeadline'] || '',
+                actionNotes: di['Catatan Tambahan'] || di['actionNotes'] || '',
+                items: tryParse(di['Detail Skor Kriteria JSON'], []),
+                createdAt: di['Terakhir Diperbarui'] || di['createdAt'] || new Date().toISOString()
+              }));
+              setDormInspections(fetchedInspections);
+              saveDormInspections(fetchedInspections);
+            } else if (rawStudents.length > 0) {
+              setDormInspections([]);
+              saveDormInspections([]);
+            }
+          }
+
+          // 16. Dorm Assets (Inventaris Aset BMN Asrama)
+          if (Array.isArray(rawDormAssets)) {
+            if (rawDormAssets.length > 0) {
+              const fetchedAssets: DormAsset[] = rawDormAssets.map((da: any) => ({
+                id: da['ID Aset'] || da['id'] || '',
+                assetCode: da['Kode Aset BMN'] || da['assetCode'] || '',
+                dormName: da['Nama Gedung Asrama'] || da['dormName'] || '',
+                buildingBlock: da['Blok / Lantai'] || da['buildingBlock'] || '',
+                roomNumber: da['Nomor Kamar / Ruang'] || da['roomNumber'] || '',
+                itemName: da['Nama Barang / Sarana'] || da['itemName'] || '',
+                brandSpec: da['Merk / Spesifikasi Teknis'] || da['brandSpec'] || '',
+                category: da['Kategori Aset'] || da['category'] || 'Tempat Tidur & Kasur',
+                procurementYear: da['Tahun Perolehan'] || da['procurementYear'] || '',
+                fundingSource: da['Sumber Anggaran'] || da['fundingSource'] || '',
+                totalQuantity: Number(da['Total Unit'] || da['totalQuantity']) || 1,
+                goodQuantity: Number(da['Unit Kondisi Baik'] || da['goodQuantity']) || 0,
+                damagedQuantity: Number(da['Unit Rusak'] || da['damagedQuantity']) || 0,
+                damageSeverity: da['Tingkat Kerusakan'] || da['damageSeverity'] || 'tidak_ada',
+                damageStatus: da['Rincian Kerusakan'] || da['damageStatus'] || '',
+                gdriveLink: da['Link Foto / Kartu (Drive)'] || da['gdriveLink'] || '',
+                actionPlan: da['Rencana Tindak Lanjut'] || da['actionPlan'] || 'Siap Digunakan (Layak)',
+                inspectorName: da['Petugas Pendata'] || da['inspectorName'] || '',
+                inspectionDate: da['Tanggal Pendataan'] || da['inspectionDate'] || '',
+                notes: da['Catatan Tambahan'] || da['notes'] || '',
+                createdAt: da['Terakhir Diperbarui'] || da['createdAt'] || new Date().toISOString()
+              }));
+              setDormAssets(fetchedAssets);
+              saveDormAssets(fetchedAssets);
+            } else if (rawStudents.length > 0) {
+              setDormAssets([]);
+              saveDormAssets([]);
+            }
+          }
+
+          // 17. Official Letters
+          if (Array.isArray(rawOfficialLetters) && rawOfficialLetters.length > 0) {
+            const fetchedLetters: OfficialLetter[] = rawOfficialLetters.map((ol: any) => ({
+              id: ol['ID Surat'] || ol['id'] || '',
+              letterType: ol['Jenis Surat'] || ol['letterType'] || 'surat_kronologi_kasus',
+              letterNumber: ol['Nomor Surat'] || ol['letterNumber'] || '',
+              letterTitle: ol['Perihal / Judul Surat'] || ol['letterTitle'] || '',
+              subject: ol['Perihal / Judul Surat'] || ol['letterTitle'] || ol['subject'] || 'Surat Keasramaan',
+              letterDate: ol['Tanggal Surat'] || ol['letterDate'] || '',
+              letterCity: ol['Kota Surat'] || ol['letterCity'] || 'Palembang',
+              recipientName: ol['Nama Penerima'] || ol['recipientName'] || '',
+              recipientTitle: ol['Jabatan Penerima'] || ol['recipientTitle'] || '',
+              recipientOffice: ol['Instansi Penerima'] || ol['recipientOffice'] || '',
+              authorName: ol['Nama Pembuat Surat'] || ol['authorName'] || '',
+              authorRole: ol['Jabatan Pembuat'] || ol['authorRole'] || '',
+              authorNipOrId: ol['NIP/ID Pembuat'] || ol['authorNipOrId'] || '',
+              authorPhone: ol['authorPhone'] || '',
+              studentId: ol['NISN/ID Siswa'] || ol['studentId'] || '',
+              studentName: ol['Nama Siswa'] || ol['studentName'] || '',
+              problemSummary: ol['Ringkasan Permasalahan'] || ol['problemSummary'] || '',
+              psychologyTheoryName: ol['Teori Psikologi Anak'] || ol['psychologyTheoryName'] || '',
+              psychologyTheoryAnalysis: ol['Analisis Teori Psikologis'] || ol['psychologyTheoryAnalysis'] || '',
+              actionsTaken: ol['Tindakan Dilakukan'] || ol['actionsTaken'] || '',
+              followUpActions: ol['Rencana Tindak Lanjut'] || ol['followUpActions'] || '',
+              supplyPurpose: ol['Tujuan Pengajuan Barang'] || ol['supplyPurpose'] || '',
+              supplyTotalEstimatedCost: Number(ol['Total Estimasi Biaya (Rp)'] || ol['supplyTotalEstimatedCost']) || 0,
+              fileUrl: ol['URL File PDF (Drive)'] || ol['fileUrl'] || '',
+              createdAt: ol['Terakhir Diperbarui'] || ol['createdAt'] || new Date().toISOString()
             }));
+            saveOfficialLetters(fetchedLetters);
           }
 
           // AUTOMATIC SHADOW DATA PREVENTION RECONCILIATION
@@ -1724,7 +2052,7 @@ export default function App() {
             fetchedLeaves,
             fetchedJournals,
             fetchedMedical,
-            prayerAttendanceRef.current || loadPrayerAttendance(),
+            fetchedPrayer,
             fetchedReports,
             true // purge orphan and invalid records so non-existent data is eliminated
           );
@@ -1749,8 +2077,6 @@ export default function App() {
 
           setPrayerAttendance(reconciled.prayerAttendance);
           savePrayerAttendance(reconciled.prayerAttendance);
-          setAssessmentResults(fetchedAssessmentResults);
-          saveAssessmentResults(fetchedAssessmentResults);
 
           setReports(reconciled.reports);
           saveReports(reconciled.reports);
@@ -1774,7 +2100,7 @@ export default function App() {
               prayerAttendance: reconciled.prayerAttendance,
               reports: reconciled.reports,
               connectingJournals: fetchedConnecting,
-              meetingMinutes: resJson.meetingMinutes || meetingMinutes,
+              meetingMinutes: rawMeetingMinutes.length > 0 ? meetingMinutes : [],
               menstruationRecords,
               dormInspections,
               dormAssets,
@@ -1785,48 +2111,28 @@ export default function App() {
             config
           );
 
-                    saveLastIntegrityReport(integrityReport);
+          saveLastIntegrityReport(integrityReport);
           setLastIntegrityReport(integrityReport);
 
-          // NEW: Push all local data to cloud (Bulk Sync)
-          try {
-            await fetch(config.googleScriptUrl, {
-              method: 'POST',
-              body: JSON.stringify({
-                action: 'sync',
-                data: {
-                  Students: reconciled.students,
-                  Violations: reconciled.violations,
-                  Counseling: reconciled.counseling,
-                  Leaves: reconciled.leaves,
-                  Medical: reconciled.medicalRecords,
-                  DailyJournals: reconciled.dailyJournals,
-                  PrayerAttendance: reconciled.prayerAttendance,
-                  PsychologicalAssessments: psychologicalAssessments,
-                  Assessments: assessmentResults,
-                  DormInspection: dormInspections,
-                  DormAsset: dormAssets,
-                  SpecialChronology: specialCases,
-                  Menstruation: menstruationRecords
-                }
-              })
-            });
-          } catch(e) {
-            console.error('Failed to bulk push to cloud', e);
+          // Tampilkan notifikasi ringkasan data yang berhasil disinkronkan langsung dari Google Sheet
+          if (rawStudents.length > 0) {
+            showToast(
+              'Sinkronisasi Sheet Selesai',
+              `Database berhasil disesuaikan dengan Google Sheet! (${reconciled.students.length} siswa, ${reconciled.violations.length} pelanggaran, ${reconciled.counseling.length} konseling terverifikasi).`,
+              'success',
+              {
+                label: 'Lihat Rincian Audit',
+                onClick: () => setIsIntegrityModalOpen(true)
+              },
+              6000
+            );
+          } else {
+            showToast(
+              'Sinkronisasi Cloud Terhubung',
+              'Terhubung ke Google Sheet. Belum ada entri siswa baru di Sheet, data lokal tetap dipertahankan.',
+              'info'
+            );
           }
-
-
-          // Tampilkan notifikasi ringkasan data yang berhasil diperbarui & status integritas
-          showToast(
-            integrityReport.summaryToastTitle,
-            integrityReport.summaryToastMessage,
-            integrityReport.overallStatus === 'warning' ? 'warning' : 'success',
-            {
-              label: 'Lihat Rincian Audit',
-              onClick: () => setIsIntegrityModalOpen(true)
-            },
-            7000
-          );
           
           // Auto trigger backup after successful sync
           backupDatabaseToDrive();
@@ -2125,17 +2431,19 @@ export default function App() {
                 students={studentsWithViolationCounts}
                 prayerAttendance={prayerAttendance}
                 onSavePrayerAttendance={handleSavePrayerAttendance}
+                onSaveStudent={handleSaveStudent}
                 dailyJournals={dailyJournals}
                 onSaveJournal={handleSaveJournal}
                 onDeleteJournal={handleDeleteJournal}
                 leaves={leaves}
                 medicalRecords={medicalRecords}
                 config={effectiveConfig}
-                initialSubTab={activeTab === 'checklist' ? 'checklist' : 'scanner'}
+                initialSubTab={activeTab === 'checklist' ? 'checklist' : 'face'}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
                 onSync={pushPrayerAttendanceToCloud}
                 isSyncing={isSyncing}
+                onNavigateTab={setActiveTab}
               />
             )}
 
@@ -2175,19 +2483,6 @@ export default function App() {
                 onSaveConnectingJournal={handleSaveConnectingJournal}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
-              />
-            )}
-
-            {activeTab === 'card-payment' && (
-              <CardPaymentTab
-                students={students}
-                onUpdateStudent={handleSaveStudent}
-                transactions={cardTransactions}
-                onAddTransaction={handleAddCardTransaction}
-                onResetAllBalances={handleResetAllBalances}
-                config={effectiveConfig}
-                userRole={userRole}
-                onShowToast={showToast}
               />
             )}
 
@@ -2287,20 +2582,22 @@ export default function App() {
               />
             )}
 
-            {(activeTab === 'report-card' || activeTab === 'recap') && userRole === 'admin' && (
+            {(activeTab === 'report-card' || activeTab === 'recap' || activeTab === 'kemensos-report') && userRole === 'admin' && (
               <ReportAndRecapTab
                 students={studentsWithViolationCounts}
                 violations={violations}
                 counseling={counseling}
                 leaves={leaves}
                 medicalRecords={medicalRecords}
+                prayerAttendance={prayerAttendance}
                 reports={reports}
                 config={effectiveConfig}
-                initialSubTab={activeTab === 'recap' ? 'recap' : 'report-card'}
+                initialSubTab={activeTab === 'kemensos-report' ? 'kemensos-report' : activeTab === 'recap' ? 'recap' : 'report-card'}
                 onSaveReport={handleSaveReport}
                 onSaveConfig={handleSaveConfig}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
+                onNavigateTab={setActiveTab}
               />
             )}
 
@@ -2320,6 +2617,7 @@ export default function App() {
             {activeTab === 'letter-generator' && (
               <LetterGeneratorTab
                 students={studentsWithViolationCounts}
+                prayerAttendance={prayerAttendance}
                 config={effectiveConfig}
                 onShowToast={showToast}
                 initialStudentId={profileStudentId}
@@ -2353,39 +2651,6 @@ export default function App() {
                 lastSyncTime={lastSyncTime}
                 onSync={() => syncCloudData(true)}
                 isSyncing={isSyncing}
-                onReconcileShadowData={handleReconcileShadowData}
-                onPurgeDummyDataAndReload={handlePurgeDummyAndReload}
-                lastIntegrityReport={lastIntegrityReport}
-                onOpenIntegrityReport={() => setIsIntegrityModalOpen(true)}
-                studentsCount={students.length}
-                recordsCount={violations.length + counseling.length + leaves.length + dailyJournals.length + medicalRecords.length + prayerAttendance.length}
-                announcement={announcement}
-                onUpdateAnnouncement={handleUpdateAnnouncement}
-                students={students}
-                onSaveStudent={handleSaveStudent}
-                onDeleteStudent={handleDeleteStudent}
-                violations={violations}
-                onSaveViolation={handleSaveViolation}
-                onDeleteViolation={handleDeleteViolation}
-                counseling={counseling}
-                onSaveCounseling={handleSaveCounseling}
-                onDeleteCounseling={handleDeleteCounseling}
-                leaves={leaves}
-                onSaveLeave={handleSaveLeave}
-                onDeleteLeave={handleDeleteLeave}
-                dailyJournals={dailyJournals}
-                onSaveJournal={handleSaveJournal}
-                onDeleteJournal={handleDeleteJournal}
-                medicalRecords={medicalRecords}
-                onSaveMedicalRecord={handleSaveMedicalRecord}
-                onDeleteMedicalRecord={handleDeleteMedicalRecord}
-                reports={reports}
-                onSaveReport={handleSaveReport}
-                onDeleteReport={handleDeleteReport}
-                prayerAttendance={prayerAttendance}
-                onSavePrayerAttendance={handleSavePrayerAttendance}
-                onDeletePrayerAttendance={handleDeletePrayerAttendanceItem}
-                onNavigateToSpecialChronology={() => setActiveTab('special-chronology')}
               />
             )}
               </motion.div>

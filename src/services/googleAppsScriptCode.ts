@@ -347,21 +347,27 @@ function doPost(e) {
 
     // 9. PRESENSI SHOLAT, MAKAN & KEGIATAN (PRAYER ATTENDANCE)
     if (action === 'addPrayerAttendance' || action === 'updatePrayerAttendance' || action === 'saveAttendance') {
-      saveOrUpdateRow('PrayerAttendance', 0, data.id, [
-        data.id,
-        data.date,
-        data.studentId,
-        data.studentName,
-        data.class || '',
-        data.dorm || '',
-        data.session || data.prayerTime || '',
-        data.status || 'Hadir',
-        data.time || data.timestamp || '',
-        data.officer || data.scannedBy || '',
-        data.notes || data.note || '',
-        data.rfidTag || '',
-        new Date().toISOString()
-      ]);
+      var attendances = Array.isArray(data) ? data : [data];
+      for (var p = 0; p < attendances.length; p++) {
+        var att = attendances[p];
+        if (att && att.id) {
+          saveOrUpdateRow('PrayerAttendance', 0, att.id, [
+            att.id,
+            att.date || '',
+            att.studentId || '',
+            att.studentName || '',
+            att.class || '',
+            att.dorm || '',
+            att.session || att.prayerTime || '',
+            att.status || 'Hadir',
+            att.time || att.timestamp || '',
+            att.officer || att.scannedBy || '',
+            att.notes || att.note || (att.method ? ('[' + att.method + (att.confidence ? ' ' + att.confidence + '%' : '') + ']') : ''),
+            att.rfidTag || (att.method === 'Face' ? 'FACE-ID' : '') || '',
+            new Date().toISOString()
+          ]);
+        }
+      }
       return responseJSON({ status: 'success', message: 'Presensi tersimpan ke Sheet PrayerAttendance.' });
     }
     if (action === 'deletePrayerAttendance') {

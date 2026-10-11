@@ -17,9 +17,11 @@ import {
   UserCheck,
   User,
   Users,
-  Zap,
-  CreditCard
+  Camera,
+  Zap
 } from 'lucide-react';
+import { FaceRegistrationModal } from './FaceRegistrationModal';
+import { removeCachedStudentDescriptor } from '../services/faceRecognitionService';
 import {
   Student,
   ClassLevel,
@@ -122,6 +124,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [dormFilter, setDormFilter] = useState('');
+  const [faceFilter, setFaceFilter] = useState<'all' | 'registered' | 'unregistered'>('all');
 
   // Selected student for discipline history modal
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
@@ -130,6 +133,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   // Modal State for Add/Edit Student
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+
+  // Face Registration Modal State
+  const [faceModalStudent, setFaceModalStudent] = useState<Student | null>(null);
+  const [isFaceModalOpen, setIsFaceModalOpen] = useState(false);
 
   // Quick Report State
   const [quickReportStudent, setQuickReportStudent] = useState<Student | null>(null);
@@ -252,9 +259,14 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         dormFilter === '' ||
         canonicalStudentDorm === dormFilter ||
         s.dorm === dormFilter;
-      return matchName && matchClass && matchDorm;
+      const hasFace = !!(s.faceDescriptor && s.faceDescriptor.length === 128);
+      const matchFace =
+        faceFilter === 'all' ||
+        (faceFilter === 'registered' && hasFace) ||
+        (faceFilter === 'unregistered' && !hasFace);
+      return matchName && matchClass && matchDorm && matchFace;
     });
-  }, [students, searchQuery, classFilter, dormFilter, dormListFromConfig]);
+  }, [students, searchQuery, classFilter, dormFilter, faceFilter, dormListFromConfig]);
 
   // Multi-selection state for printing cards
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -357,8 +369,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         shirtSize: shirtVal,
         pantsSize: pantsVal,
         gender: formGender,
-        parentPhone: formParentPhone.trim() || undefined,
-        balance: existing?.balance !== undefined ? existing.balance : 0
+        parentPhone: formParentPhone.trim() || undefined
       };
       onSaveStudent(updatedStudent, true);
       onShowToast('Berhasil', `Data ${name} berhasil diperbarui.`, 'success');
@@ -380,8 +391,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         pantsSize: pantsVal,
         gender: formGender,
         parentPhone: formParentPhone.trim() || undefined,
-        violationCount: 0,
-        balance: 0
+        violationCount: 0
       };
       onSaveStudent(newStudent, false);
       onShowToast('Registrasi Berhasil', `${name} berhasil terdaftar.`, 'success');
@@ -610,6 +620,15 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 </option>
               ))}
             </select>
+            <select
+              value={faceFilter}
+              onChange={(e) => setFaceFilter(e.target.value as any)}
+              className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 font-medium"
+            >
+              <option value="all">Semua Status Wajah</option>
+              <option value="registered">✓ Face ID Terdaftar</option>
+              <option value="unregistered">Belum Face ID</option>
+            </select>
           </div>
         </div>
 
@@ -678,6 +697,20 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
                 <div className="absolute right-2 top-2 flex items-center gap-1 z-20">
                   <button
+                    onClick={() => {
+                      setFaceModalStudent(s);
+                      setIsFaceModalOpen(true);
+                    }}
+                    className={`w-7 h-7 flex items-center justify-center rounded-md transition ${
+                      s.faceDescriptor && s.faceDescriptor.length === 128
+                        ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                    }`}
+                    title={s.faceDescriptor ? 'Face ID Terdaftar (Klik untuk ubah)' : 'Daftarkan Wajah (Face ID)'}
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                  </button>
+                  <button
                     onClick={() => handleOpenEditModal(s)}
                     className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition"
                     title="Edit Data"
@@ -720,6 +753,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${getStatusBadgeClass(disc.status.badgeColor)}`}>
                         {disc.score} Poin • {disc.status.label}
                       </span>
+                      {s.faceDescriptor && s.faceDescriptor.length === 128 && (
+                        <span className="inline-block text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
+                          Face ID ✓
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -769,28 +807,6 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       {s.shirtSize ? `Baju ${s.shirtSize}` : 'Baju -'} • {s.pantsSize ? `Cln ${s.pantsSize}` : 'Cln -'}
                     </span>
                   </div>
-                </div>
-
-                {/* E-Money Balance & RFID Tag Badge */}
-                <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-2.5 flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5">
-                    <CreditCard className="w-3.5 h-3.5 text-amber-600" />
-                    <div>
-                      <span className="text-slate-500 block text-[9px] font-bold uppercase tracking-wider">
-                        Saldo Kartu Siswa
-                      </span>
-                      <span className="font-black text-amber-700 text-xs">
-                        Rp {(s.balance ?? 0).toLocaleString('id-ID')}
-                      </span>
-                    </div>
-                  </div>
-                  {s.rfidTag ? (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white text-emerald-700 border border-emerald-200" title="RFID UID">
-                      RFID: {s.rfidTag}
-                    </span>
-                  ) : (
-                    <span className="text-[9px] text-slate-400">Kartu Fisik Aktif</span>
-                  )}
                 </div>
 
                 {/* Card Action Buttons */}
@@ -1539,6 +1555,44 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Face Registration Modal */}
+      {isFaceModalOpen && faceModalStudent && (
+        <FaceRegistrationModal
+          student={faceModalStudent}
+          isOpen={isFaceModalOpen}
+          onClose={() => {
+            setIsFaceModalOpen(false);
+            setFaceModalStudent(null);
+          }}
+          onSaveFace={(studentId, photoDataUrl, descriptor) => {
+            const target = students.find((st) => st.id === studentId);
+            if (target) {
+              const updated: Student = {
+                ...target,
+                photo: photoDataUrl,
+                faceDescriptor: descriptor,
+                faceRegisteredAt: new Date().toISOString(),
+              };
+              onSaveStudent(updated, true);
+            }
+          }}
+          onDeleteFace={(studentId) => {
+            removeCachedStudentDescriptor(studentId);
+            const target = students.find((st) => st.id === studentId);
+            if (target) {
+              const updated: Student = {
+                ...target,
+                faceDescriptor: undefined,
+                faceRegisteredAt: undefined,
+              };
+              onSaveStudent(updated, true);
+              onShowToast('Face ID Dihapus', `Data biometrik wajah ${target.name} berhasil dihapus.`, 'info');
+            }
+          }}
+          onShowToast={onShowToast}
+        />
       )}
 
       </>

@@ -11,6 +11,9 @@ import {
 } from '../types';
 import { ChecklistTab } from './ChecklistTab';
 import { playAttendanceVoice, playChimeBeep, primeAttendanceAudio } from '../utils/attendanceAudio';
+import { FaceAttendanceScanner } from './FaceAttendanceScanner';
+import { FaceRegistrationModal } from './FaceRegistrationModal';
+import { removeCachedStudentDescriptor } from '../services/faceRecognitionService';
 import {
   QrCode,
   Camera,
@@ -179,7 +182,8 @@ interface PrayerAttendanceTabProps {
   leaves: Leave[];
   medicalRecords: MedicalRecord[];
   config: AppConfig;
-  initialSubTab?: 'scanner' | 'cards' | 'checklist' | 'recap';
+  initialSubTab?: 'face' | 'scanner' | 'cards' | 'checklist' | 'recap';
+  onSaveStudent?: (student: Student, isEdit: boolean) => void;
   onShowToast?: (title: string, message: string, type: 'success' | 'warning' | 'error' | 'info') => void;
   onAskConfirm?: (title: string, message: string) => Promise<boolean>;
   onSync?: () => void;
@@ -483,13 +487,14 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
   leaves,
   medicalRecords,
   config,
-  initialSubTab = 'scanner',
+  initialSubTab = 'face',
+  onSaveStudent,
   onShowToast,
   onAskConfirm,
   onSync,
   isSyncing
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'scanner' | 'cards' | 'checklist' | 'recap'>(initialSubTab);
+  const [activeSubTab, setActiveSubTab] = useState<'face' | 'scanner' | 'cards' | 'checklist' | 'recap'>(initialSubTab);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -902,6 +907,118 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
     });
     setManualInputId('');
   };
+
+  // Face Recognition Attendance Recording Handler
+  const handleRecordFaceAttendance = useCallback(
+    (student: Student, confidence: number, snapshotUrl?: string) => {
+      const curDate = selectedDateRef.current;
+      const curPrayer = selectedPrayerTimeRef.current;
+      const curOfficer = officerNameRef.current;
+      const currentAttendance = prayerAttendanceRef.current;
+      const currentLeaves = leavesRef.current;
+      const currentMedical = medicalRecordsRef.current;
+
+      const onLeave = currentLeaves.some(
+        (l) =>
+          l.status === 'Active' &&
+          (String(l.studentId).trim().toLowerCase() === String(student.id).trim().toLowerCase() ||
+            String(l.studentName).trim().toLowerCase() === String(student.name).trim().toLowerCase())
+      );
+
+      const inUks = currentMedical.some(
+        (m) =>
+          (m.status === 'Dalam Perawatan' || m.status === 'Istirahat di Kamar') &&
+          (String(m.studentId).trim().toLowerCase() === String(student.id).trim().toLowerCase() ||
+            String(m.studentName).trim().toLowerCase() === String(student.name).trim().toLowerCase())
+      );
+
+      let defaultStatus: PrayerAttendance['status'] = 'Hadir';
+      if (onLeave) defaultStatus = 'Izin Pulang';
+      else if (inUks) defaultStatus = 'Izin Sakit';
+
+      const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      const existingIndex = currentAttendance.findIndex(
+        (p) =>
+          p.date === curDate &&
+          p.prayerTime === curPrayer &&
+          String(p.studentId).trim().toLowerCase() === String(student.id).trim().toLowerCase()
+      );
+
+      let updatedList = [...currentAttendance];
+      if (existingIndex >= 0) {
+        updatedList[existingIndex] = {
+          ...updatedList[existingIndex],
+          timestamp: nowTime,
+          status: defaultStatus,
+          method: 'Face',
+          confidence,
+          photo: snapshotUrl || updatedList[existingIndex].photo,
+          scannedBy: curOfficer,
+        };
+      } else {
+        const newRecord: PrayerAttendance = {
+          id: `PA-${Date.now().toString().slice(-6)}-${student.id}`,
+          studentId: student.id,
+          studentName: student.name,
+          class: student.class,
+          dorm: student.dorm,
+          prayerTime: curPrayer,
+          date: curDate,
+          timestamp: nowTime,
+          status: defaultStatus,
+          method: 'Face',
+          confidence,
+          photo: snapshotUrl,
+          scannedBy: curOfficer,
+        };
+        updatedList = [newRecord, ...updatedList];
+      }
+
+      prayerAttendanceRef.current = updatedList;
+      onSavePrayerAttendanceRef.current(updatedList);
+    },
+    []
+  );
+
+  // Student Face Registration Callback
+  const handleSaveStudentFace = useCallback(
+    (studentId: string, photoUrl: string, descriptor: number[]) => {
+      if (onSaveStudent) {
+        const targetStudent = students.find((s) => String(s.id).trim() === String(studentId).trim());
+        if (targetStudent) {
+          const updated: Student = {
+            ...targetStudent,
+            photo: photoUrl,
+            faceDescriptor: descriptor,
+            faceRegisteredAt: new Date().toISOString(),
+          };
+          onSaveStudent(updated, true);
+        }
+      }
+    },
+    [onSaveStudent, students]
+  );
+
+  // Student Face Deletion Callback
+  const handleDeleteStudentFace = useCallback(
+    (studentId: string) => {
+      if (onSaveStudent) {
+        const targetStudent = students.find((s) => String(s.id).trim() === String(studentId).trim());
+        if (targetStudent) {
+          removeCachedStudentDescriptor(studentId);
+          const updated: Student = {
+            ...targetStudent,
+            faceDescriptor: undefined,
+            faceRegisteredAt: undefined,
+          };
+          onSaveStudent(updated, true);
+          onShowToast?.('Face ID Dihapus', `Data biometrik wajah siswa ${targetStudent.name} berhasil dihapus.`, 'info');
+        }
+      }
+    },
+    [onSaveStudent, students, onShowToast]
+  );
 
   // Start / Restart HTML5 QR Code Scanner with facing mode or exact device ID
   useEffect(() => {
@@ -1523,6 +1640,21 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
       <div className="no-print bg-white p-2.5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
           <button
+            onClick={() => setActiveSubTab('face')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
+              activeSubTab === 'face'
+                ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white shadow-md shadow-red-600/30'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Camera className={`w-4 h-4 ${activeSubTab === 'face' ? 'text-red-200' : 'text-slate-400'}`} />
+            <span>Presensi Wajah AI</span>
+            <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono uppercase font-black">
+              Face ID
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveSubTab('scanner')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
               activeSubTab === 'scanner'
@@ -1530,8 +1662,8 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <Camera className={`w-4 h-4 ${activeSubTab === 'scanner' ? 'text-red-200' : 'text-slate-400'}`} />
-            <span>QR Scanner Live</span>
+            <QrCode className={`w-4 h-4 ${activeSubTab === 'scanner' ? 'text-red-200' : 'text-slate-400'}`} />
+            <span>QR Scanner & RFID</span>
           </button>
           
           <button
@@ -1608,9 +1740,52 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
         <QrCode className="absolute right-4 -bottom-8 w-60 h-60 text-white/5 pointer-events-none" />
       </div>
 
+      {/* SUB-TAB 0: FACE RECOGNITION AI ATTENDANCE */}
+      {activeSubTab === 'face' && (
+        <div className="no-print space-y-6">
+          <FaceAttendanceScanner
+            students={students}
+            prayerAttendance={prayerAttendance}
+            selectedDate={selectedDate}
+            selectedPrayerTime={selectedPrayerTime}
+            sessionCategoryFilter={sessionCategoryFilter}
+            onDateChange={(d) => setSelectedDate(d)}
+            onPrayerTimeChange={(s) => setSelectedPrayerTime(s)}
+            onRecordAttendance={handleRecordFaceAttendance}
+            onSaveStudentFace={handleSaveStudentFace}
+            onDeleteStudentFace={handleDeleteStudentFace}
+            onShowToast={onShowToast}
+            onSwitchToQrScanner={() => setActiveSubTab('scanner')}
+          />
+        </div>
+      )}
+
       {/* SUB-TAB 1: LIVE QR SCANNER & ATTENDANCE RECORDING */}
       {activeSubTab === 'scanner' && (
         <div className="no-print space-y-6">
+          {/* Quick banner recommendation to try Face Recognition */}
+          <div className="bg-gradient-to-r from-red-600 to-rose-700 text-white rounded-2xl p-4 flex items-center justify-between gap-4 shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Camera className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm leading-tight">
+                  Coba Presensi Pengenal Wajah (Face Recognition AI)!
+                </h4>
+                <p className="text-xs text-red-100">
+                  Presensi otomatis tanpa perlu bawa kartu atau scan QR. Siswa cukup berdiri di depan kamera.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('face')}
+              className="bg-white text-red-700 hover:bg-red-50 font-black text-xs px-4 py-2 rounded-xl shrink-0 shadow transition active:scale-95"
+            >
+              Buka Presensi Wajah →
+            </button>
+          </div>
           {/* Controls Bar: Session Setup & Quick Stats */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
             {/* Category Filter Pills & Active Session Info */}

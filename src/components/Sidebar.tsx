@@ -14,6 +14,7 @@ import {
   Sliders,
   X,
   QrCode,
+  Camera,
   BookOpen,
   CalendarHeart,
   ClipboardList,
@@ -23,8 +24,7 @@ import {
   Brain,
   FileSpreadsheet,
   Monitor,
-  Download,
-  CreditCard
+  Download
 } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { DesktopInstallModal } from './DesktopInstallModal';
@@ -55,13 +55,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'live-monitor', label: 'Live Monitor Terpadu', icon: Activity, isSpecial: true },
     { id: 'special-chronology', label: 'Kronologi & Handover Shift', icon: ClipboardList },
     { id: 'students', label: 'Data Siswa & Profil', icon: Users },
-    { id: 'card-payment', label: 'Kasir & Kartu Siswa', icon: CreditCard, isSpecial: true },
     { id: 'psychology', label: 'Asesmen Psikologi & Jiwa', icon: Brain, isSpecial: true },
     { id: 'connecting-journal', label: 'Jurnal Penghubung', icon: BookOpen },
     { id: 'dorm-inspection', label: 'Penilaian Asrama (SOP)', icon: Sparkles },
     { id: 'dorm-asset', label: 'Aset Asrama (SOP)', icon: PackageCheck },
     { id: 'meeting-minutes', label: 'Notulensi Rapat', icon: FileText },
-    { id: 'prayer-attendance', label: 'Absensi & Ceklist', icon: QrCode },
+    { id: 'prayer-attendance', label: 'Absensi Wajah & QR', icon: Camera },
     { id: 'menstruation', label: 'Tracking Menstruasi', icon: CalendarHeart },
     { id: 'violations', label: 'Pelanggaran', icon: AlertTriangle },
     { id: 'leaves', label: 'Surat Izin Keluar', icon: DoorOpen },
@@ -152,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const isActive =
               activeTab === item.id ||
               (item.id === 'violations' && (activeTab === 'violations' || activeTab === 'counseling')) ||
-              (item.id === 'report-card' && (activeTab === 'report-card' || activeTab === 'recap'));
+              (item.id === 'report-card' && (activeTab === 'report-card' || activeTab === 'recap' || activeTab === 'kemensos-report'));
             return (
               <button
                 key={item.id}

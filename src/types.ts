@@ -3,6 +3,7 @@ export type ClassLevel = 'SD' | 'SMP' | 'SMA';
 export interface Student {
   id: string; // NISN or Registration ID
   rfidTag?: string; // Optional RFID / NFC Tag UID (e.g. 1029384756 or 04:A2:3B:8C)
+  balance?: number; // Saldo E-Money / Kartu Bayar Siswa
   name: string;
   class: ClassLevel;
   dorm: string;
@@ -13,6 +14,8 @@ export interface Student {
   shirtSize?: string; // Ukuran Baju (e.g. S, M, L, XL, XXL)
   pantsSize?: string; // Ukuran Celana (e.g. 28, 29, 30, M, L, XL)
   photo?: string; // Base64 data URL or image URL for student profile avatar
+  faceDescriptor?: number[]; // 128-d vector embedding for Face Recognition AI
+  faceRegisteredAt?: string; // ISO date timestamp of face registration
   gender?: 'L' | 'P' | 'Laki-Laki' | 'Perempuan';
   birthDate?: string;
   birthPlace?: string;
@@ -20,7 +23,6 @@ export interface Student {
   parentPhone?: string;
   address?: string;
   bloodType?: string;
-  balance?: number; // Saldo uang saku kartu siswa (e-money), default 0
   createdAt?: string;
   updatedAt?: string;
 }
@@ -259,6 +261,9 @@ export interface PrayerAttendance {
   date: string; // YYYY-MM-DD
   timestamp: string; // HH:mm:ss
   status: 'Hadir' | 'Izin Sakit' | 'Izin Pulang' | 'Terlambat' | 'Alpa / Tanpa Keterangan';
+  method?: 'Face' | 'QR' | 'RFID' | 'Manual';
+  confidence?: number; // Face recognition confidence % (e.g. 96)
+  photo?: string;
   note?: string;
   scannedBy?: string;
 }
@@ -724,25 +729,5 @@ export interface OfficialLetter {
   createdAt: string;
   updatedAt?: string;
 }
-
-export type TransactionType = 'PAYMENT' | 'TOPUP';
-
-export interface CardTransaction {
-  id: string;
-  studentId: string;
-  studentName: string;
-  studentClass?: string;
-  studentDorm?: string;
-  rfidTag?: string;
-  type: TransactionType;
-  amount: number;
-  balanceBefore: number;
-  balanceAfter: number;
-  merchant: string; // Kantin Asrama, Koperasi Siswa, Laundry Asrama, Toko Asrama, Fotokopi / ATK, Kasir Asrama
-  description: string; // Keterangan belanja atau top-up
-  cashierName?: string; // Nama kasir / wali asuh
-  timestamp: string; // Waktu transaksi ISO string
-}
-
 
 

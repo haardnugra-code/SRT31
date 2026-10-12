@@ -171,7 +171,9 @@ export function buildFaceMatcher(
   const labeledDescriptors: faceapi.LabeledFaceDescriptors[] = [];
 
   for (const student of students) {
+    if (student.faceDisabled) continue;
     const sId = String(student.id).trim();
+
     let desc = descriptorCache.get(sId);
 
     if (!desc && student.faceDescriptor && student.faceDescriptor.length === 128) {
@@ -179,7 +181,7 @@ export function buildFaceMatcher(
       descriptorCache.set(sId, desc);
     }
 
-    if (desc) {
+    if (desc && student.faceDescriptor && student.faceDescriptor.length === 128) {
       labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(sId, [desc]));
     }
   }

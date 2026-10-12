@@ -992,6 +992,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
             photo: photoUrl,
             faceDescriptor: descriptor,
             faceRegisteredAt: new Date().toISOString(),
+            faceDisabled: false,
           };
           onSaveStudent(updated, true);
         }
@@ -1011,6 +1012,7 @@ export const PrayerAttendanceTab: React.FC<PrayerAttendanceTabProps> = ({
             ...targetStudent,
             faceDescriptor: undefined,
             faceRegisteredAt: undefined,
+            faceDisabled: true,
           };
           onSaveStudent(updated, true);
           onShowToast?.('Face ID Dihapus', `Data biometrik wajah siswa ${targetStudent.name} berhasil dihapus.`, 'info');

@@ -41,7 +41,7 @@ export const FaceRegistrationModal: React.FC<FaceRegistrationModalProps> = ({
   onDeleteFace,
   onShowToast,
 }) => {
-  const hasExistingFace = !!(student?.faceDescriptor && student.faceDescriptor.length === 128);
+  const hasExistingFace = !student?.faceDisabled && !!(student?.faceDescriptor && student.faceDescriptor.length === 128);
 
   // Sub-view: if existing face, default to 'status' overview, otherwise 'capture'
   const [viewMode, setViewMode] = useState<'status' | 'capture'>(hasExistingFace ? 'status' : 'capture');

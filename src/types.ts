@@ -16,6 +16,7 @@ export interface Student {
   photo?: string; // Base64 data URL or image URL for student profile avatar
   faceDescriptor?: number[]; // 128-d vector embedding for Face Recognition AI
   faceRegisteredAt?: string; // ISO date timestamp of face registration
+  faceDisabled?: boolean; // Flag to indicate Face ID was explicitly deleted/disabled for this student
   gender?: 'L' | 'P' | 'Laki-Laki' | 'Perempuan';
   birthDate?: string;
   birthPlace?: string;
@@ -645,7 +646,11 @@ export type OfficialLetterType =
   | 'pernyataan_siswa'
   | 'keterangan_baik'
   | 'rujukan_medis_psikologis'
-  | 'surat_bebas';
+  | 'surat_bebas'
+  | 'laporan_kemensos_periodik'
+  | 'berita_acara_insiden_kemensos'
+  | 'berita_acara_presensi'
+  | 'peringatan_ketidakhadiran';
 
 export interface LetterSupplyItem {
   id: string;
@@ -708,6 +713,30 @@ export interface OfficialLetter {
   leaveTotalDays?: number;
   leaveReason?: string;
   leaveHandoverStaff?: string; // Petugas pengganti piket
+
+  // Konten Khusus Laporan Kemensos & Presensi
+  attendanceDate?: string;
+  attendanceSession?: string;
+  attendanceTargetClass?: string;
+  attendanceTargetDorm?: string;
+  attendanceTotalStudents?: number;
+  attendancePresentCount?: number;
+  attendanceFaceCount?: number;
+  attendanceQrCount?: number;
+  attendanceRfidCount?: number;
+  attendanceManualCount?: number;
+  attendanceSickCount?: number;
+  attendanceLeaveCount?: number;
+  attendanceLateCount?: number;
+  attendanceAlphaCount?: number;
+  attendanceAbsentStudentNames?: string;
+  attendanceNotes?: string;
+
+  kemensosReportPeriod?: string;
+  kemensosLegalBasis?: string;
+  kemensosObjectives?: string;
+  kemensosEvaluation?: string;
+  kemensosRecommendations?: string;
 
   // Konten Umum / Narasi Surat
   subject: string; // Perihal

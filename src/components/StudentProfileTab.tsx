@@ -2320,6 +2320,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
               photo: photoDataUrl,
               faceDescriptor: descriptor,
               faceRegisteredAt: new Date().toISOString(),
+              faceDisabled: false,
             };
             onSaveStudent(updated, true);
           }}
@@ -2329,6 +2330,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
               ...currentStudent,
               faceDescriptor: undefined,
               faceRegisteredAt: undefined,
+              faceDisabled: true,
             };
             onSaveStudent(updated, true);
             onShowToast('Face ID Dihapus', `Data biometrik wajah ${currentStudent.name} berhasil dihapus.`, 'info');

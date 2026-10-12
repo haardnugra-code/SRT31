@@ -240,22 +240,20 @@ export const FaceAttendanceScanner: React.FC<FaceAttendanceScannerProps> = ({
 
     // Count students with existing faceDescriptor
     students.forEach((s) => {
-      if (s.faceDescriptor && s.faceDescriptor.length === 128) {
+      if (!s.faceDisabled && s.faceDescriptor && s.faceDescriptor.length === 128) {
         cacheStudentDescriptor(s.id, s.faceDescriptor);
         count++;
       } else {
-        // If student does not have faceDescriptor, ensure any stale cache is evicted
-        if (!s.photo) {
-          removeCachedStudentDescriptor(s.id);
-        }
+        // If student does not have valid faceDescriptor or faceDisabled is true, ALWAYS evict from cache!
+        removeCachedStudentDescriptor(s.id);
       }
     });
 
     setEnrolledCount(count);
 
-    // Auto-extract descriptors for students with photo but no faceDescriptor
+    // Auto-extract descriptors for students with photo but no faceDescriptor and NOT faceDisabled
     const studentsNeedingExtraction = students.filter(
-      (s) => s.photo && (!s.faceDescriptor || s.faceDescriptor.length !== 128) && !getCachedStudentDescriptor(s.id)
+      (s) => !s.faceDisabled && s.photo && (!s.faceDescriptor || s.faceDescriptor.length !== 128) && !getCachedStudentDescriptor(s.id)
     );
 
     if (studentsNeedingExtraction.length > 0) {
@@ -619,7 +617,7 @@ export const FaceAttendanceScanner: React.FC<FaceAttendanceScannerProps> = ({
   const filteredManageStudents = useMemo(() => {
     const q = manageSearchQuery.toLowerCase().trim();
     return students.filter((s) => {
-      const hasFace = !!(s.faceDescriptor && s.faceDescriptor.length === 128) || !!getCachedStudentDescriptor(s.id);
+      const hasFace = !s.faceDisabled && !!(s.faceDescriptor && s.faceDescriptor.length === 128);
       
       if (faceStatusFilter === 'enrolled' && !hasFace) return false;
       if (faceStatusFilter === 'unenrolled' && hasFace) return false;
@@ -1174,7 +1172,7 @@ export const FaceAttendanceScanner: React.FC<FaceAttendanceScannerProps> = ({
                     filteredStudents.map((s) => {
                       const att = sessionAttendanceMap.get(String(s.id).trim());
                       const isAttended = !!att;
-                      const hasFaceId = !!(s.faceDescriptor && s.faceDescriptor.length === 128) || !!getCachedStudentDescriptor(s.id);
+                      const hasFaceId = !s.faceDisabled && !!(s.faceDescriptor && s.faceDescriptor.length === 128);
 
                       return (
                         <div
@@ -1341,7 +1339,7 @@ export const FaceAttendanceScanner: React.FC<FaceAttendanceScannerProps> = ({
                     </div>
                   ) : (
                     filteredManageStudents.map((s) => {
-                      const hasFaceId = !!(s.faceDescriptor && s.faceDescriptor.length === 128) || !!getCachedStudentDescriptor(s.id);
+                      const hasFaceId = !s.faceDisabled && !!(s.faceDescriptor && s.faceDescriptor.length === 128);
 
                       return (
                         <div

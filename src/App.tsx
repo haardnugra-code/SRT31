@@ -19,7 +19,8 @@ import {
   DormAsset,
   PsychologicalAssessment,
   AssessmentResult,
-  OfficialLetter
+  OfficialLetter,
+  KemensosLogRecord
 } from './types';
 import {
   loadAppConfig,
@@ -47,6 +48,8 @@ import {
   savePrayerAttendance,
   loadMenstruationRecords,
   saveMenstruationRecords,
+  loadKemensosLogRecords,
+  saveKemensosLogRecords,
   loadSpecialChronologyCases,
   saveSpecialChronologyCases,
   loadDormInspections,
@@ -99,6 +102,7 @@ import { LiveMonitorTab } from './components/LiveMonitorTab';
 import { PsychologicalAssessmentTab } from './components/PsychologicalAssessmentTab';
 import { StudentAssessmentPortalModal } from './components/StudentAssessmentPortalModal';
 import { LetterGeneratorTab } from './components/LetterGeneratorTab';
+import { KemensosLoggingTab } from './components/KemensosLoggingTab';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -145,8 +149,30 @@ export default function App() {
   const [dormAssets, setDormAssets] = useState<DormAsset[]>(loadDormAssets);
   const [psychologicalAssessments, setPsychologicalAssessments] = useState<PsychologicalAssessment[]>(loadPsychologicalAssessments);
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>(loadAssessmentResults);
+  const [kemensosLogRecords, setKemensosLogRecords] = useState<KemensosLogRecord[]>(loadKemensosLogRecords);
   const [isStudentAssessmentModalOpen, setIsStudentAssessmentModalOpen] = useState<boolean>(false);
   const [portalStudentId, setPortalStudentId] = useState<string | undefined>(undefined);
+
+  const handleSaveKemensosLogRecord = useCallback((record: KemensosLogRecord, isEdit: boolean) => {
+    setKemensosLogRecords((prev) => {
+      let next: KemensosLogRecord[];
+      if (isEdit) {
+        next = prev.map((r) => (r.id === record.id ? record : r));
+      } else {
+        next = [record, ...prev];
+      }
+      saveKemensosLogRecords(next);
+      return next;
+    });
+  }, []);
+
+  const handleDeleteKemensosLogRecord = useCallback((id: string) => {
+    setKemensosLogRecords((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      saveKemensosLogRecords(next);
+      return next;
+    });
+  }, []);
 
   const handleSavePsychologicalAssessment = useCallback((assessment: PsychologicalAssessment) => {
     setPsychologicalAssessments((prev) => {
@@ -2609,6 +2635,18 @@ export default function App() {
                 config={effectiveConfig}
                 onSaveCase={handleSaveSpecialCase}
                 onDeleteCase={handleDeleteSpecialCase}
+                onShowToast={showToast}
+                onAskConfirm={askConfirm}
+              />
+            )}
+
+            {activeTab === 'kemensos-logging' && (
+              <KemensosLoggingTab
+                students={studentsWithViolationCounts}
+                config={effectiveConfig}
+                logRecords={kemensosLogRecords}
+                onSaveLogRecord={handleSaveKemensosLogRecord}
+                onDeleteLogRecord={handleDeleteKemensosLogRecord}
                 onShowToast={showToast}
                 onAskConfirm={askConfirm}
               />

@@ -23,6 +23,7 @@ import {
   Activity,
   Brain,
   FileSpreadsheet,
+  FileCheck2,
   Monitor,
   Download
 } from 'lucide-react';
@@ -51,6 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isDesktopModalOpen, setIsDesktopModalOpen] = useState(false);
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LineChart },
+    { id: 'kemensos-logging', label: 'Pencatatan Kemensos (Modul 7)', icon: FileCheck2, isSpecial: true },
     { id: 'letter-generator', label: 'Generator Surat Resmi', icon: FileSpreadsheet, isSpecial: true },
     { id: 'live-monitor', label: 'Live Monitor Terpadu', icon: Activity, isSpecial: true },
     { id: 'special-chronology', label: 'Kronologi & Handover Shift', icon: ClipboardList },

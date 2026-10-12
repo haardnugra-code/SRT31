@@ -1102,5 +1102,27 @@ export function clearPendingSyncQueue(): void {
   localStorage.removeItem('sr_pending_sync_queue');
 }
 
+// --- KEMENSOS MODUL 7 LOG RECORDS ---
+export function loadKemensosLogRecords(): any[] {
+  try {
+    const raw = localStorage.getItem('sr_kemensos_log_records');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.error('Failed to load Kemensos log records:', e);
+  }
+  return [];
+}
+
+export function saveKemensosLogRecords(records: any[]): void {
+  try {
+    localStorage.setItem('sr_kemensos_log_records', JSON.stringify(records));
+  } catch (e) {
+    console.error('Failed to save Kemensos log records:', e);
+  }
+}
+
 
 

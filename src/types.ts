@@ -759,4 +759,118 @@ export interface OfficialLetter {
   updatedAt?: string;
 }
 
+// --- KEMENSOS MODUL 7 - PENCATATAN DAN PELAPORAN TYPES ---
+export type KemensosRecordType =
+  | 'temuan_peserta_didik'
+  | 'penanganan_kasus'
+  | 'monitoring_perkembangan'
+  | 'rapid_assessment';
+
+export interface KemensosFindingRecord {
+  id: string;
+  type: 'temuan_peserta_didik';
+  date: string;
+  time: string;
+  studentId: string;
+  studentName: string;
+  studentAge?: string | number;
+  studentGender?: string;
+  studentClass?: string;
+  studentDorm?: string;
+  incidentDate: string;
+  incidentTime: string;
+  incidentLocation: string;
+  incidentDescription: string;
+  studentOrOtherStatements?: string;
+  observedBehavior?: string;
+  relevantWitnesses?: string;
+  initialActionsTaken?: string;
+  recordingDate: string;
+  recordingTime: string;
+  caretakerName: string;
+  createdAt: string;
+}
+
+export interface KemensosCaseRecord {
+  id: string;
+  type: 'penanganan_kasus';
+  schoolName: string;
+  caretakerName: string;
+  caseOpeningDate: string;
+  studentId: string;
+  studentName: string;
+  studentAge?: string | number;
+  studentGender?: string;
+  studentClass?: string;
+  mainProblem: string;
+  problemCause: string;
+  impactPhysical: string;
+  impactPsychological: string;
+  impactSocial: string;
+  impactSpiritual: string;
+  generalGoal: string;
+  specificGoals: string[];
+  plannedActivities: string[];
+  interventionsExecuted: string[];
+  monevMethods: string[];
+  monevResults: {
+    week1?: string;
+    week2?: string;
+    week3?: string;
+    week4?: string;
+    week5?: string;
+  };
+  terminationBiological: string;
+  terminationPsychological: string;
+  terminationSocial: string;
+  terminationSpiritual: string;
+  caseConclusion: string;
+  caseClosingDate: string;
+  createdAt: string;
+}
+
+export interface KemensosMonevRecord {
+  id: string;
+  type: 'monitoring_perkembangan';
+  studentId: string;
+  studentName: string;
+  registerNo: string;
+  monevNumber: number;
+  monthYear: string;
+  scores: Record<string, number>;
+  problemDescription?: string;
+  problemCause?: string;
+  problemEffect?: string;
+  actionsTaken?: string;
+  followUpPlan?: string;
+  positiveActivitiesAndRewards?: string;
+  violationsAndSanctions?: string;
+  caretakerName: string;
+  createdAt: string;
+}
+
+export interface KemensosRapidAssessmentRecord {
+  id: string;
+  type: 'rapid_assessment';
+  peksosName: string;
+  dutyDate: string;
+  dutyTime: string;
+  dutyLocation: string;
+  areaCondition: string;
+  vulnerableCategory: string;
+  clientName: string;
+  rightsFulfillment: Record<string, string>;
+  protectionIssues: Record<string, string>;
+  urgentNotes: Record<string, string>;
+  peksosSupervisor: string;
+  peksosDuty: string;
+  createdAt: string;
+}
+
+export type KemensosLogRecord =
+  | KemensosFindingRecord
+  | KemensosCaseRecord
+  | KemensosMonevRecord
+  | KemensosRapidAssessmentRecord;
+
 
